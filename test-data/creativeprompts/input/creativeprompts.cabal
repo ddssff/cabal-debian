@@ -1,0 +1,95 @@
+Name: creativeprompts
+Version: 1.5.2
+License: AllRightsReserved
+License-File: debian/copyright
+Copyright: (c) 2010-2011 SeeReason Partners LLC
+Author: Jeremy Shaw <jeremy@seereason.com>
+Maintainer: Jeremy Shaw <jeremy@seereason.com>
+Stability: Experimental
+Category: Web
+Synopsis: creativeprompts.com
+Description:
+ A social site for sharing story ideas.
+Cabal-version: >= 1.8
+Build-type: Custom
+Data-files:
+            static/theme/comment-bottom.png
+            static/theme/comment-middle.png
+            static/theme/comment-top.png
+            static/theme/creative-prompts-logo.png
+            static/theme/entry-bottom.png
+            static/theme/entry-middle.png
+            static/theme/entry-top.png
+            static/theme/json2.js
+            static/theme/menu-bar-background.png
+            static/theme/menu-gradient.png
+            static/theme/paint-background.jpg
+            static/theme/site.js
+            static/theme/style.css
+
+Flag base4
+    Description: Choose the even newer, even smaller, split-up base package.
+
+Executable creativeprompts-server
+ Main-Is: Main.hs
+
+ GHC-Options: -threaded -Wall -Wwarn -O2 -rtsopts -fno-warn-name-shadowing -fno-warn-missing-signatures -fwarn-tabs -fno-warn-unused-binds -fno-warn-orphans -fwarn-unused-imports -fno-spec-constr
+ Build-depends: acid-state >= 0.6.0,
+                authenticate >= 0.8.0,
+                blaze-html >= 0.5,
+                blaze-markup,
+                bytestring,
+                containers,
+                debian-packaging >= 0.8,
+--                PBKDF2 >= 0.3.1 && < 0.4,
+                safecopy >= 0.6.0,
+                directory,
+                extensible-exceptions,
+                Extra,
+                filepath,
+                digestive-functors >= 0.2,
+                digestive-functors-happstack >= 0.1,
+                digestive-functors-hsp >= 0.3.1,
+                happstack-authenticate >= 0.6,
+--                happstack-extra,
+                happstack-hsp          == 7.1.*,
+                ixset,
+--                happstack-facebook,
+                happstack-server       == 7.0.*,
+                HJScript,
+                hslogger,
+                hsx                    >= 0.10.2 && < 0.11,
+                hsp                    >= 0.7.1  && < 0.8,
+                HTTP,
+                jmacro,
+                json,
+                mtl,
+                network,
+                old-time,
+                old-locale,
+                parsec,
+                process,
+                QuickCheck,
+                random,
+                text >= 0.11,
+                time,
+                unix,
+                Unixutils >= 1.29,
+                Unixutils-shadow,
+                utf8-string,
+                web-routes >= 0.26.2,
+                web-routes-happstack,
+                web-routes-hsp,
+                web-routes-th,
+                xss-sanitize >= 0.3.0.1
+ if !os(windows)
+   -- Cabal has a bug on windows and cannot find trhsx
+   Build-Tools: trhsx
+
+ if flag(base4)
+    Build-Depends: base >= 4 && < 5, syb
+
+Executable creativeprompts-backups
+ Main-Is: Backups.hs
+ GHC-Options: -threaded -Wall -Wwarn -O2 -rtsopts -fno-warn-name-shadowing -fno-warn-missing-signatures -fwarn-tabs -fno-warn-unused-binds -fno-warn-orphans -fwarn-unused-imports -fno-spec-constr
+ Build-depends: archive >= 1.2.9, base, Extra

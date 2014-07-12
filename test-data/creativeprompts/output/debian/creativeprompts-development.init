@@ -1,0 +1,24 @@
+#! /bin/sh -e
+
+. /lib/lsb/init-functions
+test -f /etc/default/creativeprompts-development && . /etc/default/creativeprompts-development
+
+case "$1" in
+  start)
+    test -x /usr/bin/creativeprompts-development || exit 0
+    log_begin_msg "Starting creativeprompts-development..."
+    mkdir -p /srv/creativeprompts-development
+    "start-stop-daemon" "--start" "-b" "--make-pidfile" "-d" "/srv/creativeprompts-development" "--exec" "/usr/bin/creativeprompts-development" "--pidfile" "/var/run/creativeprompts-development" "--" "--http-port" "9034" "--hide-port" "--hostname" "creativeprompts.com" "--top" "/srv/creativeprompts-development" "--enable-analytics" "--jquery-path" "/usr/share/javascript/jquery/" "--jqueryui-path" "/usr/share/javascript/jquery-ui/" "--jstree-path" "/usr/share/clckwrks-0.13.2/jstree" "--json2-path" "/usr/share/clckwrks-0.13.2/json2"
+    log_end_msg $?
+    ;;
+  stop)
+    log_begin_msg "Stopping creativeprompts-development..."
+    "start-stop-daemon" "--stop" "--oknodo" "--retry=60" "--pidfile" "/var/run/creativeprompts-development"
+    log_end_msg $?
+    ;;
+  *)
+    log_success_msg "Usage: ${0} {start|stop}"
+    exit 1
+esac
+
+exit 0

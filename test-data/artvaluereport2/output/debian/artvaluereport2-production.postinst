@@ -1,0 +1,16 @@
+#!/bin/sh
+
+case "$1" in
+  configure)
+    # Apache won't start if this directory doesn't exist
+    mkdir -p /var/log/apache2/artvaluereport2-production
+    # Restart apache so it sees the new file in /etc/apache2/sites-enabled
+    /usr/sbin/a2enmod proxy
+    /usr/sbin/a2enmod proxy_http
+    service apache2 restart
+    ;;
+esac
+
+#DEBHELPER#
+
+exit 0

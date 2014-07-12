@@ -1,0 +1,13 @@
+/var/log/artvaluereport2-development/access.log {
+  weekly
+  rotate 5
+  compress
+  missingok
+}
+
+/var/log/artvaluereport2-development/app.log {
+  weekly
+  rotate 5
+  compress
+  missingok
+}

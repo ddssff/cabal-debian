@@ -1,0 +1,17 @@
+#!/usr/bin/make -f
+
+DEB_CABAL_PACKAGE = creativeprompts
+HC = ghc
+
+include /usr/share/cdbs/1/rules/debhelper.mk
+include /usr/share/cdbs/1/class/hlibrary.mk
+
+build/creativeprompts-production:: build-ghc-stamp
+build/creativeprompts-development:: build-ghc-stamp
+build/creativeprompts-data:: build-ghc-stamp
+build/creativeprompts-backups:: build-ghc-stamp
+binary-fixup/creativeprompts-production::
+	install -Dps dist-ghc/build/creativeprompts-server/creativeprompts-server debian/creativeprompts-production/usr/bin/creativeprompts-production
+
+binary-fixup/creativeprompts-development::
+	install -Dps dist-ghc/build/creativeprompts-server/creativeprompts-server debian/creativeprompts-development/usr/bin/creativeprompts-development

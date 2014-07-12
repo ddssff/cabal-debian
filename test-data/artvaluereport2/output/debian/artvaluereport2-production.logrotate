@@ -1,0 +1,27 @@
+/var/log/apache2/artvaluereport2-production/access.log {
+  weekly
+  rotate 5
+  compress
+  missingok
+}
+
+/var/log/apache2/artvaluereport2-production/error.log {
+  weekly
+  rotate 5
+  compress
+  missingok
+}
+
+/var/log/artvaluereport2-production/access.log {
+  weekly
+  rotate 5
+  compress
+  missingok
+}
+
+/var/log/artvaluereport2-production/app.log {
+  weekly
+  rotate 5
+  compress
+  missingok
+}

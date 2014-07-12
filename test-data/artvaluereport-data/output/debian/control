@@ -1,0 +1,201 @@
+Source: haskell-artvaluereport-data
+Priority: optional
+Section: haskell
+Maintainer: David Fox <dsf@seereason.com>
+Build-Depends: debhelper (>= 7.0)
+               , haskell-devscripts (>= 0.8)
+               , cdbs
+               , ghc
+               , haskell-hsx-utils
+               , ghc-prof
+               , libghc-extra-dev
+               , libghc-extra-prof
+               , libghc-hunit-dev
+               , libghc-hunit-prof
+               , libghc-hatex-dev (>= 3.4)
+               , libghc-hatex-prof (>= 3.4)
+               , libghc-haxml-dev (>= 1:1.22.5)
+               , libghc-haxml-prof (>= 1:1.22.5)
+               , libghc-listlike-dev
+               , libghc-listlike-prof
+               , libghc-rjson-dev
+               , libghc-rjson-prof
+               , libghc-unixutils-dev (>= 1.50)
+               , libghc-unixutils-prof (>= 1.50)
+               , libghc-acid-state-dev
+               , libghc-acid-state-prof
+               , libghc-applicative-extras-dev
+               , libghc-applicative-extras-prof
+               , libghc-cabal-debian-dev
+               , libghc-cabal-debian-prof
+               , libghc-cereal-dev
+               , libghc-cereal-prof
+               , libghc-cryptohash-dev (>= 0.7)
+               , libghc-cryptohash-prof (>= 0.7)
+               , libghc-debian-dev (>= 3.67)
+               , libghc-debian-prof (>= 3.67)
+               , libghc-formlets-dev
+               , libghc-formlets-prof
+               , libghc-happstack-extra-dev
+               , libghc-happstack-extra-prof
+               , libghc-happstack-hsp-dev
+               , libghc-happstack-hsp-prof
+               , libghc-happstack-server-dev
+               , libghc-happstack-server-prof
+               , libghc-happstack-util-dev
+               , libghc-happstack-util-prof
+               , libghc-hslogger-dev
+               , libghc-hslogger-prof
+               , libghc-hsp-dev
+               , libghc-hsp-prof
+               , libghc-hsx-dev
+               , libghc-hsx-prof
+               , libghc-html-entities-dev (>= 1.3)
+               , libghc-html-entities-prof (>= 1.3)
+               , libghc-ixset-dev
+               , libghc-ixset-prof
+               , libghc-listlike-instances-dev
+               , libghc-listlike-instances-prof
+               , libghc-maccatcher-dev
+               , libghc-maccatcher-prof
+               , libghc-mtl-dev
+               , libghc-mtl-prof
+               , libghc-network-dev (>= 2.4)
+               , libghc-network-prof (>= 2.4)
+               , libghc-pandoc-dev
+               , libghc-pandoc-prof
+               , libghc-pandoc-types-dev
+               , libghc-pandoc-types-prof
+               , libghc-parsec3-dev (>= 3) | libghc-parsec2-dev (<< 3)
+               , libghc-parsec3-prof (>= 3) | libghc-parsec2-prof (<< 3)
+               , libghc-process-extras-dev (>= 0.6)
+               , libghc-process-extras-prof (>= 0.6)
+               , libghc-process-progress-dev
+               , libghc-process-progress-prof
+               , libghc-puremd5-dev
+               , libghc-puremd5-prof
+               , libghc-random-dev
+               , libghc-random-prof
+               , libghc-regex-compat-dev
+               , libghc-regex-compat-prof
+               , libghc-revision-dev (>= 0.8)
+               , libghc-revision-prof (>= 0.8)
+               , libghc-safecopy-dev
+               , libghc-safecopy-prof
+               , libghc-syb-dev
+               , libghc-syb-prof
+               , libghc-syb-with-class-dev
+               , libghc-syb-with-class-prof
+               , libghc-text-dev
+               , libghc-text-prof
+               , libghc-utf8-string-dev
+               , libghc-utf8-string-prof
+               , libghc-xhtml-dev
+               , libghc-xhtml-prof
+Build-Depends-Indep: ghc-doc
+                     , libghc-extra-doc
+                     , libghc-hunit-doc
+                     , libghc-hatex-doc (>= 3.4)
+                     , libghc-haxml-doc (>= 1:1.22.5)
+                     , libghc-listlike-doc
+                     , libghc-rjson-doc
+                     , libghc-unixutils-doc (>= 1.50)
+                     , libghc-acid-state-doc
+                     , libghc-applicative-extras-doc
+                     , libghc-cabal-debian-doc
+                     , libghc-cereal-doc
+                     , libghc-cryptohash-doc (>= 0.7)
+                     , libghc-debian-doc (>= 3.67)
+                     , libghc-formlets-doc
+                     , libghc-happstack-extra-doc
+                     , libghc-happstack-hsp-doc
+                     , libghc-happstack-server-doc
+                     , libghc-happstack-util-doc
+                     , libghc-hslogger-doc
+                     , libghc-hsp-doc
+                     , libghc-hsx-doc
+                     , libghc-html-entities-doc (>= 1.3)
+                     , libghc-ixset-doc
+                     , libghc-listlike-instances-doc
+                     , libghc-maccatcher-doc
+                     , libghc-mtl-doc
+                     , libghc-network-doc (>= 2.4)
+                     , libghc-pandoc-doc
+                     , libghc-pandoc-types-doc
+                     , libghc-parsec3-doc (>= 3) | libghc-parsec2-doc (<< 3)
+                     , libghc-process-extras-doc (>= 0.6)
+                     , libghc-process-progress-doc
+                     , libghc-puremd5-doc
+                     , libghc-random-doc
+                     , libghc-regex-compat-doc
+                     , libghc-revision-doc (>= 0.8)
+                     , libghc-safecopy-doc
+                     , libghc-syb-doc
+                     , libghc-syb-with-class-doc
+                     , libghc-text-doc
+                     , libghc-utf8-string-doc
+                     , libghc-xhtml-doc
+Standards-Version: 3.9.3
+Homepage: http://artvaluereportonline.com
+
+Package: libghc-artvaluereport-data-dev
+Architecture: any
+Depends: ${shlibs:Depends}
+         , ${haskell:Depends}
+         , ${misc:Depends}
+Conflicts: ${haskell:Conflicts}
+Provides: ${haskell:Provides}
+Replaces: ${haskell:Replaces}
+Recommends: ${haskell:Recommends}
+Suggests: ${haskell:Suggests}
+Description: Data structures used by the fine art appraisal application
+ Data structures used by the fine art appraisal application
+ .
+  Author: David Fox <dsf@seereason.com>
+  Upstream-Maintainer: David Fox <dsf@seereason.com>
+ .
+ This package provides a library for the Haskell programming language.
+ See http:///www.haskell.org/ for more information on Haskell.
+
+
+Package: libghc-artvaluereport-data-prof
+Architecture: any
+Depends: ${shlibs:Depends}
+         , ${haskell:Depends}
+         , ${misc:Depends}
+Conflicts: ${haskell:Conflicts}
+Provides: ${haskell:Provides}
+Replaces: ${haskell:Replaces}
+Recommends: ${haskell:Recommends}
+Suggests: ${haskell:Suggests}
+Description: Data structures used by the fine art appraisal application
+ Data structures used by the fine art appraisal application
+ .
+  Author: David Fox <dsf@seereason.com>
+  Upstream-Maintainer: David Fox <dsf@seereason.com>
+ .
+ This package provides a library for the Haskell programming language, compiled
+ for profiling.  See http:///www.haskell.org/ for more information on Haskell.
+
+
+Package: libghc-artvaluereport-data-doc
+Architecture: all
+Section: doc
+Depends: ${shlibs:Depends}
+         , ${haskell:Depends}
+         , ${misc:Depends}
+Conflicts: ${haskell:Conflicts}
+Provides: ${haskell:Provides}
+Replaces: ${haskell:Replaces}
+Recommends: ${haskell:Recommends}
+Suggests: ${haskell:Suggests}
+Description: Data structures used by the fine art appraisal application
+ Data structures used by the fine art appraisal application
+ .
+  Author: David Fox <dsf@seereason.com>
+  Upstream-Maintainer: David Fox <dsf@seereason.com>
+ .
+ This package provides the documentation for a library for the Haskell
+ programming language.
+ See http:///www.haskell.org/ for more information on Haskell.
+

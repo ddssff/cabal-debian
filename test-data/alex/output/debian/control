@@ -1,0 +1,31 @@
+Source: haskell-alex
+Priority: optional
+Section: haskell
+Maintainer: Simon Marlow <marlowsd@gmail.com>
+Build-Depends: debhelper (>= 7.0)
+               , haskell-devscripts (>= 0.8)
+               , cdbs
+               , ghc
+               , alex
+               , ghc-prof
+               , libghc-quickcheck2-dev (>= 2)
+               , libghc-quickcheck2-prof (>= 2)
+Build-Depends-Indep: ghc-doc
+                     , libghc-quickcheck2-doc (>= 2)
+Standards-Version: 3.9.3
+Homepage: http://www.haskell.org/alex/
+
+Package: alex
+Architecture: any
+Section: misc
+Depends: ${shlibs:Depends}
+        , ${haskell:Depends}
+        , ${misc:Depends}
+Recommends: ${haskell:Recommends}
+Suggests: ${haskell:Suggests}
+Conflicts: ${haskell:Conflicts}
+Provides: ${haskell:Provides}
+Replaces: ${haskell:Replaces}
+Description: Alex is a tool for generating lexical analysers in Haskell
+ .
+ An executable built from the alex package.

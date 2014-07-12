@@ -1,0 +1,24 @@
+#! /bin/sh -e
+
+. /lib/lsb/init-functions
+test -f /etc/default/artvaluereport2-production && . /etc/default/artvaluereport2-production
+
+case "$1" in
+  start)
+    test -x /usr/bin/artvaluereport2-production || exit 0
+    log_begin_msg "Starting artvaluereport2-production..."
+    mkdir -p /srv/artvaluereport2-production
+    "start-stop-daemon" "--start" "-b" "--make-pidfile" "-d" "/srv/artvaluereport2-production" "--exec" "/usr/bin/artvaluereport2-production" "--pidfile" "/var/run/artvaluereport2-production" "--" "--http-port" "9027" "--base-uri" "http://my.appraisalreportonline.com/" "--top" "/srv/artvaluereport2-production" "--logs" "/var/log/artvaluereport2-production" "--log-mode" "Production" "--static" "/usr/share/artvaluereport2-data" "--no-validate"
+    log_end_msg $?
+    ;;
+  stop)
+    log_begin_msg "Stopping artvaluereport2-production..."
+    "start-stop-daemon" "--stop" "--oknodo" "--retry=60" "--pidfile" "/var/run/artvaluereport2-production"
+    log_end_msg $?
+    ;;
+  *)
+    log_success_msg "Usage: ${0} {start|stop}"
+    exit 1
+esac
+
+exit 0

@@ -1,0 +1,29 @@
+/var/log/apache2/clckwrks-dot-com-production/access.log {
+  copytruncate
+  weekly
+  rotate 5
+  compress
+  missingok
+}
+
+/var/log/apache2/clckwrks-dot-com-production/error.log {
+  copytruncate
+  weekly
+  rotate 5
+  compress
+  missingok
+}
+
+/var/log/clckwrks-dot-com-production/access.log {
+  weekly
+  rotate 5
+  compress
+  missingok
+}
+
+/var/log/clckwrks-dot-com-production/app.log {
+  weekly
+  rotate 5
+  compress
+  missingok
+}

@@ -1,0 +1,372 @@
+haskell-artvaluereport-data (1.66.1) unstable; urgency=low
+
+  * Change the latex command to pdflatex.
+
+ -- David Fox <dsf@seereason.com>  Mon, 17 Dec 2012 11:54:23 -0800
+
+haskell-artvaluereport-data (1.66) unstable; urgency=low
+
+  * New image processing primitives: imageIO replaced by updateOriginal,
+    modifyOriginal, updateDerived, and modifyDerived.
+
+ -- David Fox <dsf@seereason.com>  Sat, 15 Dec 2012 12:29:18 -0800
+
+haskell-artvaluereport-data (1.65.1) unstable; urgency=low
+
+  * Don't filter blank lines out of the address block
+  * Migration to merge some items in a particular report
+
+ -- David Fox <dsf@seereason.com>  Wed, 12 Dec 2012 09:37:30 -0800
+
+haskell-artvaluereport-data (1.65) unstable; urgency=low
+
+  * Rework the LaTeX generation.
+
+ -- David Fox <dsf@seereason.com>  Thu, 06 Dec 2012 09:37:23 -0800
+
+haskell-artvaluereport-data (1.64.3) unstable; urgency=low
+
+  * Remove extra caption on Appraised Item Summary, make total label
+    left justified and bold.
+
+ -- David Fox <dsf@seereason.com>  Sat, 01 Dec 2012 08:45:38 -0800
+
+haskell-artvaluereport-data (1.64.2) unstable; urgency=low
+
+  * Rework the Appaised Item Summary table.
+
+ -- David Fox <dsf@seereason.com>  Sat, 01 Dec 2012 07:15:51 -0800
+
+haskell-artvaluereport-data (1.64.1) unstable; urgency=low
+
+  * Move the modules from haskell-debian into this package.
+
+ -- David Fox <dsf@seereason.com>  Fri, 30 Nov 2012 13:34:22 -0800
+
+haskell-artvaluereport-data (1.64) unstable; urgency=low
+
+  * Move sortElems to Appraisal.Types and export.
+
+ -- David Fox <dsf@seereason.com>  Fri, 30 Nov 2012 06:47:30 -0800
+
+haskell-artvaluereport-data (1.63.5) unstable; urgency=low
+
+  * Supply a case for new ReportIntendedUse constructor
+  * Don't allow warnings in Appraisal.Types
+  * Remove -O0 flag from Appraisal.Types.
+
+ -- David Fox <dsf@seereason.com>  Mon, 26 Nov 2012 10:30:00 -0800
+
+haskell-artvaluereport-data (1.63.4) unstable; urgency=low
+
+  * Use cabal-debian for packaging.
+
+ -- David Fox <dsf@seereason.com>  Sun, 18 Nov 2012 15:51:26 -0800
+
+haskell-artvaluereport-data (1.63.3) unstable; urgency=low
+
+  * Increase width of left column on item pages
+
+ -- David Fox <dsf@seereason.com>  Fri, 16 Nov 2012 10:18:50 -0800
+
+haskell-artvaluereport-data (1.63.2) unstable; urgency=low
+
+  * Sort the item entries in the generated PDF by Item Number.
+
+ -- David Fox <dsf@seereason.com>  Wed, 14 Nov 2012 13:28:56 -0800
+
+haskell-artvaluereport-data (1.63.1) unstable; urgency=low
+
+  * A migration to update some report permissions, soon we will have
+    a UI for this purpose.
+
+ -- David Fox <dsf@seereason.com>  Mon, 12 Nov 2012 13:11:41 -0800
+
+haskell-artvaluereport-data (1.63) unstable; urgency=low
+
+  * Add an EstateTax constructor to ReportIntendedUse.
+
+ -- David Fox <dsf@seereason.com>  Mon, 05 Nov 2012 12:01:23 -0800
+
+haskell-artvaluereport-data (1.62) unstable; urgency=low
+
+  * Another migration was necessary after all.
+
+ -- Clifford Beshers <beshers@seereason.com>  Sat, 20 Oct 2012 11:20:18 -0700
+
+haskell-artvaluereport-data (1.61) unstable; urgency=low
+
+  * Hide Item AdditionalNotes field from the report generation, as it used
+    to be. This migration should have removed constructors from
+    ItemFieldName. The decision to leave them in was a mistake, but I'll
+    wait until the next migration to fix it.
+
+ -- Clifford Beshers <beshers@seereason.com>  Fri, 19 Oct 2012 12:49:09 -0700
+
+haskell-artvaluereport-data (1.60) unstable; urgency=low
+
+  * Bug 452: add Edition field to Item after Condition.
+
+ -- Clifford Beshers <beshers@seereason.com>  Thu, 18 Oct 2012 17:02:13 -0700
+
+haskell-artvaluereport-data (1.59) unstable; urgency=low
+
+  * turn on LAZYIMAGES
+
+ -- David Fox <dsf@seereason.com>  Sat, 13 Oct 2012 10:27:11 -0700
+
+haskell-artvaluereport-data (1.58) unstable; urgency=low
+
+  * Remove the local copies of the readProcess functions.
+
+ -- David Fox <dsf@seereason.com>  Thu, 11 Oct 2012 13:54:55 -0700
+
+haskell-artvaluereport-data (1.57) unstable; urgency=low
+
+  * Add ifdefs to control whether we are using lazy or strict readProcess
+    functions, set it to Lazy for now.  Still using the local copies
+    of the readProcess functions, can switch to process-extras soon.
+
+ -- David Fox <dsf@seereason.com>  Thu, 11 Oct 2012 13:51:41 -0700
+
+haskell-artvaluereport-data (1.56) unstable; urgency=low
+
+  * Make all the uses of readProcess and readProcessWithExitCode
+    the non-lazy versions.
+
+ -- David Fox <dsf@seereason.com>  Thu, 11 Oct 2012 06:06:48 -0700
+
+haskell-artvaluereport-data (1.55) unstable; urgency=low
+
+  * Use the Paths class in the File and ImageFile modules.
+
+ -- David Fox <dsf@seereason.com>  Mon, 08 Oct 2012 13:20:12 -0700
+
+haskell-artvaluereport-data (1.54) unstable; urgency=low
+
+  * Move the FileCache modules into this package.
+  * Eliminate newdata and Default instances.
+
+ -- David Fox <dsf@seereason.com>  Sun, 07 Oct 2012 08:11:09 -0700
+
+haskell-artvaluereport-data (1.53.1) unstable; urgency=low
+
+  * Add a PadsMonad class which provides the functionality of
+    class Paths in a monad.
+
+ -- David Fox <dsf@seereason.com>  Sat, 06 Oct 2012 16:53:28 -0700
+
+haskell-artvaluereport-data (1.53) unstable; urgency=low
+
+  * Merge Appraisal.Paths into Appraisal.Config
+  * Clean up path handling: Replace all AVRVersion arguments with
+    arguments that are an instance of Paths.
+
+ -- David Fox <dsf@seereason.com>  Sat, 06 Oct 2012 08:37:09 -0700
+
+haskell-artvaluereport-data (1.52) unstable; urgency=low
+
+  * Add /reports/ to the report path.
+
+ -- David Fox <dsf@seereason.com>  Fri, 05 Oct 2012 05:23:15 -0700
+
+haskell-artvaluereport-data (1.51) unstable; urgency=low
+
+  * Add a UUID field which will serve as a permenant identifier for the
+    report across all the servers we might create to handle these reports.
+  * Add report archiving and unarchiving.
+  * Add an event to replace a report by UUID number.
+
+ -- David Fox <dsf@seereason.com>  Sat, 29 Sep 2012 06:45:10 -0700
+
+haskell-artvaluereport-data (1.50) unstable; urgency=low
+
+  * All new names for the path description variables in Appraisal.Config.
+
+ -- David Fox <dsf@seereason.com>  Tue, 25 Sep 2012 10:52:45 -0700
+
+haskell-artvaluereport-data (1.49) unstable; urgency=low
+
+  * Add a copy of the uuid package so we can give UUID a complete Data
+    instance.  Eventually I may have to make a uuid-data package which
+    is a wrapper around the UUID type with that instance.
+
+ -- David Fox <dsf@seereason.com>  Fri, 21 Sep 2012 08:23:56 -0700
+
+haskell-artvaluereport-data (1.48) unstable; urgency=low
+
+  * Add a UUID field to Report, and a status field that says whether the
+    report is in an Archived state.  By "Archived" we mean that a file has
+    been downloaded to elsewhere that is assumed to contain the
+    authoritative report data.
+
+ -- David Fox <dsf@seereason.com>  Thu, 20 Sep 2012 11:20:28 -0700
+
+haskell-artvaluereport-data (1.47) unstable; urgency=low
+
+  * Strip ^M from latex text.
+
+ -- David Fox <dsf@seereason.com>  Wed, 05 Sep 2012 16:20:23 -0700
+
+haskell-artvaluereport-data (1.46) unstable; urgency=low
+
+  * Change signature of Appraisal.Image.updateOriginal - the
+    second argument was URI, now Either URI L.ByteString.
+
+ -- David Fox <dsf@seereason.com>  Mon, 16 Jul 2012 13:09:25 -0700
+
+haskell-artvaluereport-data (1.45) unstable; urgency=low
+
+  * Changes for building AVR1.
+
+ -- David Fox <dsf@seereason.com>  Sat, 14 Jul 2012 14:33:51 -0700
+
+haskell-artvaluereport-data (1.44) unstable; urgency=low
+
+  * Add a Appraisal.Paths module with a class that manages file locations.
+
+ -- David Fox <dsf@seereason.com>  Fri, 13 Jul 2012 11:04:12 -0700
+
+haskell-artvaluereport-data (1.43) unstable; urgency=low
+
+  * Export imageIO.
+
+ -- Clifford Beshers <beshers@seereason.com>  Thu, 12 Jul 2012 01:41:18 -0700
+
+haskell-artvaluereport-data (1.42) unstable; urgency=low
+
+  * Fix the paths generated for AVR2 by reportPath and updateLogo.
+
+ -- David Fox <dsf@seereason.com>  Wed, 11 Jul 2012 10:04:05 -0700
+
+haskell-artvaluereport-data (1.41) unstable; urgency=low
+
+  * Add a reportBranding field to the Report type to control the
+    logo and other branding features.
+
+ -- David Fox <dsf@seereason.com>  Mon, 25 Jun 2012 10:31:04 -0700
+
+haskell-artvaluereport-data (1.40) unstable; urgency=low
+
+  * Changes to make LaTeX output more compact.
+
+ -- David Fox <dsf@seereason.com>  Tue, 19 Jun 2012 09:20:12 -0700
+
+haskell-artvaluereport-data (1.39) unstable; urgency=low
+
+  * Fix a buggy SafeCopy instance in Happstack.Server.Account.
+
+ -- David Fox <dsf@seereason.com>  Fri, 08 Jun 2012 09:08:16 -0700
+
+haskell-artvaluereport-data (1.38) unstable; urgency=low
+
+  * Remove signature from Privacy Policy.
+
+ -- Clifford Beshers <beshers@seereason.com>  Tue, 29 May 2012 11:49:02 -0700
+
+haskell-artvaluereport-data (1.37) unstable; urgency=low
+
+  * Add an AVRVersion argument where necessary to control generation of
+    pathnames.
+  * Make the loge byte string a parameter.
+
+ -- David Fox <dsf@seereason.com>  Tue, 01 May 2012 12:46:54 -0700
+
+haskell-artvaluereport-data (1.36) unstable; urgency=low
+
+  * Modify WebConf to match what we now use in avr2 - replaces parameters
+    "store", "home", "cache" with just one called "top".
+  * Don't die when we have a bad image url in an image struct, just do
+    nothing and enter a log message.
+
+ -- David Fox <dsf@seereason.com>  Mon, 02 Apr 2012 11:52:00 -0700
+
+haskell-artvaluereport-data (1.35) unstable; urgency=low
+
+  * Replace use of lazyCommand with enhanced readCommandWithExitCode from
+    Unixutils.
+
+ -- David Fox <dsf@seereason.com>  Sun, 25 Mar 2012 07:16:15 -0700
+
+haskell-artvaluereport-data (1.34) unstable; urgency=low
+
+  * Migrate the Permissions type from storing Usernames to define which users can
+    see a report to storing UserIds.  This closes a serious security hole.
+
+ -- David Fox <dsf@seereason.com>  Mon, 12 Mar 2012 10:42:12 -0700
+
+haskell-artvaluereport-data (1.33) unstable; urgency=low
+
+  * Remove the leading slash from the result of the reportURI and reportBase and
+    reportPath functions in Appraisal.Types.
+
+ -- David Fox <dsf@seereason.com>  Thu, 08 Mar 2012 09:36:15 -0800
+
+haskell-artvaluereport-data (1.32) unstable; urgency=low
+
+  * Export Appraisal.Types.reportBase
+
+ -- David Fox <dsf@seereason.com>  Tue, 06 Mar 2012 17:22:01 -0800
+
+haskell-artvaluereport-data (1.31) unstable; urgency=low
+
+  * Migrate old report record to new.  This replaces the old reportClient
+    field with reportClientName and reportClientAddress.  It leaves two
+    fields that are not used by the new report generator: reportFolder and
+    revisionInfo.
+
+ -- David Fox <dsf@seereason.com>  Tue, 06 Mar 2012 14:49:40 -0800
+
+haskell-artvaluereport-data (1.30) unstable; urgency=low
+
+  * Improve formatting of Appraised Item List
+
+ -- David Fox <dsf@seereason.com>  Thu, 09 Feb 2012 17:09:16 -0800
+
+haskell-artvaluereport-data (1.29) unstable; urgency=low
+
+  * Remove dependencies on happstack-state
+  * Remove version numbers from some module names
+  * Rename deb packages
+
+ -- David Fox <dsf@seereason.com>  Tue, 07 Feb 2012 06:36:44 -0800
+
+haskell-appraisal-data (1.28) unstable; urgency=low
+
+  * Move Appraisal.Permissions into artvaluereport package to avoid
+    dependency hereon happstack-state.
+
+ -- David Fox <dsf@seereason.com>  Mon, 30 Jan 2012 16:16:15 -0800
+
+haskell-appraisal-data (1.27) unstable; urgency=low
+
+  * Add an interface to change IntendedUse.
+
+ -- David Fox <dsf@seereason.com>  Thu, 05 Jan 2012 20:45:40 -0800
+
+haskell-appraisal-data (1.26) unstable; urgency=low
+
+  * Make the abbreviations "ValueType", "ValueTypeDescription",
+    "ValueTypeLongDescription", and "ValueApproachExplanation" override
+    the values stored in the report's reportValueTypeInfo field if they
+    are available.
+
+ -- David Fox <dsf@seereason.com>  Thu, 05 Jan 2012 10:11:04 -0800
+
+haskell-appraisal-data (1.25) unstable; urgency=low
+
+  * Export module Report2.
+
+ -- Clifford Beshers <beshers@seereason.com>  Thu, 08 Dec 2011 12:16:56 -0800
+
+haskell-appraisal-data (1.24) unstable; urgency=low
+
+  * Add safecopy instances.
+
+ -- David Fox <dsf@seereason.com>  Sat, 19 Nov 2011 07:23:19 -0800
+
+haskell-appraisal-data (1.23-1~hackage1) unstable; urgency=low
+
+  * Debianization generated by cabal-debian
+
+ -- David Fox <dsf@seereason.com>  Fri, 18 Nov 2011 09:23:34 -0800

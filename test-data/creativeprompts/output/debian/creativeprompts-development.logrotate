@@ -1,0 +1,13 @@
+/var/log/creativeprompts-development/access.log {
+  weekly
+  rotate 5
+  compress
+  missingok
+}
+
+/var/log/creativeprompts-development/app.log {
+  weekly
+  rotate 5
+  compress
+  missingok
+}

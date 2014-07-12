@@ -1,0 +1,121 @@
+Name:           artvaluereport-data
+Version:        1.66.1
+License:        AllRightsReserved
+Copyright:      (c) 2008-2011, SeeReason Partners LLC
+Author:         David Fox <dsf@seereason.com>
+Maintainer:     David Fox <dsf@seereason.com>
+Homepage:       http://artvaluereport.com
+Synopsis:       Data structures used by the fine art appraisal application
+Description:    Data structures used by the fine art appraisal application
+Cabal-version:  >= 1.2.3.0
+build-type:     Custom
+
+Library
+  GHC-Options: -Wall -fno-warn-name-shadowing
+  -- CPP-Options: -DLAZYIMAGES
+  Extensions: CPP
+  Exposed-modules: Appraisal.Config
+                   Appraisal.Image
+                   Appraisal.Report
+                   Appraisal.Report.Archive
+                   Appraisal.Report.BoilerPlate
+                   Appraisal.Report.IO
+                   Appraisal.Report.Item
+                   Appraisal.Report.LaTeX
+                   Appraisal.Report.Twins
+                   Appraisal.Report.Wiki
+                   Appraisal.ReportStore
+                   Appraisal.Permissions
+                   Appraisal.State
+                   Appraisal.Types
+                   Appraisal.WebConf
+                   Document.CIString
+                   Document.Classes
+                   Document.FormText
+                   Document.HaXml
+                   Document.IsText
+                   Document.LaTeX
+                   Document.Markdown
+                   Document.Unicode
+                   Document.Wiki
+                   Extra.Currency
+                   Extra.File
+                   Extra.Html
+                   Extra.Image
+                   Extra.ImageFile
+                   Extra.LaTeX
+                   Extra.List
+                   Extra.Simplify
+                   Extra.Text
+                   Extra.Trace
+                   Extra.Unicode
+                   Happstack.Server.Account
+                   Happstack.Server.Formlets
+                   Happstack.Server.Session
+                   Logger
+                   State
+                   Types.Account
+                   Types.Session
+                   Appraisal.Data.UUID
+                   Appraisal.Data.UUID.V1
+                   Appraisal.Data.UUID.V3
+                   Appraisal.Data.UUID.V4
+                   Appraisal.Data.UUID.V5
+  Other-Modules:
+        Appraisal.Data.UUID.Builder,
+        Appraisal.Data.UUID.Internal,
+        Appraisal.Data.UUID.Named
+
+  Build-Depends:
+        acid-state,
+        applicative-extras,
+        base,
+        binary,
+        bytestring,
+        cabal-debian,
+        cereal,
+        containers,
+        cryptohash >= 0.7,
+        debian >= 3.67,
+        directory,
+        Extra,
+        filepath,
+        formlets,
+        happstack-extra,
+        happstack-hsp,
+        happstack-server,
+        happstack-util,
+        HaTeX >= 3.4,
+        HaXml >= 1.22.5,
+        hslogger,
+        hsp,
+        hsx,
+        html-entities >= 1.3,
+        HUnit,
+        ixset,
+        ListLike,
+        listlike-instances,
+        maccatcher,
+        mtl,
+        network >= 2.4,
+        old-time,
+        pandoc,
+        pandoc-types,
+        parsec,
+        process,
+        process-extras >= 0.6,
+        process-progress,
+        pureMD5,
+        random,
+        regex-compat,
+        revision >= 0.8,
+        RJson,
+        safecopy,
+        syb,
+        syb-with-class,
+        text,
+        time,
+        unix,
+        Unixutils >= 1.50,
+        utf8-string,
+        xhtml

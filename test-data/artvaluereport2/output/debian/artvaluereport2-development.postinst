@@ -1,0 +1,10 @@
+#!/bin/sh
+
+case "$1" in
+  configure)
+    ;;
+esac
+
+#DEBHELPER#
+
+exit 0

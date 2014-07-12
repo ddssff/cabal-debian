@@ -1,0 +1,5 @@
+version=3
+opts="downloadurlmangle=s|archive/([\w\d_-]+)/([\d\.]+)/|archive/$1/$2/$1-$2.tar.gz|,\
+filenamemangle=s|(.*)/$|clckwrks-dot-com-$1.tar.gz|" \
+    http://hackage.haskell.org/package/clckwrks-dot-com \
+    ([\d\.]*\d)/

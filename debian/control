@@ -1,0 +1,163 @@
+Source: haskell-cabal-debian
+Maintainer: David Fox <dsf@seereason.com>
+Priority: optional
+Section: haskell
+Build-Depends: debhelper (>= 7.0)
+               , haskell-devscripts (>= 0.8)
+               , cdbs
+               , ghc
+               , ghc-prof
+               , libghc-cabal-ghcjs-dev | libghc-cabal-prof
+               , libghc-cabal-ghcjs-prof | libghc-cabal-prof
+               , libghc-diff-dev
+               , libghc-diff-prof
+               , libghc-hunit-dev
+               , libghc-hunit-prof
+               , libghc-unixutils-dev
+               , libghc-unixutils-prof
+               , libghc-data-lens-dev
+               , libghc-data-lens-prof
+               , libghc-data-lens-template-dev
+               , libghc-data-lens-template-prof
+               , libghc-debian-dev (>= 3.81)
+               , libghc-debian-prof (>= 3.81)
+               , libghc-hsemail-dev
+               , libghc-hsemail-prof
+               , libghc-memoize-dev
+               , libghc-memoize-prof
+               , libghc-mtl-dev
+               , libghc-mtl-prof
+               , libghc-parsec3-dev (>= 3)
+               , libghc-parsec3-prof (>= 3)
+               , libghc-puremd5-dev
+               , libghc-puremd5-prof
+               , libghc-regex-tdfa-dev
+               , libghc-regex-tdfa-prof
+               , libghc-set-extra-dev
+               , libghc-set-extra-prof
+               , libghc-syb-dev
+               , libghc-syb-prof
+               , libghc-text-dev
+               , libghc-text-prof
+               , libghc-utf8-string-dev
+               , libghc-utf8-string-prof
+               , libghc-debian-dev
+               , libghc-debian-prof
+Build-Depends-Indep: ghc-doc
+	       	     , libghc-cabal-ghcjs-doc | libghc-cabal-doc
+                     , libghc-diff-doc
+                     , libghc-hunit-doc
+                     , libghc-unixutils-doc
+                     , libghc-data-lens-doc
+                     , libghc-data-lens-template-doc
+                     , libghc-debian-doc (>= 3.81)
+                     , libghc-hsemail-doc
+                     , libghc-memoize-doc
+                     , libghc-mtl-doc
+                     , libghc-parsec3-doc (>= 3)
+                     , libghc-puremd5-doc
+                     , libghc-regex-tdfa-doc
+                     , libghc-set-extra-doc
+                     , libghc-syb-doc
+                     , libghc-text-doc
+                     , libghc-utf8-string-doc
+Standards-Version: 3.9.3
+Homepage: http://src.seereason.com/cabal-debian
+
+Package: cabal-debian
+Architecture: any
+Section: misc
+Depends: ${shlibs:Depends}
+         , ${haskell:Depends}
+	 , ${misc:Depends}
+	 , apt-file
+         , debian-policy
+         , debhelper
+         , haskell-devscripts (>= 0.8.19)
+Recommends: ${haskell:Recommends}
+Suggests: ${haskell:Suggests}
+Conflicts: ${haskell:Conflicts}, haskell-debian-utils (<< 3.59)
+Provides: ${haskell:Provides}
+Replaces: ${haskell:Replaces}
+Description: Create a debianization for a cabal package
+ Tool for creating debianizations of Haskell packages based on the .cabal
+ file.  If apt-file is installed it will use it to discover what is the
+ debian package name of a C library.
+ .
+  Author: David Fox <dsf@seereason.com>
+  Upstream-Maintainer: David Fox <dsf@seereason.com>
+
+Package: libghc-cabal-debian-dev
+Architecture: any
+Depends: ${shlibs:Depends}
+         , ${haskell:Depends}
+         , ${misc:Depends}
+         , debian-policy
+Recommends: ${haskell:Recommends}
+Suggests: ${haskell:Suggests}
+Conflicts: ${haskell:Conflicts}
+Provides: ${haskell:Provides}
+Replaces: ${haskell:Replaces}
+Description: Create a debianization for a cabal package
+ This package provides two methods for generating the debianization
+ (i.e. the contents of the 'debian' subdirectory) for a cabal package.
+ An executable named cabal-debian, and a library API to handle more
+ complex packaging issues.  For documentation of the executable run
+ @cabal-debian --help@, for documentation of the library API follow
+ the link to the @Debian.Debianize@ module below.
+ .
+  Author: David Fox <dsf@seereason.com>
+  Upstream-Maintainer: David Fox <dsf@seereason.com>
+ .
+ This package provides a library for the Haskell programming language.
+ See http:///www.haskell.org/ for more information on Haskell.
+
+Package: libghc-cabal-debian-prof
+Architecture: any
+Depends: ${shlibs:Depends}
+         , ${haskell:Depends}
+         , ${misc:Depends}
+Recommends: ${haskell:Recommends}
+Suggests: ${haskell:Suggests}
+Conflicts: ${haskell:Conflicts}
+Provides: ${haskell:Provides}
+Replaces: ${haskell:Replaces}
+Description: Create a debianization for a cabal package
+ This package provides two methods for generating the debianization
+ (i.e. the contents of the 'debian' subdirectory) for a cabal package.
+ An executable named cabal-debian, and a library API to handle more
+ complex packaging issues.  For documentation of the executable run
+ @cabal-debian --help@, for documentation of the library API follow
+ the link to the @Debian.Debianize@ module below.
+ .
+  Author: David Fox <dsf@seereason.com>
+  Upstream-Maintainer: David Fox <dsf@seereason.com>
+ .
+ This package provides a library for the Haskell programming language, compiled
+ for profiling.  See http:///www.haskell.org/ for more information on Haskell.
+
+Package: libghc-cabal-debian-doc
+Architecture: all
+Section: doc
+Depends: ${shlibs:Depends}
+         , ${haskell:Depends}
+         , ${misc:Depends}
+Recommends: ${haskell:Recommends}
+Suggests: ${haskell:Suggests}
+Conflicts: ${haskell:Conflicts}
+Provides: ${haskell:Provides}
+Replaces: ${haskell:Replaces}
+Description: Create a debianization for a cabal package
+ This package provides two methods for generating the debianization
+ (i.e. the contents of the 'debian' subdirectory) for a cabal package.
+ An executable named cabal-debian, and a library API to handle more
+ complex packaging issues.  For documentation of the executable run
+ @cabal-debian --help@, for documentation of the library API follow
+ the link to the @Debian.Debianize@ module below.
+ .
+  Author: David Fox <dsf@seereason.com>
+  Upstream-Maintainer: David Fox <dsf@seereason.com>
+ .
+ This package provides the documentation for a library for the Haskell
+ programming language.
+ See http:///www.haskell.org/ for more information on Haskell.

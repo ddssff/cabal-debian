@@ -1,0 +1,20 @@
+Name:             seereason-darcs-backups
+Version:          0.9
+License:          AllRightsReserved
+License-File:     debian/copyright
+Copyright:        (c) 2010-2011, SeeReason Partners LLC
+Author:           SeeReason Partners <partners@seereason.com>
+Maintainer:       SeeReason Partners <partners@seereason.com>
+Synopsis:         Backups of the seereason darcs repositories
+Description:
+  Install this somewhere other than where the server is running get
+  automated backups of the database.
+Build-Type:       Custom
+Category:         Web, Language
+Cabal-version:    >= 1.2
+
+Executable seereason-darcs-backups
+ Main-Is: Backups.hs
+ GHC-Options: -threaded -Wall -Wwarn -O2 -fno-warn-name-shadowing -fno-warn-missing-signatures -fwarn-tabs -fno-warn-unused-binds -fno-warn-orphans -fwarn-unused-imports -fno-spec-constr
+ Build-depends: archive >= 1.7, base, Extra, network
+ 

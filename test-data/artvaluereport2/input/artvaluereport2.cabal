@@ -1,0 +1,122 @@
+Name:           ArtValueReport
+Version:        1.9.29
+License:        AllRightsReserved
+Copyright:      (c) 2008-2011, SeeReason Partners LLC
+Author:         David Fox <dsf@seereason.com>, Clifford Beshers <beshers@seereason.com>
+Maintainer:     Clifford Beshers <beshers@seereason.com>
+Homepage:       http://my.appraisalreportonline.com
+Synopsis:       Haskell modules for fine art appraisal applications
+Description:    Haskell modules for fine art appraisal applications
+Cabal-version:  >= 1.2.3.0
+build-type:     Custom
+
+flag local-artvaluereport-data
+  Description: Build with local copy of the artvaluereport-data library
+  Default: False
+  Manual: True
+
+Executable artvaluereport2-server
+    Main-is: Main.hs
+    GHC-options: -threaded -O2 -rtsopts -eventlog -Wall -Wwarn -fno-warn-name-shadowing -fno-warn-type-defaults
+
+    if flag (local-artvaluereport-data)
+        Hs-Source-Dirs: ., ../artvaluereport-data
+        Build-Depends: RJson, xhtml, html-entities, old-time, pwstore-purehaskell, unordered-containers, aeson, HJavaScript, artvaluereport-data >= 1.66
+        Build-Depends: binary, cereal
+        GHC-options: -Wwarn
+    else
+        Build-Depends: artvaluereport-data >= 1.66
+        GHC-options: -Wwarn
+
+    Build-Depends: happstack-authenticate, happstack-scaffolding (>= 0.23)
+
+    Build-Depends:
+        acid-state >= 0.6,
+        applicative-extras >= 0.1.5,
+        authenticate,
+        base,
+        blaze-html,
+        blaze-markup,
+        bytestring,
+        containers,
+        data-accessor,
+        debian-packaging >= 0.8,
+        digestive-functors,
+        digestive-functors-happstack,
+        directory,
+        directory-tree,
+        Extra >= 1.35,
+        fb,
+        filepath,
+        groom,
+        happstack,
+        happstack-extra,
+        happstack-hsp,
+        happstack-server,
+        happstack-util,
+        harp,
+        HJScript,
+        hslogger,
+        hsp >= 0.4.4,
+        hsx,
+        html,
+        ixset,
+        jmacro >= 0.6.2,
+        json,
+        language-css,
+        lifted-base,
+        mtl,
+        network >= 2.4,
+        old-locale,
+        old-time,
+        parsec,
+        pretty,
+        process,
+        process-extras >= 0.5,
+        QuickCheck >= 2,
+        random,
+        regex-compat,
+        revision,
+        safe,
+        safecopy >= 0.5.1,
+        syb,
+        syb-with-class,
+        tagged,
+        text,
+        time,
+        transformers,
+        uniplate,
+        unix,
+        Unixutils,
+        utf8-string,
+        web-routes,
+        web-routes-happstack,
+        web-routes-hsp,
+        web-routes-th
+    Extensions:  FlexibleContexts,
+                 FlexibleInstances,
+                 NoImplicitPrelude,
+                 OverlappingInstances,
+                 ScopedTypeVariables,
+                 TemplateHaskell,
+                 TypeSynonymInstances,
+                 UndecidableInstances
+
+Executable artvaluereport2-backups
+ Main-Is: Backups.hs
+ GHC-Options: -threaded -Wall -Wwarn -O2 -fno-warn-name-shadowing -fno-warn-missing-signatures -fwarn-tabs -fno-warn-unused-binds -fno-warn-orphans -fwarn-unused-imports -fno-spec-constr
+ Build-depends: archive >= 1.2.9, base, Extra
+
+executable lookatareport
+  Main-Is: Tools/LookAtAReport.hs
+  -- Hs-Source-Dirs: ., ../artvaluereport-data_1
+  -- GHC-Options: -Wall -optP-include -optPdist/build/autogen/cabal_macros.h
+  GHC-Options: -Wall
+  Build-Depends: binary, cereal, debian, HaTeX, html-entities, pandoc, pureMD5, RJson, xhtml
+
+executable appraisalscope
+  Main-Is: Tools/AppraisalScope.hs
+  -- Hs-Source-Dirs: ., ../artvaluereport-data_1
+  -- GHC-Options: -Wall -optP-include -optPdist/build/autogen/cabal_macros.h
+  GHC-Options: -Wall
+  Build-Depends: binary, cereal, debian, HaTeX, html-entities, pandoc, pureMD5, RJson, xhtml

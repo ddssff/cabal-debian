@@ -5,7 +5,7 @@ License-File:   debian/copyright
 Author:         David Fox <dsf@seereason.com>
 Category:       Debian, Distribution, System
 Maintainer:     David Fox <dsf@seereason.com>
-Homepage:       http://src.seereason.com/debian-tools/cabal-debian
+Homepage:       http://src.seereason.com/cabal-debian
 Build-Type:     Simple
 Synopsis:       Create a debianization for a cabal package
 Cabal-Version: >= 1.8
@@ -151,7 +151,7 @@ Flag ghcjs-support
 
 Source-Repository head
   type: darcs
-  location: http://src.seereason.com/debian-tools
+  location: http://src.seereason.com/cabal-debian
 
 Library
  Hs-Source-Dirs: src

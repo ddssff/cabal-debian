@@ -1,3 +1,9 @@
+haskell-cabal-debian (4.15) unstable; urgency=low
+
+  * Don't hardcode the compiler name in makefile targets.
+
+ -- David Fox <dsf@seereason.com>  Sat, 12 Jul 2014 12:15:10 -0700
+
 haskell-cabal-debian (4.14) unstable; urgency=low
 
   * Move the code to map the cabal package named "Cabal" to the debian

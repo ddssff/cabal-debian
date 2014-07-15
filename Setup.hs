@@ -9,10 +9,8 @@ import System.Directory
 import System.Exit
 
 main =
-    copyFile "debian/changelog" "changelog" >>
     defaultMainWithHooks simpleUserHooks
-       {- { postBuild = \ _ _ _ lbi -> when (buildDir lbi /= "dist-ghc/build") (runTestScript lbi)
-          , runTests = \ _ _ _ lbi -> runTestScript lbi } -}
+       { preSDist = \ a b -> copyFile "debian/changelog" "changelog" >> preSDist simpleUserHooks a b }
 
 runTestScript lbi =
     system (buildDir lbi ++ "/cabal-debian-tests/cabal-debian-tests") >>= \ code ->

@@ -1,6 +1,6 @@
 -- | Convert between cabal and debian package names based on version
 -- number ranges.
-{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, TypeSynonymInstances #-}
+{-# LANGUAGE DeriveDataTypeable, FlexibleInstances, MultiParamTypeClasses, TypeSynonymInstances #-}
 module Debian.Debianize.VersionSplits
     ( DebBase(DebBase)
     -- * Combinators for VersionSplits
@@ -15,6 +15,7 @@ module Debian.Debianize.VersionSplits
     , doSplits
     ) where
 
+import Data.Generics (Data, Typeable)
 import Data.Map as Map (Map, mapMaybeWithKey, elems)
 import Data.Set as Set (Set, toList, fromList)
 import Data.Version (Version(Version), showVersion)
@@ -28,7 +29,7 @@ import Prelude hiding (init, unlines, log)
 
 -- | The base of a debian binary package name, the string that appears
 -- between "libghc-" and "-dev".
-newtype DebBase = DebBase String deriving (Eq, Ord, Read, Show)
+newtype DebBase = DebBase String deriving (Eq, Ord, Read, Show, Data, Typeable)
 
 -- | Describes a mapping from cabal package name and version to debian
 -- package names.  For example, versions of the cabal QuickCheck
@@ -43,7 +44,7 @@ data VersionSplits
       -- name to use for versions greater than or equal to that
       -- version.  This list assumed to be in (must be kept in)
       -- ascending version number order.
-      } deriving (Eq, Ord)
+      } deriving (Eq, Ord, Data, Typeable)
 
 instance Show VersionSplits where
     show s = foldr (\ (v, b) r -> ("insertSplit (" ++ show v ++ ") (" ++ show b ++ ") (" ++ r ++ ")")) ("makePackage (" ++ show (oldestPackage s) ++ ")") (splits s)

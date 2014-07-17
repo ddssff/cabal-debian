@@ -1,3 +1,9 @@
+haskell-cabal-debian (4.15.1) unstable; urgency=low
+
+  * Add Data and Typeable instances.
+
+ -- David Fox <dsf@seereason.com>  Thu, 17 Jul 2014 11:22:17 -0700
+
 haskell-cabal-debian (4.15) unstable; urgency=low
 
   * Don't hardcode the compiler name in makefile targets.

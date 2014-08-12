@@ -1,3 +1,14 @@
+haskell-cabal-debian (4.15.2) unstable; urgency=low
+
+  * Lowercase the strings in the extraLibs argument of allBuildDepends
+    before wrapping them in BinPkgName.  Those types, which come from the
+    debian package, should be opaque and do this whenever a BinPkgName (or
+    SrcPkgName) is created, because upper case is never ok in Debian
+    source or binary package names.  In the meantime I will make this
+    requested change.  Thanks to Sven Bartscher for pointing this out.
+
+ -- David Fox <dsf@seereason.com>  Tue, 12 Aug 2014 07:47:17 -0700
+
 haskell-cabal-debian (4.15.1) unstable; urgency=low
 
   * Add Data and Typeable instances.

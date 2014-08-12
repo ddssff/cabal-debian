@@ -7,7 +7,7 @@ module Debian.Debianize.BuildDependencies
 
 import Control.Monad.State (MonadState(get))
 import Control.Monad.Trans (MonadIO)
-import Data.Char (isSpace)
+import Data.Char (isSpace, toLower)
 import Data.Function (on)
 import Data.Lens.Lazy (access, getL)
 import Data.List as List (filter, map, minimumBy, nub)
@@ -75,7 +75,7 @@ allBuildDepends buildDepends' buildTools' pkgconfigDepends' extraLibs' =
     where
       fixDeps :: Atoms -> [String] -> Relations
       fixDeps atoms xs =
-          concatMap (\ cab -> fromMaybe [[D.Rel (D.BinPkgName ("lib" ++ cab ++ "-dev")) Nothing Nothing]]
+          concatMap (\ cab -> fromMaybe [[D.Rel (D.BinPkgName ("lib" ++ map toLower cab ++ "-dev")) Nothing Nothing]]
                                         (Map.lookup cab (getL T.extraLibMap atoms))) xs
 
 -- The haskell-cdbs package contains the hlibrary.mk file with

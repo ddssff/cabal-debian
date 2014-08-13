@@ -65,7 +65,9 @@ data PackageType
     | Utilities     -- ^ A package that holds the package's data files
                     -- and any executables not assigned to other
                     -- packages.
-    | Source'       -- ^ The source package (not a binary deb actually.)
+    | Source        -- ^ The source package (not a binary deb actually.)
+    | HaskellSource -- ^ The source package of a haskell library (add
+                    -- prefix haskell- to source package name.)
     | Cabal         -- ^ This is used to construct the value for
                     -- DEB_CABAL_PACKAGE in the rules file
     deriving (Eq, Ord, Show, Read, Data, Typeable)

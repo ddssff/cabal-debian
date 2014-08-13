@@ -213,7 +213,7 @@ dependencies typ name cabalRange =
                     -- return the single dependency for the package.
                     Nothing -> [(mkPkgName hc name typ, cabalRange')]
                     -- If there are splits create a list of (debian package name, VersionRange) pairs
-                    Just splits' -> List.map (\ (n, r) -> (mkPkgName' hc n typ, r)) (packageRangesFromVersionSplits splits')
+                    Just splits' -> List.map (\ (n, r) -> (mkPkgName' hc typ n, r)) (packageRangesFromVersionSplits splits')
        mapM convert alts >>= mapM (doBundled typ name) . convert' . canonical . Or . catMaybes
     where
       convert (dname, range) =

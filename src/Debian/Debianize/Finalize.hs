@@ -24,7 +24,7 @@ import Data.Text as Text (pack, unlines, unpack)
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(..))
 import Debian.Debianize.BuildDependencies (debianBuildDeps, debianBuildDepsIndep)
 import Debian.Debianize.Changelog (dropFutureEntries)
-import Debian.Debianize.DebianName (debianName)
+import Debian.Debianize.DebianName (debianName, debianNameBase)
 import Debian.Debianize.Goodies (backupAtoms, describe, execAtoms, serverAtoms, siteAtoms, watchAtom)
 import Debian.Debianize.Input (dataDir, inputCabalization, inputChangeLog, inputMaintainer)
 import Debian.Debianize.Monad as Monad (DebT)
@@ -32,11 +32,12 @@ import Debian.Debianize.Options (compileCommandlineArgs, compileEnvironmentArgs)
 import Debian.Debianize.Prelude ((%=), (+++=), (+=), foldEmpty, fromEmpty, fromSingleton, (~=), (~?=))
 import qualified Debian.Debianize.Types as T (apacheSite, backups, binaryArchitectures, binaryPackages, binarySection, breaks, buildDepends, buildDependsIndep, buildDir, builtUsing, changelog, comments, compat, conflicts, debianDescription, debVersion, depends, epochMap, executable, extraDevDeps, extraLibMap, file, install, installCabalExec, installCabalExecTo, installData, installDir, installTo, intermediateFiles, license, link, maintainer, noDocumentationLibrary, noProfilingLibrary, noHoogle, packageDescription, packageType, preDepends, provides, recommends, replaces, revision, rulesFragments, serverInfo, source, sourcePackageName, sourcePriority, sourceSection, suggests, utilsPackageNames, verbosity, watch, website)
 import qualified Debian.Debianize.Types.Atoms as A (InstallFile(execName, sourceDir), showAtoms, compilerFlavor)
-import qualified Debian.Debianize.Types.BinaryDebDescription as B (BinaryDebDescription, package, PackageType(Development, Documentation, Exec, Profiling, Source', Utilities))
+import qualified Debian.Debianize.Types.BinaryDebDescription as B (BinaryDebDescription, package, PackageType(Development, Documentation, Exec, Profiling, Source, HaskellSource, Utilities), PackageType)
+import Debian.Debianize.VersionSplits (DebBase(DebBase))
 import Debian.Orphans ()
 import Debian.Policy (getDebhelperCompatLevel, haskellMaintainer, PackageArchitectures(Any, All), PackagePriority(Optional), Section(..))
 import Debian.Pretty (pretty)
-import Debian.Relation (BinPkgName, BinPkgName(BinPkgName), Relation(Rel), Relations)
+import Debian.Relation (BinPkgName, BinPkgName(BinPkgName), SrcPkgName(SrcPkgName), Relation(Rel), Relations)
 import qualified Debian.Relation as D (BinPkgName(BinPkgName), Relation(..))
 import Debian.Release (parseReleaseName)
 import Debian.Time (getCurrentLocalRFC822Time)
@@ -152,18 +153,21 @@ debianEpoch name = get >>= return . Map.lookup name . getL T.epochMap
 -- | Compute and return the debian source package name, based on the
 -- sourcePackageName if it was specified, and constructed from the
 -- cabal name otherwise.
-finalizeSourceName :: Monad m => DebT m ()
-finalizeSourceName =
-    do debName <- debianName B.Source'
-       T.sourcePackageName ~?= Just debName
+finalizeSourceName :: (Monad m, Functor m) => B.PackageType -> DebT m ()
+finalizeSourceName typ =
+    do DebBase debName <- debianNameBase
+       T.sourcePackageName ~?= Just (SrcPkgName (case typ of
+                                                   B.HaskellSource -> "haskell-" ++ debName
+                                                   B.Source -> debName
+                                                   _ -> error $ "finalizeSourceName: " ++ show typ))
 
 finalizeMaintainer :: Monad m => DebT m ()
 finalizeMaintainer =
     T.maintainer ~?= Just haskellMaintainer
 
-finalizeControl :: Monad m => DebT m ()
+finalizeControl :: (Monad m, Functor m) => DebT m ()
 finalizeControl =
-    do finalizeSourceName
+    do finalizeSourceName B.HaskellSource
        finalizeMaintainer
        Just src <- access T.sourcePackageName
        maint <- access T.maintainer >>= return . fromMaybe (error "No maintainer")
@@ -175,9 +179,9 @@ finalizeControl =
 -- source package name implied by the debianization.  This means
 -- either adding an entry or modifying the latest entry (if its
 -- version number is the exact one in our debianization.)
-finalizeChangelog :: Monad m => String -> DebT m ()
+finalizeChangelog :: (Monad m, Functor m) => String -> DebT m ()
 finalizeChangelog date =
-    do finalizeSourceName
+    do finalizeSourceName B.HaskellSource
        finalizeMaintainer
        ver <- debianVersion
        src <- access T.sourcePackageName
@@ -209,7 +213,7 @@ finalizeChangelog date =
 addExtraLibDependencies :: (Monad m, Functor m) => DebT m ()
 addExtraLibDependencies =
     do pkgDesc <- access T.packageDescription >>= maybe (error "addExtraLibDependencies: no PackageDescription") return
-       devName <- debianName B.Development
+       devName <- debianName B.Development GHC
        libMap <- access T.extraLibMap
        binNames <- List.map (getL B.package) <$> access T.binaryPackages
        when (any (== devName) binNames) (T.depends devName %= \ deps -> deps ++ g pkgDesc libMap)
@@ -250,9 +254,9 @@ binaryPackageRelations b typ =
        T.replaces b %= \ rels -> [anyrel "${haskell:Replaces}"] ++ rels
        T.builtUsing b ~= []
 
-librarySpecs :: Monad m => PackageDescription -> DebT m ()
+librarySpecs :: (Monad m, Functor m) => PackageDescription -> DebT m ()
 librarySpecs pkgDesc =
-    do debName <- debianName B.Documentation
+    do debName <- debianName B.Documentation GHC
        let dev = isJust (Cabal.library pkgDesc)
        doc <- get >>= return . not . getL T.noDocumentationLibrary
        prof <- get >>= return . not . getL T.noProfilingLibrary
@@ -267,9 +271,9 @@ librarySpecs pkgDesc =
     where
       PackageName cabal = pkgName (Cabal.package pkgDesc)
 
-docSpecsParagraph :: Monad m => DebT m ()
+docSpecsParagraph :: (Monad m, Functor m) => DebT m ()
 docSpecsParagraph =
-    do b <- debianName B.Documentation
+    do b <- debianName B.Documentation GHC
        binaryPackageRelations b B.Development -- not sure why this isn't Documentation, but I think there's a "good" reason
        T.packageType b ~?= Just B.Documentation
        desc <- describe b
@@ -278,9 +282,9 @@ docSpecsParagraph =
        T.binarySection b ~?= Just (MainSection "doc")
        T.debianDescription b ~?= Just desc
 
-librarySpec :: Monad m => PackageArchitectures -> B.PackageType -> DebT m ()
+librarySpec :: (Monad m, Functor m) => PackageArchitectures -> B.PackageType -> DebT m ()
 librarySpec arch typ =
-    do b <- debianName typ
+    do b <- debianName typ GHC
        binaryPackageRelations b B.Development
        T.packageType b ~?= Just typ
        desc <- describe b
@@ -319,7 +323,7 @@ makeUtilsPackages pkgDesc =
            availableExec = Set.union installedExec execFilePaths
 
        access T.utilsPackageNames >>= \ names ->
-           when (Set.null names) (debianName B.Utilities >>= \ name -> T.utilsPackageNames ~= singleton name)
+           when (Set.null names) (debianName B.Utilities GHC >>= \ name -> T.utilsPackageNames ~= singleton name)
        utilsPackages <- access T.utilsPackageNames
 
        -- Files that are installed into packages other than the utils packages

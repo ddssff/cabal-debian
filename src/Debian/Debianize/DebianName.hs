@@ -1,19 +1,21 @@
 {-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, OverloadedStrings, RankNTypes, ScopedTypeVariables, StandaloneDeriving, TypeFamilies #-}
 {-# OPTIONS -Wall -Wwarn -fno-warn-name-shadowing -fno-warn-orphans #-}
 module Debian.Debianize.DebianName
-    ( debianName             -- Used in Debian.Debianize.Files and
+    ( debianName
+    , debianNameBase
     , mkPkgName
     , mkPkgName'
     , mapCabal
     , splitCabal
     ) where
 
+import Control.Applicative ((<$>), (<*>), pure)
 import Data.Char (toLower)
 import Data.Lens.Lazy (access)
 import Data.Map as Map (lookup, alter)
 import Data.Version (Version, showVersion)
 import Debian.Debianize.Types.BinaryDebDescription as Debian (PackageType(..))
-import Debian.Debianize.Types.Atoms as T (debianNameMap, packageDescription, compilerFlavor)
+import Debian.Debianize.Types.Atoms as T (debianNameMap, packageDescription)
 import Debian.Debianize.Monad (DebT)
 import Debian.Debianize.Prelude ((%=))
 import Debian.Debianize.VersionSplits (DebBase(DebBase), insertSplit, doSplits, VersionSplits, makePackage)
@@ -34,37 +36,33 @@ data Dependency_
     deriving (Eq, Show)
 
 -- | Build the Debian package name for a given package type.
-debianName :: (Monad m, PkgName name) => PackageType -> DebT m name
-debianName typ =
-    do cfl <- access compilerFlavor
-       Just pkgDesc <- access packageDescription
-       let pkgId = Cabal.package pkgDesc
-       nameMap <- access T.debianNameMap
-       return $ debianName' cfl (Map.lookup (pkgName pkgId) nameMap) typ pkgId
+debianName :: (Monad m, Functor m, PkgName name) => PackageType -> CompilerFlavor -> DebT m name
+debianName typ cfl = mkPkgName' <$> pure cfl <*> pure typ <*> debianNameBase
 
 -- | Function that applies the mapping from cabal names to debian
 -- names based on version numbers.  If a version split happens at v,
 -- this will return the ltName if < v, and the geName if the relation
 -- is >= v.
-debianName' :: (PkgName name) => CompilerFlavor -> Maybe VersionSplits -> PackageType -> PackageIdentifier -> name
-debianName' cfl msplits typ pkgId =
-    case msplits of
-      Nothing -> mkPkgName cfl pname typ
-      Just splits -> (\ s -> mkPkgName' cfl s typ) $ doSplits splits version
-    where
-      -- def = mkPkgName cfl pname typ
-      pname@(PackageName _) = pkgName pkgId
-      version = (Just (D.EEQ (parseDebianVersion (showVersion (pkgVersion pkgId)))))
+debianNameBase :: Monad m => DebT m DebBase
+debianNameBase =
+    do Just pkgDesc <- access packageDescription
+       let pkgId = Cabal.package pkgDesc
+       nameMap <- access T.debianNameMap
+       let pname@(PackageName _) = pkgName pkgId
+           version = (Just (D.EEQ (parseDebianVersion (showVersion (pkgVersion pkgId)))))
+       case Map.lookup (pkgName pkgId) nameMap of
+         Nothing -> return $ debianBaseName pname
+         Just splits -> return $ doSplits splits version
 
 -- | Build a debian package name from a cabal package name and a
 -- debian package type.  Unfortunately, this does not enforce the
 -- correspondence between the PackageType value and the name type, so
 -- it can return nonsense like (SrcPkgName "libghc-debian-dev").
 mkPkgName :: PkgName name => CompilerFlavor -> PackageName -> PackageType -> name
-mkPkgName cfl pkg typ = mkPkgName' cfl (debianBaseName pkg) typ
+mkPkgName cfl pkg typ = mkPkgName' cfl typ (debianBaseName pkg)
 
-mkPkgName' :: PkgName name => CompilerFlavor -> DebBase -> PackageType -> name
-mkPkgName' cfl (DebBase base) typ =
+mkPkgName' :: PkgName name => CompilerFlavor -> PackageType -> DebBase -> name
+mkPkgName' cfl typ (DebBase base) =
     pkgNameFromString $
              case typ of
                 Documentation -> prefix ++ base ++ "-doc"
@@ -72,7 +70,8 @@ mkPkgName' cfl (DebBase base) typ =
                 Profiling -> prefix ++ base ++ "-prof"
                 Utilities -> "haskell-" ++ base ++ "-utils"
                 Exec -> base
-                Source' -> "haskell-" ++ base ++ ""
+                Source -> base
+                HaskellSource -> "haskell-" ++ base
                 Cabal -> base
     where prefix = "lib" ++ map toLower (show cfl) ++ "-"
 

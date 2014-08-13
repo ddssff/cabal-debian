@@ -26,12 +26,13 @@ import Data.Maybe (fromMaybe)
 import Data.Monoid ((<>))
 import Data.Set as Set (insert, union, singleton)
 import Data.Text as Text (Text, pack, unlines, intercalate)
-import Debian.Debianize.DebianName (debianName)
+import Debian.Debianize.DebianName (debianNameBase)
 import Debian.Debianize.Monad (Atoms, DebT, execDebM)
 import Debian.Debianize.Prelude (trim, (%=), (+=), (++=), (+++=))
 import qualified Debian.Debianize.Types as T
 import qualified Debian.Debianize.Types.Atoms as T
 import qualified Debian.Debianize.Types.BinaryDebDescription as B
+import Debian.Debianize.VersionSplits (DebBase(DebBase))
 import Debian.Orphans ()
 import Debian.Pretty (Pretty(pretty))
 import Debian.Policy (apacheLogDirectory, apacheErrorLog, apacheAccessLog, databaseDirectory, serverAppLog, serverAccessLog)
@@ -356,11 +357,11 @@ fileAtoms' b sourceDir' execName' destDir' destName' r =
       d = fromMaybe "usr/bin" destDir'
 
 -- | Build a suitable value for the head of the rules file.
-makeRulesHead :: Monad m => DebT m Text
+makeRulesHead :: (Monad m, Functor m) => DebT m Text
 makeRulesHead =
-    do b <- debianName B.Cabal
+    do DebBase b <- debianNameBase
        hc <- access T.compilerFlavor
-       let ls = ["DEB_CABAL_PACKAGE = " <> pack (show (pretty (b :: BinPkgName))),
+       let ls = ["DEB_CABAL_PACKAGE = " <> pack b,
                  "HC = " <> pack (map toLower (show hc)),
                  ""]
        return $

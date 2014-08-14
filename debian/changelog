@@ -1,3 +1,10 @@
+haskell-cabal-debian (4.16) unstable; urgency=low
+
+  * Generate debianizations that include libraries for multiple compiler
+    flavors.
+
+ -- David Fox <dsf@seereason.com>  Thu, 14 Aug 2014 05:37:56 -0700
+
 haskell-cabal-debian (4.15.2) unstable; urgency=low
 
   * Lowercase the strings in the extraLibs argument of allBuildDepends

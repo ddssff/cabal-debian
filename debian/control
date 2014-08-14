@@ -64,29 +64,6 @@ Build-Depends-Indep: ghc-doc
 Standards-Version: 3.9.3
 Homepage: http://src.seereason.com/cabal-debian
 
-Package: cabal-debian
-Architecture: any
-Section: misc
-Depends: ${shlibs:Depends}
-         , ${haskell:Depends}
-	 , ${misc:Depends}
-	 , apt-file
-         , debian-policy
-         , debhelper
-         , haskell-devscripts (>= 0.8.19)
-Recommends: ${haskell:Recommends}
-Suggests: ${haskell:Suggests}
-Conflicts: ${haskell:Conflicts}, haskell-debian-utils (<< 3.59)
-Provides: ${haskell:Provides}
-Replaces: ${haskell:Replaces}
-Description: Create a debianization for a cabal package
- Tool for creating debianizations of Haskell packages based on the .cabal
- file.  If apt-file is installed it will use it to discover what is the
- debian package name of a C library.
- .
-  Author: David Fox <dsf@seereason.com>
-  Upstream-Maintainer: David Fox <dsf@seereason.com>
-
 Package: libghc-cabal-debian-dev
 Architecture: any
 Depends: ${shlibs:Depends}
@@ -161,3 +138,26 @@ Description: Create a debianization for a cabal package
  This package provides the documentation for a library for the Haskell
  programming language.
  See http:///www.haskell.org/ for more information on Haskell.
+
+Package: cabal-debian
+Architecture: any
+Section: misc
+Depends: ${shlibs:Depends}
+         , ${haskell:Depends}
+	 , ${misc:Depends}
+	 , apt-file
+         , debian-policy
+         , debhelper
+         , haskell-devscripts (>= 0.8.19)
+Recommends: ${haskell:Recommends}
+Suggests: ${haskell:Suggests}
+Conflicts: ${haskell:Conflicts}, haskell-debian-utils (<< 3.59)
+Provides: ${haskell:Provides}
+Replaces: ${haskell:Replaces}
+Description: Create a debianization for a cabal package
+ Tool for creating debianizations of Haskell packages based on the .cabal
+ file.  If apt-file is installed it will use it to discover what is the
+ debian package name of a C library.
+ .
+  Author: David Fox <dsf@seereason.com>
+  Upstream-Maintainer: David Fox <dsf@seereason.com>

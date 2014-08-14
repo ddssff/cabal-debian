@@ -9,16 +9,16 @@ module Debian.Debianize.DebianName
     , splitCabal
     ) where
 
-import Control.Applicative ((<$>), (<*>), pure)
+import Control.Applicative ((<$>))
 import Data.Char (toLower)
 import Data.Lens.Lazy (access)
 import Data.Map as Map (lookup, alter)
 import Data.Version (Version, showVersion)
 import Debian.Debianize.Types.BinaryDebDescription as Debian (PackageType(..))
-import Debian.Debianize.Types.Atoms as T (debianNameMap, packageDescription)
+import Debian.Debianize.Types.Atoms as T (debianNameMap, packageDescription, utilsPackageNameBase)
 import Debian.Debianize.Monad (DebT)
 import Debian.Debianize.Prelude ((%=))
-import Debian.Debianize.VersionSplits (DebBase(DebBase), insertSplit, doSplits, VersionSplits, makePackage)
+import Debian.Debianize.VersionSplits (DebBase(DebBase, unDebBase), insertSplit, doSplits, VersionSplits, makePackage)
 import Debian.Orphans ()
 import Debian.Relation (PkgName(..), Relations)
 import qualified Debian.Relation as D (VersionReq(EEQ))
@@ -37,7 +37,13 @@ data Dependency_
 
 -- | Build the Debian package name for a given package type.
 debianName :: (Monad m, Functor m, PkgName name) => PackageType -> CompilerFlavor -> DebT m name
-debianName typ cfl = mkPkgName' <$> pure cfl <*> pure typ <*> debianNameBase
+debianName typ cfl =
+    do base <-
+           case (typ, cfl) of
+             (Utilities, GHC) -> access utilsPackageNameBase >>= maybe (((\ base -> "haskell-" ++ base ++ "-utils") . unDebBase) <$> debianNameBase) return
+             (Utilities, _) -> access utilsPackageNameBase >>= maybe (((\ base -> base ++ "-utils") . unDebBase) <$> debianNameBase) return
+             _ -> unDebBase <$> debianNameBase
+       return $ mkPkgName' cfl typ (DebBase base)
 
 -- | Function that applies the mapping from cabal names to debian
 -- names based on version numbers.  If a version split happens at v,
@@ -68,7 +74,9 @@ mkPkgName' cfl typ (DebBase base) =
                 Documentation -> prefix ++ base ++ "-doc"
                 Development -> prefix ++ base ++ "-dev"
                 Profiling -> prefix ++ base ++ "-prof"
-                Utilities -> "haskell-" ++ base ++ "-utils"
+                Utilities -> base ++ case cfl of
+                                       GHC -> ""
+                                       _ -> "-" ++ map toLower (show cfl)
                 Exec -> base
                 Source -> base
                 HaskellSource -> "haskell-" ++ base

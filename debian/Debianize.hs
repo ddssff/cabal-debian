@@ -6,32 +6,31 @@ import Data.Set (singleton)
 import Data.Text as Text (pack)
 import Debian.Changes (ChangeLog(ChangeLog))
 import Debian.Debianize (inputChangeLog, inputDebianization)
-import Debian.Debianize.Details (seereasonDefaultAtoms)
+import Debian.Debianize.Details (debianDefaultAtoms)
 import Debian.Debianize.Finalize (debianization)
 import Debian.Debianize.Types as T
     (changelog, compat, conflicts, control, depends, debianDescription, homepage,
-     installCabalExec, sourceFormat, standardsVersion, utilsPackageNames, copyright)
-import Debian.Debianize.Types.Atoms as T (Atoms, newAtoms)
+     installCabalExec, sourceFormat, standardsVersion, utilsPackageNameBase, copyright)
+import Debian.Debianize.Types.Atoms as T (Atoms, newAtoms, EnvSet(EnvSet))
 import Debian.Debianize.Monad (Atoms, DebT, execDebT, evalDebT, execDebM)
 import Debian.Debianize.Output (compareDebianization)
 import Debian.Debianize.Prelude ((~=), (~?=), (%=), (+=), (++=), (+++=))
-import Debian.Debianize.Types (Top(Top))
 import Debian.Debianize.Types.SourceDebDescription (SourceDebDescription)
 import Debian.Policy (SourceFormat(Native3), StandardsVersion(StandardsVersion))
 import Debian.Relation (BinPkgName(BinPkgName), Relation(Rel), VersionReq(SLT, GRE))
 import Debian.Version (parseDebianVersion)
+import Distribution.Compiler(CompilerFlavor(GHC))
 import Prelude hiding (log)
 import System.Directory (copyFile)
 
 main :: IO ()
 main =
-    do let top = Top "."
-       -- Copy the changelog into the top directory so that hackage
+    do -- Copy the changelog into the top directory so that hackage
        -- will see it.
        copyFile "debian/changelog" "changelog"
-       log <- evalDebT (inputChangeLog top >> access changelog) newAtoms
-       old <- execDebT (inputDebianization top) newAtoms
-       new <- execDebT (debianization top seereasonDefaultAtoms (changelog ~?= log >> customize >> copyFirstLogEntry old)) newAtoms
+       log <- newAtoms >>= evalDebT (inputChangeLog >> access changelog)
+       old <- newAtoms >>= execDebT (inputDebianization (T.EnvSet "/" "/" "/"))
+       new <- newAtoms >>= execDebT (debianization debianDefaultAtoms (changelog ~?= log >> customize >> copyFirstLogEntry old))
        diff <- compareDebianization old new
        case diff of
          "" -> return ()
@@ -44,7 +43,7 @@ main =
       customize =
           do sourceFormat ~= Just Native3
              standardsVersion ~= Just (StandardsVersion 3 9 3 Nothing)
-             compat ~= Just 7
+             compat ~= Just 9
              copyright ~= Just (pack (unlines [ "This package is not part of the Debian GNU/Linux distribution."
                                               , ""
                                               , "Copyright: (c) 2010-2011, SeeReason Partners LLC"
@@ -66,7 +65,7 @@ main =
              depends (BinPkgName "cabal-debian") %= (++ [[Rel (BinPkgName "haskell-devscripts") (Just (GRE (parseDebianVersion ("0.8.19" :: String)))) Nothing]])
              installCabalExec +++= (BinPkgName "cabal-debian-tests", singleton ("cabal-debian-tests", "/usr/bin"))
              installCabalExec +++= (BinPkgName "cabal-debian", singleton ("cabal-debian", "/usr/bin"))
-             utilsPackageNames += BinPkgName "cabal-debian"
+             utilsPackageNameBase ~= Just "cabal-debian"
              -- extraDevDeps (BinPkgName "debian-policy")
              homepage ~= Just (pack "http://src.seereason.com/cabal-debian")
 

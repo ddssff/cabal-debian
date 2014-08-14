@@ -2,7 +2,7 @@
 -- number ranges.
 {-# LANGUAGE DeriveDataTypeable, FlexibleInstances, MultiParamTypeClasses, TypeSynonymInstances #-}
 module Debian.Debianize.VersionSplits
-    ( DebBase(DebBase)
+    ( DebBase(DebBase, unDebBase)
     -- * Combinators for VersionSplits
     , VersionSplits
     , makePackage
@@ -29,7 +29,7 @@ import Prelude hiding (init, unlines, log)
 
 -- | The base of a debian binary package name, the string that appears
 -- between "libghc-" and "-dev".
-newtype DebBase = DebBase String deriving (Eq, Ord, Read, Show, Data, Typeable)
+newtype DebBase = DebBase {unDebBase :: String} deriving (Eq, Ord, Read, Show, Data, Typeable)
 
 -- | Describes a mapping from cabal package name and version to debian
 -- package names.  For example, versions of the cabal QuickCheck

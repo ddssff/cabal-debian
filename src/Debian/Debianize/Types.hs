@@ -38,7 +38,7 @@ module Debian.Debianize.Types
     , noProfilingLibrary
     , noHoogle
     , noDocumentationLibrary
-    , utilsPackageNames
+    , utilsPackageNameBase
     , buildDir
     , watch
 

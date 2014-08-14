@@ -31,20 +31,20 @@ import Text.Read (readMaybe)
 $(deriveMemoizable ''CompilerFlavor)
 $(deriveMemoizable ''BinPkgName)
 
-withCompilerVersion :: CompilerFlavor -> FilePath -> (DebianVersion -> a) -> a
-withCompilerVersion hc root f = f (newestAvailableCompiler hc root)
+withCompilerVersion :: FilePath -> CompilerFlavor -> (DebianVersion -> a) -> a
+withCompilerVersion root hc f = f (newestAvailableCompiler root hc)
 
 -- | Memoized version of newestAvailable'
-newestAvailable :: BinPkgName -> FilePath -> Maybe DebianVersion
-newestAvailable pkg root =
+newestAvailable :: FilePath -> BinPkgName -> Maybe DebianVersion
+newestAvailable root pkg =
     memoize2 f pkg root
     where
       f :: BinPkgName -> FilePath -> Maybe DebianVersion
-      f pkg' root' = unsafePerformIO (newestAvailable' pkg' root')
+      f pkg' root' = unsafePerformIO (newestAvailable' root' pkg')
 
 -- | Look up the newest version of a deb available in the given changeroot.
-newestAvailable' :: BinPkgName -> FilePath -> IO (Maybe DebianVersion)
-newestAvailable' (BinPkgName name) root = do
+newestAvailable' :: FilePath -> BinPkgName -> IO (Maybe DebianVersion)
+newestAvailable' root (BinPkgName name) = do
   exists <- doesDirectoryExist root
   when (not exists) (error $ "newestAvailable: no such environment: " ++ show root)
   versions <- try $ chroot root $
@@ -58,14 +58,14 @@ newestAvailable' (BinPkgName name) root = do
       chroot "/" = id
       chroot _ = useEnv root (return . force)
 
-newestAvailableCompiler :: CompilerFlavor -> FilePath -> DebianVersion
-newestAvailableCompiler hc root =
+newestAvailableCompiler :: FilePath -> CompilerFlavor -> DebianVersion
+newestAvailableCompiler root hc =
     case debName hc of
       Nothing -> error $ "newestAvailableCompiler - Unsupported CompilerFlavor: " ++ show hc
-      Just pkg -> fromMaybe (error $ "newestAvailableCompiler - No versions of " ++ show hc ++ " available in " ++ show root) (newestAvailable pkg root)
+      Just pkg -> fromMaybe (error $ "newestAvailableCompiler - No versions of " ++ show hc ++ " available in " ++ show root) (newestAvailable root pkg)
 
-newestAvailableCompilerId :: CompilerFlavor -> FilePath -> CompilerId
-newestAvailableCompilerId hc root = compilerIdFromDebianVersion hc (newestAvailableCompiler hc root)
+newestAvailableCompilerId :: FilePath -> CompilerFlavor -> CompilerId
+newestAvailableCompilerId root hc = compilerIdFromDebianVersion hc (newestAvailableCompiler root hc)
 
 {-
 -- | The IO portion of ghcVersion.  For there to be no version of ghc

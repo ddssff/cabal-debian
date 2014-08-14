@@ -30,7 +30,7 @@ import Data.Text.IO (readFile)
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(logWho), parseChangeLog)
 import Debian.Control (Control'(unControl), Paragraph'(..), stripWS, parseControlFromFile, Field, Field'(..), ControlFunctions)
 import qualified Debian.Debianize.Types as T (maintainer)
-import qualified Debian.Debianize.Types.Atoms as T (changelog, compilerFlavor, makeAtoms)
+import qualified Debian.Debianize.Types.Atoms as T (changelog, makeAtoms, compilerFlavors)
 import Debian.Debianize.Types.BinaryDebDescription (BinaryDebDescription, newBinaryDebDescription)
 import qualified Debian.Debianize.Types.BinaryDebDescription as B
 import qualified Debian.Debianize.Types.SourceDebDescription as S
@@ -75,8 +75,7 @@ import System.IO.Error (catchIOError, tryIOError)
 inputDebianization :: MonadIO m => EnvSet -> DebT m ()
 inputDebianization envset =
     do -- Erase any the existing information
-       hc <- access T.compilerFlavor
-       let atoms = T.makeAtoms hc envset
+       let atoms = T.makeAtoms envset
        put atoms
        (ctl, _) <- inputSourceDebDescription
        inputAtomsFromDirectory
@@ -274,44 +273,44 @@ readDir p line = installDir +++= (p, singleton (unpack line))
 
 inputCabalization :: (MonadIO m, Functor m) => DebT m ()
 inputCabalization =
-    do hc <- access T.compilerFlavor
-       vb <- access verbosity >>= return . intToVerbosity'
+    do vb <- access verbosity >>= return . intToVerbosity'
        flags <- access cabalFlagAssignments
        root <- dependOS <$> access buildEnv
-       let mcid = newestAvailableCompilerId hc root
-       ePkgDesc <- liftIO $ inputCabalization' vb flags mcid
-       either (\ deps -> liftIO getCurrentDirectory >>= \ here ->
-                         error $ "Missing dependencies in cabal package at " ++ here ++ ": " ++ show deps)
-              (\ pkgDesc -> do
-                 packageDescription ~= Just pkgDesc
-                 -- This will contain either the contents of the file given in
-                 -- the license-file: field or the contents of the license:
-                 -- field.
-                 license ~?= (Just (Cabal.license pkgDesc))
+       hcs <- access T.compilerFlavors
+       let cids = map (newestAvailableCompilerId root) (toList hcs)
+       ePkgDescs <- liftIO $ inputCabalization' vb flags cids
+       mapM_ (either (\ deps -> liftIO getCurrentDirectory >>= \ here ->
+                                error $ "Missing dependencies in cabal package at " ++ here ++ ": " ++ show deps)
+                     (\ pkgDesc -> do
+                        packageDescription ~= Just pkgDesc
+                        -- This will contain either the contents of the file given in
+                        -- the license-file: field or the contents of the license:
+                        -- field.
+                        license ~?= (Just (Cabal.license pkgDesc))
 #if MIN_VERSION_Cabal(1,19,0)
-                 licenseFileText <- liftIO $ case Cabal.licenseFiles pkgDesc of
-                                               [] -> return Nothing
-                                               (path : _) -> readFileMaybe path -- better than nothing
+                        licenseFileText <- liftIO $ case Cabal.licenseFiles pkgDesc of
+                                                      [] -> return Nothing
+                                                      (path : _) -> readFileMaybe path -- better than nothing
 #else
-                 licenseFileText <- liftIO $ case Cabal.licenseFile pkgDesc of
-                                               "" -> return Nothing
-                                               path -> readFileMaybe path
+                        licenseFileText <- liftIO $ case Cabal.licenseFile pkgDesc of
+                                                      "" -> return Nothing
+                                                      path -> readFileMaybe path
 #endif
-                 licenseFile ~?= licenseFileText
-                 copyright ~?= (case Cabal.copyright pkgDesc of
-                                  "" -> Nothing
-                                  s -> Just (pack s)))
-              ePkgDesc
+                        licenseFile ~?= licenseFileText
+                        copyright ~?= (case Cabal.copyright pkgDesc of
+                                         "" -> Nothing
+                                         s -> Just (pack s))))
+             ePkgDescs
 
-inputCabalization' :: Verbosity -> Set (FlagName, Bool) -> CompilerId -> IO (Either [Dependency] PackageDescription)
-inputCabalization' vb flags cid = do
+inputCabalization' :: Verbosity -> Set (FlagName, Bool) -> [CompilerId] -> IO [Either [Dependency] PackageDescription]
+inputCabalization' vb flags cids = do
          descPath <- defaultPackageDesc vb
          genPkgDesc <- readPackageDescription vb descPath
-         case finalizePackageDescription (toList flags) (const True) (Platform buildArch buildOS) cid [] genPkgDesc of
-           Left deps -> return (Left deps)
-           Right (pkgDesc, _) ->
-               do bracket (setFileCreationMask 0o022) setFileCreationMask $ \ _ -> autoreconf vb pkgDesc
-                  return (Right pkgDesc)
+         let finalized = map (\ cid -> finalizePackageDescription (toList flags) (const True) (Platform buildArch buildOS) cid [] genPkgDesc) cids
+         mapM (either (return . Left)
+                      (\ (pkgDesc, _) -> do bracket (setFileCreationMask 0o022) setFileCreationMask $ \ _ -> autoreconf vb pkgDesc
+                                            return (Right pkgDesc)))
+              finalized
 
 -- | Run the package's configuration script.
 autoreconf :: Verbosity -> Cabal.PackageDescription -> IO ()

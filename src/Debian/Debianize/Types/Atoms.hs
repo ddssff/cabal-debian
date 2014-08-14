@@ -21,7 +21,7 @@ import Data.Generics (Data, Typeable)
 import Data.Lens.Lazy (Lens, lens)
 import Data.Map as Map (Map)
 import Data.Monoid (Monoid(..))
-import Data.Set as Set (Set)
+import Data.Set as Set (Set, singleton)
 import Data.Text (Text)
 import Debian.Changes (ChangeLog)
 import qualified Debian.Debianize.Types.SourceDebDescription as S
@@ -30,7 +30,7 @@ import Debian.Orphans ()
 import Debian.Policy (PackageArchitectures, PackagePriority, Section, SourceFormat)
 import Debian.Relation (BinPkgName, Relations, SrcPkgName)
 import Debian.Version (DebianVersion)
-import Distribution.Compiler (CompilerFlavor)
+import Distribution.Compiler (CompilerFlavor(GHC))
 import Distribution.License (License)
 import Distribution.Package (PackageName)
 import Distribution.PackageDescription as Cabal (FlagName, PackageDescription)
@@ -120,7 +120,7 @@ data Atoms
       -- ^ A Fragment of debian/rules
       , warning_ :: Set Text
       -- ^ A warning to be reported later
-      , utilsPackageNames_ :: Set BinPkgName
+      , utilsPackageNameBase_ :: Maybe String
       -- ^ Name of a package that will get left-over data files and executables.
       -- If there are more than one, each package will get those files.
       , changelog_ :: Maybe ChangeLog
@@ -209,10 +209,8 @@ data Atoms
       -- reason to use this is because we don't yet know the name of the dev library package.
       , packageDescription_ :: Maybe PackageDescription
       -- ^ The result of reading a cabal configuration file.
-      , compilerFlavor_ :: CompilerFlavor
-      -- ^ The newest available version of GHC in the build repository.  We don't support
-      -- base repositories with no version of GHC, it has been standard in Debian and
-      -- Ubuntu for quite some time.
+      , compilerFlavors_ :: Set CompilerFlavor
+      -- ^ Which compilers should we generate library packages for?
       } deriving (Eq, Show, Data, Typeable)
 
 data EnvSet = EnvSet
@@ -223,17 +221,17 @@ data EnvSet = EnvSet
 
 -- | Look for --buildenvdir in the command line arguments to get the
 -- changeroot path, use "/" if not present.
-newAtoms :: MonadIO m => CompilerFlavor -> m Atoms
-newAtoms hc = liftIO $ do
+newAtoms :: MonadIO m => m Atoms
+newAtoms = liftIO $ do
   (roots, _, _) <- getOpt Permute [Option "buildenvdir" [] (ReqArg id "PATH")
                                           "Directory containing the build environment"] <$> getArgs
   let envset = case roots of
                  (x : _) -> EnvSet {cleanOS = x </> "clean", dependOS = x </> "depend", buildOS = x </> "build"}
                  _ -> EnvSet {cleanOS = "/", dependOS = "/", buildOS = "/"}
-  return $ makeAtoms hc envset
+  return $ makeAtoms envset
 
-makeAtoms :: CompilerFlavor -> EnvSet -> Atoms
-makeAtoms hc envset =
+makeAtoms :: EnvSet -> Atoms
+makeAtoms envset =
     Atoms
       { noDocumentationLibrary_ = False
       , noProfilingLibrary_ = False
@@ -255,7 +253,7 @@ makeAtoms hc envset =
       , rulesHead_ = Nothing
       , rulesFragments_ = mempty
       , warning_ = mempty
-      , utilsPackageNames_ = mempty
+      , utilsPackageNameBase_ = Nothing
       , changelog_ = Nothing
       , comments_ = Nothing
       , missingDependencies_ = mempty
@@ -294,7 +292,7 @@ makeAtoms hc envset =
       , backups_ = mempty
       , extraDevDeps_ = mempty
       , packageDescription_ = Nothing
-      , compilerFlavor_ = hc
+      , compilerFlavors_ = singleton GHC
       }
 
 -- | This record supplies information about the task we want done -
@@ -477,10 +475,8 @@ missingDependencies :: Lens Atoms (Set BinPkgName)
 missingDependencies = lens missingDependencies_ (\ a b -> b {missingDependencies_ = a})
 
 -- | Override the package name used to hold left over data files and executables.
--- Usually only one package is specified, but if more then one are they will each
--- receive the same list of files.
-utilsPackageNames :: Lens Atoms (Set BinPkgName)
-utilsPackageNames = lens utilsPackageNames_ (\ a b -> b {utilsPackageNames_ = a})
+utilsPackageNameBase :: Lens Atoms (Maybe String)
+utilsPackageNameBase = lens utilsPackageNameBase_ (\ a b -> b {utilsPackageNameBase_ = a})
 
 -- | Override the debian source package name constructed from the cabal name
 sourcePackageName :: Lens Atoms (Maybe SrcPkgName)
@@ -643,8 +639,8 @@ installInit = lens installInit_ (\ a b -> b {installInit_ = a})
 intermediateFiles :: Lens Atoms (Set (FilePath, Text))
 intermediateFiles = lens intermediateFiles_ (\ a b -> b {intermediateFiles_ = a})
 
-compilerFlavor :: Lens Atoms CompilerFlavor
-compilerFlavor = lens compilerFlavor_ (\ a b -> b {compilerFlavor_ = a})
+compilerFlavors :: Lens Atoms (Set CompilerFlavor)
+compilerFlavors = lens compilerFlavors_ (\ a b -> b {compilerFlavors_ = a})
 
 {-
 compilerFlavor :: Monad m => StateT Atoms m CompilerFlavor

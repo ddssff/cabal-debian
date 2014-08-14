@@ -11,7 +11,7 @@ import Control.Monad.State (get, put)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Char (toLower, toUpper, isDigit, ord)
 import Data.Lens.Lazy (Lens)
-import Data.Set (singleton)
+import Data.Set (singleton, insert, delete)
 import Debian.Debianize.Goodies (doExecutable)
 import Debian.Debianize.Monad (DebT)
 import Debian.Debianize.Prelude (read', maybeRead, (+=), (~=), (%=), (++=), (+++=))
@@ -19,14 +19,14 @@ import Debian.Debianize.Types
     (verbosity, dryRun, debAction, noDocumentationLibrary, noProfilingLibrary, noHoogle,
      missingDependencies, sourcePackageName, cabalFlagAssignments, maintainer, buildDir, omitLTDeps,
      sourceFormat, buildDepends, buildDependsIndep, extraDevDeps, depends, conflicts, replaces, provides,
-     recommends, suggests, extraLibMap, debVersion, revision, epochMap, execMap, utilsPackageNames)
-import Debian.Debianize.Types.Atoms (Atoms, EnvSet(..), InstallFile(..), DebAction(..), setBuildEnv, compilerFlavor)
+     recommends, suggests, extraLibMap, debVersion, revision, epochMap, execMap, utilsPackageNameBase)
+import Debian.Debianize.Types.Atoms (Atoms, EnvSet(..), InstallFile(..), DebAction(..), setBuildEnv, compilerFlavors)
 import Debian.Orphans ()
 import Debian.Policy (SourceFormat(Quilt3), parseMaintainer)
 import Debian.Relation (BinPkgName(..), SrcPkgName(..), Relations, Relation(..))
 import Debian.Relation.String (parseRelations)
 import Debian.Version (parseDebianVersion)
-import Distribution.Compiler (CompilerFlavor)
+import Distribution.Compiler (CompilerFlavor(..))
 import Distribution.PackageDescription (FlagName(..))
 import Distribution.Package (PackageName(..))
 import Prelude hiding (readFile, lines, null, log, sum)
@@ -76,7 +76,7 @@ options =
       Option "" ["executable"] (ReqArg (\ path -> executableOption path (\ bin e -> doExecutable bin e)) "SOURCEPATH or SOURCEPATH:DESTDIR")
              (unlines [ "Create an individual binary package to hold this executable.  Other executables "
                       , " and data files are gathered into a single utils package named 'haskell-packagename-utils'."]),
-      Option "" ["default-package"] (ReqArg (\ name -> utilsPackageNames ~= singleton (BinPkgName name)) "DEB")
+      Option "" ["default-package"] (ReqArg (\ name -> utilsPackageNameBase ~= Just name) "NAME")
              (unlines [ "Set the name of the catch-all package that receives all the files not included in a library package or "
                       , " some other executable package.  By default this is 'haskell-packagename-utils'."]),
       Option "" ["disable-haddock"] (NoArg (noDocumentationLibrary ~= True))
@@ -181,10 +181,20 @@ options =
                       , "be generated.  This determines which compiler will be available, which in turn"
                       , "determines which basic libraries can be provided by the compiler.  This can be"
                       , "set to /, but it must be set."]),
-      Option "" ["hc", "compiler-flavor"] (ReqArg (\ s -> maybe (error $ "Invalid compiler id: " ++ show s)
-                                                                (\ hc -> compilerFlavor ~= hc)
-                                                                (readMaybe (map toUpper s) :: Maybe CompilerFlavor)) "COMPILER")
-             (unlines [ "Specify which Haskell compiler: ghc, ghcjs, hugs, etc." ]),
+      Option "" ["ghc"] (NoArg (compilerFlavors %= (insert GHC))) "Generate packages for GHC - same as --with-compiler GHC",
+      Option "" ["no-ghc"] (NoArg (compilerFlavors %= (delete GHC))) "Do not generate packages for GHC - same as --without-compiler GHC",
+      Option "" ["ghcjs"] (NoArg (compilerFlavors %= (insert GHCJS))) "Generate packages for GHCJS - same as --with-compiler GHCJS",
+      Option "" ["no-ghcjs"] (NoArg (compilerFlavors %= (delete GHCJS))) "Do not generate packages for GHCJS - same as --without-compiler GHCJS",
+      Option "" ["hugs"] (NoArg (compilerFlavors %= (insert Hugs))) "Generate packages for Hugs - same as --with-compiler GHC",
+      Option "" ["no-hugs"] (NoArg (compilerFlavors %= (delete Hugs))) "Do not generate packages for Hugs - same as --without-compiler Hugs",
+      Option "" ["with-compiler"] (ReqArg (\ s -> maybe (error $ "Invalid compiler id: " ++ show s)
+                                                        (\ hc -> compilerFlavors %= insert hc)
+                                                        (readMaybe (map toUpper s) :: Maybe CompilerFlavor)) "COMPILER")
+             (unlines [ "Generate packages for this CompilerFlavor" ]),
+      Option "" ["without-compiler"] (ReqArg (\ s -> maybe (error $ "Invalid compiler id: " ++ show s)
+                                                           (\ hc -> compilerFlavors %= delete hc)
+                                                           (readMaybe (map toUpper s) :: Maybe CompilerFlavor)) "COMPILER")
+             (unlines [ "Do not generate packages for this CompilerFlavors, e.g. GHC" ]),
       Option "f" ["flags"] (ReqArg (\ fs -> mapM_ (cabalFlagAssignments +=) (flagList fs)) "FLAGS")
              (unlines [ "Flags to pass to the finalizePackageDescription function in"
                       , "Distribution.PackageDescription.Configuration when loading the cabal file."]),

@@ -360,9 +360,7 @@ fileAtoms' b sourceDir' execName' destDir' destName' r =
 makeRulesHead :: (Monad m, Functor m) => DebT m Text
 makeRulesHead =
     do DebBase b <- debianNameBase
-       hc <- access T.compilerFlavor
        let ls = ["DEB_CABAL_PACKAGE = " <> pack b,
-                 "HC = " <> pack (map toLower (show hc)),
                  ""]
        return $
           Text.unlines $

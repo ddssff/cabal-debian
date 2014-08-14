@@ -6,9 +6,8 @@
 -- function directly, many sophisticated configuration options cannot
 -- be accessed using the command line interface.
 
-import Control.Monad.State (get)
 import Control.Monad.Trans (MonadIO, liftIO)
-import Data.Lens.Lazy (getL)
+import Data.Lens.Lazy (access)
 import Data.List as List (unlines)
 import Debian.Debianize.Details (debianDefaultAtoms)
 import Debian.Debianize.Finalize (debianization)
@@ -17,22 +16,24 @@ import Debian.Debianize.Options (compileCommandlineArgs, compileEnvironmentArgs,
 import Debian.Debianize.Output (doDebianizeAction)
 import Debian.Debianize.SubstVars (substvars)
 import Debian.Debianize.Types.Atoms (DebAction(Debianize, SubstVar, Usage), EnvSet(EnvSet), debAction, newAtoms)
-import Distribution.Compiler (CompilerFlavor(GHC))
 import Prelude hiding (unlines, writeFile, init)
 import System.Console.GetOpt (OptDescr, usageInfo)
 import System.Environment (getProgName)
 
 main :: IO ()
-main = cabalDebianMain GHC debianDefaultAtoms
+main = cabalDebianMain debianDefaultAtoms
 
 -- | The main function for the cabal-debian executable.
-cabalDebianMain :: (MonadIO m, Functor m) => CompilerFlavor -> DebT m () -> m ()
-cabalDebianMain hc init =
+cabalDebianMain :: (MonadIO m, Functor m) => DebT m () -> m ()
+cabalDebianMain init =
     -- This picks up the options required to decide what action we are
     -- taking.  Much of this will be repeated in the call to debianize.
-    newAtoms hc >>= \ atoms ->
-    evalDebT (init >> compileEnvironmentArgs >> compileCommandlineArgs >>
-              get >>= return . getL debAction >>= finish) atoms
+    do atoms <- newAtoms
+       evalDebT (do init
+                    compileEnvironmentArgs
+                    compileCommandlineArgs
+                    action <- access debAction
+                    finish action) atoms
     where
       envset = EnvSet "/" "/" "/"
       finish :: forall m. (MonadIO m, Functor m) => DebAction -> DebT m ()

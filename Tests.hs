@@ -9,7 +9,7 @@ import Control.Applicative ((<$>))
 import Data.Algorithm.Diff.Context (contextDiff)
 import Data.Algorithm.Diff.Pretty (prettyDiff)
 import Data.Function (on)
-import Data.Lens.Lazy (access, getL)
+import Data.Lens.Lazy (access, getL, setL)
 import Data.List (sortBy)
 import Data.Map as Map (differenceWithKey, intersectionWithKey)
 import qualified Data.Map as Map (elems, Map, toList)
@@ -59,10 +59,10 @@ defaultAtoms =
 
 -- | Force the compiler version to 7.6 to get predictable outputs
 testAtoms :: IO Atoms
-testAtoms = ghc763 <$> T.newAtoms GHC
+testAtoms = ghc763 <$> T.newAtoms
     where
       ghc763 :: Atoms -> Atoms
-      ghc763 atoms = atoms
+      ghc763 atoms = setL T.compilerFlavors (singleton GHC) atoms
 {-
 #if MIN_VERSION_Cabal(1,21,0)
           let CompilerId flavor version _ = getL ghcVersion_ atoms in
@@ -498,7 +498,7 @@ test5 label =
                  assertEqual label [] diff)
     where
       customize old level standards =
-          do T.utilsPackageNames ~= singleton (BinPkgName "creativeprompts-data")
+          do T.utilsPackageNameBase ~= Just "creativeprompts-data"
              newDebianization' level standards
              T.changelog ~= (getL T.changelog old)
              doWebsite (BinPkgName "creativeprompts-production") (theSite (BinPkgName "creativeprompts-production"))
@@ -662,9 +662,8 @@ test10 label =
              T.maintainer ~= either (const Nothing) Just (parseMaintainer "David Fox <dsf@seereason.com>")
              T.depends (BinPkgName "seereason-darcs-backups") %= (++ [[Rel (BinPkgName "anacron") Nothing Nothing]])
              T.sourceSection ~= Just (MainSection "haskell")
-             T.utilsPackageNames += utils
-             T.installCabalExec +++= (utils, singleton ("seereason-darcs-backups", "/etc/cron.hourly"))
-      utils = BinPkgName "seereason-darcs-backups"
+             T.utilsPackageNameBase ~= Just "seereason-darcs-backups"
+             T.installCabalExec +++= (BinPkgName "seereason-darcs-backups", singleton ("seereason-darcs-backups", "/etc/cron.hourly"))
 
 copyChangelogDate :: Monad m => String -> DebT m ()
 copyChangelogDate date =

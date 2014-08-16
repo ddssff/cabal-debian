@@ -6,6 +6,7 @@ module Debian.Debianize.BuildDependencies
     ) where
 
 import Control.Applicative ((<$>))
+import Control.Monad (when)
 import Control.Monad.State (MonadState(get))
 import Control.Monad.Trans (MonadIO)
 import Data.Char (isSpace, toLower)
@@ -14,7 +15,7 @@ import Data.Lens.Lazy (access, getL)
 import Data.List as List (filter, map, minimumBy, nub)
 import Data.Map as Map (lookup, Map)
 import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing)
-import Data.Set as Set (member, toList)
+import Data.Set as Set (member, toList, difference, fromList, null)
 import Data.Version (showVersion, Version)
 import Debian.Debianize.Bundled (builtIn)
 import Debian.Debianize.DebianName (mkPkgName, mkPkgName')
@@ -80,25 +81,26 @@ allBuildDepends buildDepends' buildTools' pkgconfigDepends' extraLibs' =
 debianBuildDeps :: (MonadIO m, Functor m) => PackageDescription -> DebT m D.Relations
 debianBuildDeps pkgDesc =
     do hcs <- access compilerFlavors
-       concat <$> mapM debianBuildDeps' (toList hcs)
-    where
-      debianBuildDeps' hc =
-          do deb <- get
-             cDeps <- cabalDeps
-             let bDeps = getL T.buildDepends deb
-                 prof = not $ getL T.noProfilingLibrary deb
-             let xs = nub $ [[D.Rel (D.BinPkgName "debhelper") (Just (D.GRE (parseDebianVersion ("7.0" :: String)))) Nothing],
-                             [D.Rel (D.BinPkgName "haskell-devscripts") (Just (D.GRE (parseDebianVersion ("0.8" :: String)))) Nothing],
-                             anyrel "cdbs"] ++
-                            (case hc of
-                              GHC -> [anyrel "ghc"] ++ if prof then [anyrel "ghc-prof"] else []
+       let unsupportedHCS = difference hcs $ fromList $ [GHC, GHCJS]
+       when (not (Set.null unsupportedHCS)) (error $ "Unsupported compiler flavor: " ++ show unsupportedHCS)
+       cDeps <- cabalDeps
+       bDeps <- access T.buildDepends
+       prof <- not <$> access T.noProfilingLibrary
+       let xs = nub $ [[D.Rel (D.BinPkgName "debhelper") (Just (D.GRE (parseDebianVersion ("7.0" :: String)))) Nothing],
+                       [D.Rel (D.BinPkgName "haskell-devscripts") (Just (D.GRE (parseDebianVersion ("0.8" :: String)))) Nothing],
+                       anyrel "cdbs"] ++
+                      (if member GHC hcs
+                       then [anyrel "ghc"] ++ if prof
+                                              then [anyrel "ghc-prof"]
+                                              else []
+                       else []) ++
 #if MIN_VERSION_Cabal(1,21,0)
-                              GHCJS -> [anyrel "ghcjs"]
+                      (if member GHCJS hcs then [anyrel "ghcjs"] else []) ++
 #endif
-                              x -> error ("Unsupported compiler flavor: " ++ show x)) ++
-                            bDeps ++
-                            cDeps
-             filterMissing xs
+                       bDeps ++
+                       cDeps
+       filterMissing xs
+    where
       cabalDeps =
           do deps <- allBuildDepends
                           (Cabal.buildDepends pkgDesc ++ concatMap (Cabal.targetBuildDepends . Cabal.buildInfo) (Cabal.executables pkgDesc))

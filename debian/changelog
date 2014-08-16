@@ -1,9 +1,10 @@
-haskell-cabal-debian (4.16) unstable; urgency=low
+haskell-cabal-debian (4.16.1) unstable; urgency=low
 
+  * Support for packaging libraries produced by the GHCJS compiler.
   * Generate debianizations that include libraries for multiple compiler
-    flavors.
+    flavors (not yet suppored in haskell-devscripts and/or Cabal.)
 
- -- David Fox <dsf@seereason.com>  Thu, 14 Aug 2014 05:37:56 -0700
+ -- David Fox <dsf@seereason.com>  Sat, 16 Aug 2014 07:56:50 -0700
 
 haskell-cabal-debian (4.15.2) unstable; urgency=low
 

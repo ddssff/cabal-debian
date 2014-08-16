@@ -24,7 +24,7 @@ import Data.List as List (map, intersperse, intercalate)
 import Data.Map as Map (insertWith)
 import Data.Maybe (fromMaybe)
 import Data.Monoid ((<>))
-import Data.Set as Set (insert, union, singleton)
+import Data.Set as Set (insert, union, singleton, toList)
 import Data.Text as Text (Text, pack, unlines, intercalate)
 import Debian.Debianize.DebianName (debianNameBase)
 import Debian.Debianize.Monad (Atoms, DebT, execDebM)
@@ -360,8 +360,17 @@ fileAtoms' b sourceDir' execName' destDir' destName' r =
 makeRulesHead :: (Monad m, Functor m) => DebT m Text
 makeRulesHead =
     do DebBase b <- debianNameBase
-       let ls = ["DEB_CABAL_PACKAGE = " <> pack b,
-                 ""]
+       compilers <- access T.compilerFlavors
+       let ls = ["DEB_CABAL_PACKAGE = " <> pack b] ++
+                -- If there is a single entry in the compiler list we
+                -- can tell debian/rules what compiler to use,
+                -- otherwise it has to figure this out from the
+                -- package names in debian/control.  This is required
+                -- to build a package without a library.
+                (case toList compilers of
+                   [x] -> ["DEB_DEFAULT_COMPILER = " <> pack (map toLower (show x))]
+                   _ -> []) ++
+                [""]
        return $
           Text.unlines $
             ["#!/usr/bin/make -f", ""] ++

@@ -3,6 +3,8 @@ haskell-cabal-debian (4.16.1) unstable; urgency=low
   * Support for packaging libraries produced by the GHCJS compiler.
   * Generate debianizations that include libraries for multiple compiler
     flavors (not yet suppored in haskell-devscripts and/or Cabal.)
+  * Put a DEB_DEFAULT_COMPILER assignment in debian/rules if we can
+    infer it from the command line options.
 
  -- David Fox <dsf@seereason.com>  Sat, 16 Aug 2014 07:56:50 -0700
 

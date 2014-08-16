@@ -1,12 +1,11 @@
 -- | Compute the debianization of a cabal package.
-{-# LANGUAGE CPP, OverloadedStrings, ScopedTypeVariables #-}
+{-# LANGUAGE CPP, OverloadedStrings, ScopedTypeVariables, TupleSections #-}
 module Debian.Debianize.BuildDependencies
     ( debianBuildDeps
     , debianBuildDepsIndep
     ) where
 
 import Control.Applicative ((<$>))
-import Control.Monad (when)
 import Control.Monad.State (MonadState(get))
 import Control.Monad.Trans (MonadIO)
 import Data.Char (isSpace, toLower)
@@ -15,7 +14,7 @@ import Data.Lens.Lazy (access, getL)
 import Data.List as List (filter, map, minimumBy, nub)
 import Data.Map as Map (lookup, Map)
 import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing)
-import Data.Set as Set (member, toList, difference, fromList, null)
+import Data.Set as Set (Set, member, toList, fromList, map, fold, union, empty)
 import Data.Version (showVersion, Version)
 import Debian.Debianize.Bundled (builtIn)
 import Debian.Debianize.DebianName (mkPkgName, mkPkgName')
@@ -73,17 +72,23 @@ allBuildDepends buildDepends' buildTools' pkgconfigDepends' extraLibs' =
     where
       fixDeps :: Atoms -> [String] -> Relations
       fixDeps atoms xs =
-          concatMap (\ cab -> fromMaybe [[D.Rel (D.BinPkgName ("lib" ++ map toLower cab ++ "-dev")) Nothing Nothing]]
+          concatMap (\ cab -> fromMaybe [[D.Rel (D.BinPkgName ("lib" ++ List.map toLower cab ++ "-dev")) Nothing Nothing]]
                                         (Map.lookup cab (getL T.extraLibMap atoms))) xs
+
+hcPackageTypes :: CompilerFlavor -> Set B.PackageType
+hcPackageTypes GHC = fromList [B.Development, B.Profiling, B.Documentation]
+hcPackageTypes GHCJS = fromList [B.Development, B.Documentation]
+hcPackageTypes hc = error $ "Unsupported compiler flavor: " ++ show hc
 
 -- The haskell-cdbs package contains the hlibrary.mk file with
 -- the rules for building haskell packages.
 debianBuildDeps :: (MonadIO m, Functor m) => PackageDescription -> DebT m D.Relations
 debianBuildDeps pkgDesc =
     do hcs <- access compilerFlavors
-       let unsupportedHCS = difference hcs $ fromList $ [GHC, GHCJS]
-       when (not (Set.null unsupportedHCS)) (error $ "Unsupported compiler flavor: " ++ show unsupportedHCS)
-       cDeps <- cabalDeps
+       let hcTypePairs =
+               fold union empty $
+                  Set.map (\ hc -> Set.map (hc,) $ hcPackageTypes hc) hcs
+       cDeps <- cabalDeps hcTypePairs
        bDeps <- access T.buildDepends
        prof <- not <$> access T.noProfilingLibrary
        let xs = nub $ [[D.Rel (D.BinPkgName "debhelper") (Just (D.GRE (parseDebianVersion ("7.0" :: String)))) Nothing],
@@ -101,22 +106,25 @@ debianBuildDeps pkgDesc =
                        cDeps
        filterMissing xs
     where
-      cabalDeps =
+      cabalDeps hcTypePairs =
           do deps <- allBuildDepends
                           (Cabal.buildDepends pkgDesc ++ concatMap (Cabal.targetBuildDepends . Cabal.buildInfo) (Cabal.executables pkgDesc))
                           (concatMap buildTools . allBuildInfo $ pkgDesc)
                           (concatMap pkgconfigDepends . allBuildInfo $ pkgDesc)
                           (concatMap extraLibs . allBuildInfo $ pkgDesc)
-             mapM buildDependencies (List.filter (not . selfDependency (Cabal.package pkgDesc)) deps) >>= return . concat
+             mapM (buildDependencies hcTypePairs) (List.filter (not . selfDependency (Cabal.package pkgDesc)) deps) >>= return . concat
 
 debianBuildDepsIndep :: (MonadIO m, Functor m) => PackageDescription -> DebT m D.Relations
 debianBuildDepsIndep pkgDesc =
-    do doc <- get >>= return . not . getL T.noDocumentationLibrary
+    do hcs <- access compilerFlavors
+       doc <- get >>= return . not . getL T.noDocumentationLibrary
        bDeps <- get >>= return . getL T.buildDependsIndep
        cDeps <- cabalDeps
-       let xs = if doc
-                then nub $ [anyrel "ghc-doc"] ++ bDeps ++ concat cDeps
-                else []
+       let xs = nub $ if doc
+                      then (if member GHC hcs then [anyrel "ghc-doc"] else []) ++
+                           (if member GHCJS hcs then [anyrel "ghcjs"] else []) ++
+                           bDeps ++ concat cDeps
+                      else []
        filterMissing xs
     where
       cabalDeps =
@@ -140,21 +148,21 @@ debianBuildDepsIndep pkgDesc =
 -- documentation package for any libraries which are build
 -- dependencies, so we have access to all the cross references.
 docDependencies :: (MonadIO m, Functor m) => Dependency_ -> DebT m D.Relations
-docDependencies (BuildDepends (Dependency name ranges)) = dependencies B.Documentation name ranges
+docDependencies (BuildDepends (Dependency name ranges)) =
+    do hcs <- access compilerFlavors
+       concat <$> mapM (\ hc -> dependencies hc B.Documentation name ranges) (toList hcs)
 docDependencies _ = return []
 
 -- | The Debian build dependencies for a package include the profiling
 -- libraries and the documentation packages, used for creating cross
 -- references.  Also the packages associated with extra libraries.
-buildDependencies :: (MonadIO m, Functor m) => Dependency_ -> DebT m D.Relations
-buildDependencies (BuildDepends (Dependency name ranges)) =
-    do dev <- dependencies B.Development name ranges
-       prof <- dependencies B.Profiling name ranges
-       return $ dev ++ prof
-buildDependencies dep@(ExtraLibs _) =
-    do mp <- get >>= return . getL T.execMap
+buildDependencies :: (MonadIO m, Functor m) => Set (CompilerFlavor, B.PackageType) -> Dependency_ -> DebT m D.Relations
+buildDependencies hcTypePairs (BuildDepends (Dependency name ranges)) =
+    concat <$> mapM (\ (hc, typ) -> dependencies hc typ name ranges) (toList hcTypePairs)
+buildDependencies _ dep@(ExtraLibs _) =
+    do mp <- access T.execMap
        return $ concat $ adapt mp dep
-buildDependencies dep =
+buildDependencies _ dep =
     case unboxDependency dep of
       Just (Dependency _name _ranges) ->
           do mp <- get >>= return . getL T.execMap
@@ -199,13 +207,8 @@ anyrel' x = [D.Rel x Nothing Nothing]
 -- | Turn a cabal dependency into debian dependencies.  The result
 -- needs to correspond to a single debian package to be installed,
 -- so we will return just an OrRelation.
-dependencies :: (MonadIO m, Functor m) => B.PackageType -> PackageName -> VersionRange -> DebT m Relations
-dependencies typ name cabalRange =
-    do hcs <- access compilerFlavors
-       concat <$> mapM (dependencies' typ name cabalRange) (toList hcs)
-
-dependencies' :: MonadIO m => B.PackageType -> PackageName -> VersionRange -> CompilerFlavor -> DebT m Relations
-dependencies' typ name cabalRange hc =
+dependencies :: MonadIO m => CompilerFlavor -> B.PackageType -> PackageName -> VersionRange -> DebT m Relations
+dependencies hc typ name cabalRange =
     do atoms <- get
        -- Compute a list of alternative debian dependencies for
        -- satisfying a cabal dependency.  The only caveat is that
@@ -281,7 +284,7 @@ doBundled typ name hc rels =
     where
       -- If a library is built into the compiler, this is the debian
       -- package name the compiler will conflict with.
-      comp = D.Rel (compilerPackageName typ) Nothing Nothing
+      comp = D.Rel (compilerPackageName hc typ) Nothing Nothing
       doRel :: MonadIO m => D.Relation -> DebT m [D.Relation]
       doRel rel@(D.Rel dname req _) = do
         -- gver <- access ghcVersion
@@ -305,10 +308,15 @@ doBundled typ name hc rels =
                  -- compiler doesn't conflict with the package's
                  -- debian name.
                  (if isNothing pver || dname /= naiveDebianName || not (conflictsWithHC naiveDebianName) then [rel] else [])
-      compilerPackageName B.Documentation = D.BinPkgName "ghc-doc"
-      compilerPackageName B.Profiling = D.BinPkgName "ghc-prof"
-      compilerPackageName B.Development = D.BinPkgName "ghc"
-      compilerPackageName _ = D.BinPkgName "ghc" -- whatevs
+      compilerPackageName GHC B.Documentation = D.BinPkgName "ghc-doc"
+      compilerPackageName GHC B.Profiling = D.BinPkgName "ghc-prof"
+      compilerPackageName GHC B.Development = D.BinPkgName "ghc"
+      compilerPackageName GHC _ = D.BinPkgName "ghc" -- whatevs
+      compilerPackageName GHCJS B.Documentation = D.BinPkgName "ghcjs"
+      compilerPackageName GHCJS B.Profiling = error "Profiling not supported for GHCJS"
+      compilerPackageName GHCJS B.Development = D.BinPkgName "ghcjs"
+      compilerPackageName GHCJS _ = D.BinPkgName "ghcjs" -- whatevs
+      compilerPackageName x _ = error $ "Unsupported compiler flavor: " ++ show x
 
       -- FIXME: we are assuming here that ghc conflicts with all the
       -- library packages it provides but it no longer conflicts with

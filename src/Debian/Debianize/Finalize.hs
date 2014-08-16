@@ -342,7 +342,7 @@ makeUtilsPackage pkgDesc hc =
        -- If any files belong in the utils packages, make sure they exist
        when (not (Set.null utilsData && Set.null utilsExec)) $ do
          -- This is really for all binary debs except the libraries - I'm not sure why
-         T.rulesFragments += (pack ("build" </> show (pretty b) ++ ":: build-$(HC)-stamp"))
+         T.rulesFragments += (pack ("build" </> show (pretty b) ++ ":: build-ghc-stamp"))
          T.binaryArchitectures b ~?= Just (if Set.null utilsExec then All else Any)
          T.binarySection b ~?= Just (MainSection "misc")
          binaryPackageRelations b B.Utilities

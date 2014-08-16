@@ -336,7 +336,7 @@ backupAtoms b name =
 -- FIXME - use Atoms
 execAtoms :: BinPkgName -> T.InstallFile -> Atoms -> Atoms
 execAtoms b ifile r =
-    modL T.rulesFragments (Set.insert (pack ("build" </> show (pretty b) ++ ":: build-$(HC)-stamp"))) .
+    modL T.rulesFragments (Set.insert (pack ("build" </> show (pretty b) ++ ":: build-ghc-stamp"))) .
     fileAtoms b ifile $
     r
 

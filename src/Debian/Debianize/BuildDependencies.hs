@@ -75,11 +75,6 @@ allBuildDepends buildDepends' buildTools' pkgconfigDepends' extraLibs' =
           concatMap (\ cab -> fromMaybe [[D.Rel (D.BinPkgName ("lib" ++ List.map toLower cab ++ "-dev")) Nothing Nothing]]
                                         (Map.lookup cab (getL T.extraLibMap atoms))) xs
 
-hcPackageTypes :: CompilerFlavor -> Set B.PackageType
-hcPackageTypes GHC = fromList [B.Development, B.Profiling, B.Documentation]
-hcPackageTypes GHCJS = fromList [B.Development, B.Documentation]
-hcPackageTypes hc = error $ "Unsupported compiler flavor: " ++ show hc
-
 -- The haskell-cdbs package contains the hlibrary.mk file with
 -- the rules for building haskell packages.
 debianBuildDeps :: (MonadIO m, Functor m) => PackageDescription -> DebT m D.Relations
@@ -113,6 +108,11 @@ debianBuildDeps pkgDesc =
                           (concatMap pkgconfigDepends . allBuildInfo $ pkgDesc)
                           (concatMap extraLibs . allBuildInfo $ pkgDesc)
              mapM (buildDependencies hcTypePairs) (List.filter (not . selfDependency (Cabal.package pkgDesc)) deps) >>= return . concat
+      hcPackageTypes :: CompilerFlavor -> Set B.PackageType
+      hcPackageTypes GHC = fromList [B.Development, B.Profiling]
+      hcPackageTypes GHCJS = fromList [B.Development]
+      hcPackageTypes hc = error $ "Unsupported compiler flavor: " ++ show hc
+
 
 debianBuildDepsIndep :: (MonadIO m, Functor m) => PackageDescription -> DebT m D.Relations
 debianBuildDepsIndep pkgDesc =

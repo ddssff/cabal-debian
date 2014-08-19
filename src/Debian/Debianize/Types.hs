@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE CPP, DeriveDataTypeable #-}
 module Debian.Debianize.Types
     (
     -- * Modes of operation
@@ -89,10 +89,10 @@ module Debian.Debianize.Types
     , installTo
     , installData
     , file
-    , installDir
-    , logrotateStanza
     , installCabalExec
     , installCabalExecTo
+    , installDir
+    , logrotateStanza
 
     -- * Unknown, obsolete, internal
     , flags

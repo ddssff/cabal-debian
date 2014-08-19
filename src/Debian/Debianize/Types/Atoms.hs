@@ -2,6 +2,7 @@
 -- record, the record that holds the input data from which the
 -- debianization is to be constructed.
 {-# LANGUAGE CPP, DeriveDataTypeable #-}
+{-# OPTIONS_GHC -Wall #-}
 module Debian.Debianize.Types.Atoms
 {-    ( Atoms
     , showAtoms
@@ -16,12 +17,13 @@ module Debian.Debianize.Types.Atoms
 
 import Control.Applicative ((<$>))
 import Control.Category ((.))
+import Control.Monad.State (StateT)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Generics (Data, Typeable)
-import Data.Lens.Lazy (Lens, lens)
+import Data.Lens.Lazy (Lens, lens, (%=))
 import Data.Map as Map (Map)
 import Data.Monoid (Monoid(..))
-import Data.Set as Set (Set, singleton)
+import Data.Set as Set (Set, singleton, insert)
 import Data.Text (Text)
 import Debian.Changes (ChangeLog)
 import qualified Debian.Debianize.Types.SourceDebDescription as S
@@ -39,6 +41,14 @@ import System.Console.GetOpt (getOpt, ArgOrder(Permute), OptDescr(Option), ArgDe
 import System.Environment (getArgs)
 import System.FilePath ((</>))
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr)
+
+-- This enormous record is a mistake - instead it should be an Atom
+-- type with lots of constructors, and the Atoms type is a set of
+-- these.  Then we can cruise through the atom set converting the
+-- elements into other simpler elements until they elements are all
+-- simple enough to convert directly into a debianization.  At the
+-- moment I really need this for the Install atoms, so I will try to
+-- convert just that portion of the type to this new scheme.
 
 -- | Bits and pieces of information about the mapping from cabal package
 -- names and versions to debian package names and versions.  In essence,
@@ -158,8 +168,6 @@ data Atoms
       -- ^ Have Apache configure a site using PACKAGE, DOMAIN, LOGDIR, and APACHECONFIGFILE
       , logrotateStanza_ :: Map BinPkgName (Set Text)
       -- ^ Add a stanza of a logrotate file to the binary package
-      , link_ :: Map BinPkgName (Set (FilePath, FilePath))
-      -- ^ Create a symbolic link in the binary package
       , postInst_ :: Map BinPkgName Text
       -- ^ Script to run after install, should contain #DEBHELPER# line before exit 0
       , postRm_ :: Map BinPkgName Text
@@ -180,6 +188,9 @@ data Atoms
       -- ^ Set the Section field of the source package
       , binarySections_ :: Map BinPkgName Section
       -- ^ Set the Section field of a binary package
+#if 0
+      , link_ :: Map BinPkgName (Set (FilePath, FilePath))
+      -- ^ Create a symbolic link in the binary package
       , install_ :: Map BinPkgName (Set (FilePath, FilePath))
       -- ^ Install a build file into the binary package
       , installTo_ :: Map BinPkgName (Set (FilePath, FilePath))
@@ -194,6 +205,9 @@ data Atoms
       -- ^ Install a cabal executable into the binary package at an exact location
       , installDir_ :: Map BinPkgName (Set FilePath)
       -- ^ Create a directory in the binary package
+#else
+      , atomSet_ :: Set Atom
+#endif
       , installInit_ :: Map BinPkgName Text
       -- ^ Add an init.d file to the binary package
       , executable_ :: Map BinPkgName InstallFile
@@ -212,6 +226,27 @@ data Atoms
       , compilerFlavors_ :: Set CompilerFlavor
       -- ^ Which compilers should we generate library packages for?
       } deriving (Eq, Show, Data, Typeable)
+
+data Atom
+    = Link BinPkgName FilePath FilePath
+      -- ^ Create a symbolic link in the binary package
+    | Install BinPkgName FilePath FilePath
+      -- ^ Install a build file into the binary package
+    | InstallTo BinPkgName FilePath FilePath
+      -- ^ Install a build file into the binary package at an exact location
+    | InstallData BinPkgName FilePath FilePath
+      -- ^ DHInstallTo somewhere relative to DataDir (see above)
+    | File BinPkgName FilePath Text
+      -- ^ Create a file with the given text at the given path
+    | InstallCabalExec BinPkgName String FilePath
+      -- ^ Install a cabal executable into the binary package
+    | InstallCabalExecTo BinPkgName String FilePath
+      -- ^ Install a cabal executable into the binary package at an exact location
+    | InstallDir BinPkgName FilePath
+      -- ^ Create a directory in the binary package
+    deriving (Show, Eq, Ord, Data, Typeable)
+
+type Atoms' = Set Atom
 
 data EnvSet = EnvSet
     { cleanOS :: FilePath  -- ^ The output of the debootstrap command
@@ -267,7 +302,6 @@ makeAtoms envset =
       , licenseFile_ = mempty
       , apacheSite_ = mempty
       , logrotateStanza_ = mempty
-      , link_ = mempty
       , postInst_ = mempty
       , postRm_ = mempty
       , preInst_ = mempty
@@ -278,6 +312,8 @@ makeAtoms envset =
       , binaryPriorities_ = mempty
       , sourceSection_ = Nothing
       , binarySections_ = mempty
+#if 0
+      , link_ = mempty
       , install_ = mempty
       , installTo_ = mempty
       , installData_ = mempty
@@ -285,6 +321,9 @@ makeAtoms envset =
       , installCabalExec_ = mempty
       , installCabalExecTo_ = mempty
       , installDir_ = mempty
+#else
+      , atomSet_ = mempty
+#endif
       , installInit_ = mempty
       , executable_ = mempty
       , serverInfo_ = mempty
@@ -589,6 +628,7 @@ control = lens control_ (\ a b -> b {control_ = a})
 logrotateStanza :: Lens Atoms (Map BinPkgName (Set Text))
 logrotateStanza = lens logrotateStanza_ (\ a b -> b {logrotateStanza_ = a})
 
+#if 0
 -- | Add entries to a binary deb's debian/foo.links file.
 link :: Lens Atoms (Map BinPkgName (Set (FilePath, FilePath)))
 link = lens link_ (\ a b -> b {link_ = a})
@@ -628,6 +668,29 @@ installCabalExecTo = lens installCabalExecTo_ (\ a b -> b {installCabalExecTo_ =
 -- FIXME: change signature to BinPkgName -> Lens Atoms (Set FilePath)
 installDir :: Lens Atoms (Map BinPkgName (Set FilePath))
 installDir = lens installDir_ (\ a b -> b {installDir_ = a})
+#else
+-- | Access the set of new style atoms.
+atomSet :: Lens Atoms (Set Atom)
+atomSet = lens atomSet_ (\ a b -> b {atomSet_ = a})
+
+-- We need (%=_)
+link :: Monad m => BinPkgName -> FilePath -> FilePath -> StateT Atoms m ()
+link b from dest = atomSet %= (Set.insert $ Link b from dest) >> return ()
+install :: Monad m => BinPkgName -> FilePath -> FilePath -> StateT Atoms m ()
+install b from dest = atomSet %= (Set.insert $ Install b from dest) >> return ()
+installTo :: Monad m => BinPkgName -> FilePath -> FilePath -> StateT Atoms m ()
+installTo b from dest = atomSet %= (Set.insert $ InstallTo b from dest) >> return ()
+installData :: Monad m => BinPkgName -> FilePath -> FilePath -> StateT Atoms m ()
+installData b from dest = atomSet %= (Set.insert $ InstallData b from dest) >> return ()
+file :: Monad m => BinPkgName -> FilePath -> Text -> StateT Atoms m ()
+file b dest content = atomSet %= (Set.insert $ File b dest content) >> return ()
+installCabalExec :: Monad m => BinPkgName -> String -> FilePath -> StateT Atoms m ()
+installCabalExec b name dest = atomSet %= (Set.insert $ InstallCabalExec b name dest) >> return ()
+installCabalExecTo :: Monad m => BinPkgName -> String -> FilePath -> StateT Atoms m ()
+installCabalExecTo b name dest = atomSet %= (Set.insert $ InstallCabalExecTo b name dest) >> return ()
+installDir :: Monad m => BinPkgName -> FilePath -> StateT Atoms m ()
+installDir b dir = atomSet %= (Set.insert $ InstallDir b dir) >> return ()
+#endif
 
 -- | Create an /etc/init.d file in the package
 -- FIXME: change signature to BinPkgName -> Lens Atoms Text

@@ -256,7 +256,7 @@ inputAtoms debian name =
 readLink :: Monad m => BinPkgName -> Text -> DebT m ()
 readLink p line =
     case words line of
-      [a, b] -> link +++= (p, singleton (unpack a, unpack b))
+      [a, b] -> link p (unpack a) (unpack b)
       [] -> return ()
       _ -> trace ("Unexpected value passed to readLink: " ++ show line) (return ())
 
@@ -265,11 +265,11 @@ readInstall :: Monad m => BinPkgName -> Text -> DebT m ()
 readInstall p line =
     case break isSpace line of
       (_, b) | null b -> error $ "readInstall: syntax error in .install file for " ++ show p ++ ": " ++ show line
-      (a, b) -> install +++= (p, singleton (unpack (strip a), unpack (strip b)))
+      (a, b) -> install p (unpack (strip a)) (unpack (strip b))
 
 -- | Read a line from a debian .dirs file
 readDir :: Monad m => BinPkgName -> Text -> DebT m ()
-readDir p line = installDir +++= (p, singleton (unpack line))
+readDir p line = installDir p (unpack line)
 
 inputCabalization :: (MonadIO m, Functor m) => DebT m ()
 inputCabalization =

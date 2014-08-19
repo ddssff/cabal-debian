@@ -9,11 +9,11 @@ import Control.Applicative ((<$>))
 import Control.Monad.Trans (lift)
 import Control.Monad.Writer (WriterT, execWriterT, tell)
 import Data.Lens.Lazy (access, getL)
-import Data.List as List (map, unlines)
-import Data.Map as Map (Map, toList, fromListWithKey, mapKeys)
+import Data.List as List (map)
+import Data.Map as Map (Map, toList, fromListWithKey, mapKeys, insertWith)
 import Data.Maybe
 import Data.Monoid ((<>), mempty)
-import Data.Set as Set (toList, member)
+import Data.Set as Set (toList, member, fold)
 import Data.Text as Text (Text, pack, unpack, lines, unlines, strip, null)
 import Debian.Control (Control'(Control, unControl), Paragraph'(Paragraph), Field'(Field))
 import Debian.Debianize.Goodies (makeRulesHead)
@@ -72,14 +72,23 @@ intermediates = Set.toList <$> (lift $ access T.intermediateFiles)
 
 installs :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
 installs =
-    (map (\ (path, pairs) -> (path, pack (List.unlines (map (\ (src, dst) -> src <> " " <> dst) (Set.toList pairs))))) . Map.toList . mapKeys pathf) <$> (lift $ access T.install)
+    (Map.toList . Set.fold doAtom mempty) <$> (lift $ access T.atomSet)
     where
+      doAtom (T.Install b from dest) mp = Map.insertWith (\ text line -> text <> line <> "\n") (pathf b) (pack (from <> " " <> dest)) mp
+      doAtom _ mp = mp
       pathf name = "debian" </> show (pretty name) ++ ".install"
+{-
+    (map (\ (path, pairs) -> (path, pack (List.unlines (map (\ (src, dst) -> src <> " " <> dst) (Set.toList pairs))))) . Map.toList . mapKeys pathf) <$> (lift $ access T.atomSet)
+-}
 
 dirs :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
 dirs =
-    (map (\ (path, dirs') -> (path, pack (List.unlines (Set.toList dirs')))) . Map.toList . mapKeys pathf) <$> (lift $ access T.installDir)
+    (Map.toList . Set.fold doAtom mempty) <$> (lift $ access T.atomSet)
     where
+      doAtom (T.InstallDir b dir) mp = Map.insertWith (\ text line -> text <> line <> "\n") (pathf b) (pack dir) mp
+      doAtom _ mp = mp
+    -- (map (\ (path, dirs') -> (path, pack (List.unlines (Set.toList dirs')))) . Map.toList . mapKeys pathf) <$> (lift $ access T.installDir)
+    -- where
       pathf name = "debian" </> show (pretty name) ++ ".dirs"
 
 init :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
@@ -98,8 +107,12 @@ logrotate =
 -- | Assemble all the links by package and output one file each
 links :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
 links =
-    (map (\ (path, pairs) -> (path, pack (List.unlines (map (\ (loc, txt) -> loc ++ " " ++ txt) (Set.toList pairs))))) . Map.toList . mapKeys pathf) <$> (lift $ access T.link)
+    (Map.toList . Set.fold doAtom mempty) <$> (lift $ access T.atomSet)
     where
+      doAtom (T.Link b loc text) mp = Map.insertWith (\ text line -> text <> line <> "\n") (pathf b) (pack loc <> " " <> pack text) mp
+      doAtom _ mp = mp
+    -- (map (\ (path, pairs) -> (path, pack (List.unlines (map (\ (loc, txt) -> loc ++ " " ++ txt) (Set.toList pairs))))) . Map.toList . mapKeys pathf) <$> (lift $ access T.link)
+    -- where
       pathf name = "debian" </> show (pretty name) ++ ".links"
 
 postinstFiles :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]

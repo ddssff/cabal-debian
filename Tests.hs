@@ -618,7 +618,7 @@ test9 label =
     where
       customize =
           do newDebianization' (Just 7) (Just (StandardsVersion 3 9 3 Nothing))
-             mapM_ (\ name -> T.installData +++= (BinPkgName "alex", singleton (name, name)))
+             mapM_ (\ name -> T.installData (BinPkgName "alex") name name)
                    [ "AlexTemplate"
                    , "AlexTemplate-debug"
                    , "AlexTemplate-ghc"
@@ -663,7 +663,7 @@ test10 label =
              T.depends (BinPkgName "seereason-darcs-backups") %= (++ [[Rel (BinPkgName "anacron") Nothing Nothing]])
              T.sourceSection ~= Just (MainSection "haskell")
              T.utilsPackageNameBase ~= Just "seereason-darcs-backups"
-             T.installCabalExec +++= (BinPkgName "seereason-darcs-backups", singleton ("seereason-darcs-backups", "/etc/cron.hourly"))
+             T.installCabalExec (BinPkgName "seereason-darcs-backups") "seereason-darcs-backups" "/etc/cron.hourly"
 
 copyChangelogDate :: Monad m => String -> DebT m ()
 copyChangelogDate date =

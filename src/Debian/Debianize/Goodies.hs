@@ -1,6 +1,7 @@
 -- | Things that seem like they could be clients of this library, but
 -- are instead included as part of the library.
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 module Debian.Debianize.Goodies
     ( tightDependencyFixup
     , doServer
@@ -174,10 +175,10 @@ watchAtom (PackageName pkgname) =
 siteAtoms :: BinPkgName -> T.Site -> Atoms -> Atoms
 siteAtoms b site =
     execDebM
-      (do T.installDir +++= (b, singleton "/etc/apache2/sites-available")
-          T.link +++= (b, singleton ("/etc/apache2/sites-available/" ++ T.domain site, "/etc/apache2/sites-enabled/" ++ T.domain site))
-          T.file +++= (b, singleton ("/etc/apache2/sites-available" </> T.domain site, apacheConfig))
-          T.installDir +++= (b, singleton (apacheLogDirectory b))
+      (do T.installDir b "/etc/apache2/sites-available"
+          T.link b ("/etc/apache2/sites-available/" ++ T.domain site) ("/etc/apache2/sites-enabled/" ++ T.domain site)
+          T.file b ("/etc/apache2/sites-available" </> T.domain site) apacheConfig
+          T.installDir b (apacheLogDirectory b)
           T.logrotateStanza +++= (b, singleton
                                    (Text.unlines $ [ pack (apacheAccessLog b) <> " {"
                                                    , "  copytruncate" -- hslogger doesn't notice when the log is rotated, maybe this will help
@@ -349,10 +350,10 @@ fileAtoms b installFile' r =
 fileAtoms' :: BinPkgName -> Maybe FilePath -> String -> Maybe FilePath -> String -> Atoms -> Atoms
 fileAtoms' b sourceDir' execName' destDir' destName' r =
     case (sourceDir', execName' == destName') of
-      (Nothing, True) -> modL T.installCabalExec (insertWith Set.union b (singleton (execName', d))) r
-      (Just s, True) -> modL T.install (insertWith Set.union b (singleton (s </> execName', d))) r
-      (Nothing, False) -> modL T.installCabalExecTo (insertWith Set.union b (singleton (execName', (d </> destName')))) r
-      (Just s, False) -> modL T.installTo (insertWith Set.union b (singleton (s </> execName', d </> destName'))) r
+      (Nothing, True) -> execDebM (T.installCabalExec b execName' d) r
+      (Just s, True) -> execDebM (T.install b (s </> execName') d) r
+      (Nothing, False) -> execDebM (T.installCabalExecTo b execName' (d </> destName')) r
+      (Just s, False) -> execDebM (T.installTo b (s </> execName') (d </> destName')) r
     where
       d = fromMaybe "usr/bin" destDir'
 

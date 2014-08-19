@@ -15,10 +15,10 @@ import Data.Char (toLower)
 import Data.Digest.Pure.MD5 (md5)
 import Data.Lens.Lazy (access, getL)
 import Data.List as List (intercalate, map, nub, unlines)
-import Data.Map as Map (delete, elems, lookup, map, Map, toList, unionsWith)
+import Data.Map as Map (delete, elems, lookup, Map, toList, insertWith)
 import Data.Maybe (fromMaybe, isJust)
-import Data.Monoid ((<>))
-import Data.Set as Set (difference, filter, fromList, map, null, Set, singleton, toList, union, unions)
+import Data.Monoid ((<>), mempty)
+import Data.Set as Set (difference, filter, fromList, map, null, Set, singleton, toList, union, unions, fold)
 import Data.Set.Extra as Set (mapM_)
 import Data.Text as Text (pack, unlines, unpack)
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(..))
@@ -29,9 +29,9 @@ import Debian.Debianize.Goodies (backupAtoms, describe, execAtoms, serverAtoms, 
 import Debian.Debianize.Input (dataDir, inputCabalization, inputChangeLog, inputMaintainer)
 import Debian.Debianize.Monad as Monad (DebT)
 import Debian.Debianize.Options (compileCommandlineArgs, compileEnvironmentArgs)
-import Debian.Debianize.Prelude ((%=), (+++=), (+=), foldEmpty, fromEmpty, fromSingleton, (~=), (~?=))
-import qualified Debian.Debianize.Types as T (apacheSite, backups, binaryArchitectures, binaryPackages, binarySection, breaks, buildDepends, buildDependsIndep, buildDir, builtUsing, changelog, comments, compat, conflicts, debianDescription, debVersion, depends, epochMap, executable, extraDevDeps, extraLibMap, file, install, installCabalExec, installCabalExecTo, installData, installDir, installTo, intermediateFiles, license, link, maintainer, noDocumentationLibrary, noProfilingLibrary, noHoogle, packageDescription, packageType, preDepends, provides, recommends, replaces, revision, rulesFragments, serverInfo, source, sourcePackageName, sourcePriority, sourceSection, suggests, utilsPackageNameBase, verbosity, watch, website)
-import qualified Debian.Debianize.Types.Atoms as A (InstallFile(execName, sourceDir), showAtoms, compilerFlavors)
+import Debian.Debianize.Prelude ((%=), (+=), foldEmpty, fromEmpty, fromSingleton, (~=), (~?=))
+import qualified Debian.Debianize.Types as T (apacheSite, backups, binaryArchitectures, binaryPackages, binarySection, breaks, buildDepends, buildDependsIndep, buildDir, builtUsing, changelog, comments, compat, conflicts, debianDescription, debVersion, depends, epochMap, executable, extraDevDeps, extraLibMap, file, install, installCabalExec, installData, installDir, installTo, intermediateFiles, license, link, maintainer, noDocumentationLibrary, noProfilingLibrary, noHoogle, packageDescription, packageType, preDepends, provides, recommends, replaces, revision, rulesFragments, serverInfo, source, sourcePackageName, sourcePriority, sourceSection, suggests, utilsPackageNameBase, verbosity, watch, website)
+import qualified Debian.Debianize.Types.Atoms as A (InstallFile(execName, sourceDir), showAtoms, compilerFlavors, Atom(..), atomSet)
 import qualified Debian.Debianize.Types.BinaryDebDescription as B (BinaryDebDescription, package, PackageType(Development, Documentation, Exec, Profiling, Source, HaskellSource, Utilities), PackageType)
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
 import Debian.Orphans ()
@@ -267,8 +267,8 @@ librarySpecs pkgDesc hc =
        when (dev && prof && hc == GHC) (librarySpec Any B.Profiling hc)
        when (dev && doc && hoogle)
             (do docSpecsParagraph hc
-                T.link +++= (debName, singleton ("/usr/share/doc" </> show (pretty debName) </> "html" </> cabal <.> "txt",
-                                                 "/usr/lib/ghc-doc/hoogle" </> List.map toLower cabal <.> "txt")))
+                T.link debName ("/usr/share/doc" </> show (pretty debName) </> "html" </> cabal <.> "txt")
+                               ("/usr/lib/ghc-doc/hoogle" </> List.map toLower cabal <.> "txt"))
     where
       PackageName cabal = pkgName (Cabal.package pkgDesc)
 
@@ -303,13 +303,17 @@ makeUtilsPackage :: forall m. (Monad m, Functor m) => PackageDescription -> Comp
 makeUtilsPackage pkgDesc hc =
     do -- Files the cabal package expects to be installed
        -- Files that are already assigned to any binary deb
-       installedDataMap <- Map.unionsWith Set.union
-                           <$> (sequence [(Map.map (Set.map fst) <$> access T.install),
-                                          (Map.map (Set.map fst) <$> access T.installTo),
-                                          (Map.map (Set.map fst) <$> access T.installData)]) :: DebT m (Map BinPkgName (Set FilePath))
-       installedExecMap <- Map.unionsWith Set.union
-                           <$> (sequence [(Map.map (Set.map fst) <$> access T.installCabalExec),
-                                          (Map.map (Set.map fst) <$> access T.installCabalExecTo)]) :: DebT m (Map BinPkgName (Set String))
+       installedDataMap <- Set.fold (\ x r ->
+                                         case x of
+                                           A.Install b from _ -> Map.insertWith Set.union b (singleton from) r
+                                           A.InstallTo b from _ -> Map.insertWith Set.union b (singleton from) r
+                                           A.InstallData b from _ -> Map.insertWith Set.union b (singleton from) r
+                                           _ -> r) mempty <$> access A.atomSet :: DebT m (Map BinPkgName (Set FilePath))
+       installedExecMap <- Set.fold (\ x r ->
+                                         case x of
+                                           A.InstallCabalExec b name _ -> Map.insertWith Set.union b (singleton name) r
+                                           A.InstallCabalExecTo b name _ -> Map.insertWith Set.union b (singleton name) r
+                                           _ -> r) mempty <$> access A.atomSet :: DebT m (Map BinPkgName (Set String))
 
        -- The names of cabal executables that go into eponymous debs
        insExecPkg <- access T.executable >>= return . Set.map ename . Set.fromList . elems
@@ -347,8 +351,8 @@ makeUtilsPackage pkgDesc hc =
          T.binarySection b ~?= Just (MainSection "misc")
          binaryPackageRelations b B.Utilities
        -- Add the unassigned files to the utils packages
-       Set.mapM_ (\ pair -> T.installData +++= (b, singleton pair)) utilsDataMissing
-       Set.mapM_ (\ name -> T.installCabalExec +++= (b, singleton (name, "usr/bin"))) utilsExecMissing
+       Set.mapM_ (uncurry (T.installData b)) utilsDataMissing
+       Set.mapM_ (\ name -> T.installCabalExec b name "usr/bin") utilsExecMissing
     where
       ename i =
           case A.sourceDir i of
@@ -376,46 +380,63 @@ expandAtoms =
              List.mapM_ expandApacheSite (Map.toList mp)
           where
             expandApacheSite (b, (dom, log, text)) =
-                do T.link +++= (b, singleton ("/etc/apache2/sites-available/" ++ dom, "/etc/apache2/sites-enabled/" ++ dom))
-                   T.installDir +++= (b, singleton log)
-                   T.file +++= (b, singleton ("/etc/apache2/sites-available" </> dom, text))
+                do T.link b ("/etc/apache2/sites-available/" ++ dom) ("/etc/apache2/sites-enabled/" ++ dom)
+                   T.installDir b log
+                   T.file b ("/etc/apache2/sites-available" </> dom) text
 
+      -- Turn A.InstallCabalExec into A.Install
       expandInstallCabalExecs :: Monad m => FilePath -> DebT m ()
       expandInstallCabalExecs builddir =
-          do mp <- get >>= return . getL T.installCabalExec
-             List.mapM_ (\ (b, pairs) -> Set.mapM_ (\ (name, dst) -> T.install +++= (b, singleton (builddir </> name </> name, dst))) pairs) (Map.toList mp)
+          access A.atomSet >>= List.mapM_ doAtom . Set.toList
+          where
+            doAtom (A.InstallCabalExec b name dest) = T.install b (builddir </> name </> name) dest
+            doAtom _ = return ()
 
+      -- Turn A.InstallCabalExecTo into a make rule
       expandInstallCabalExecTo :: Monad m => FilePath -> DebT m ()
       expandInstallCabalExecTo builddir =
-          do mp <- get >>= return . getL T.installCabalExecTo
-             List.mapM_ (\ (b, pairs) -> Set.mapM_ (\ (n, d) -> T.rulesFragments += (Text.unlines
-                                                                                     [ pack ("binary-fixup" </> show (pretty b)) <> "::"
-                                                                                     , "\tinstall -Dps " <> pack (builddir </> n </> n) <> " " <> pack ("debian" </> show (pretty b) </> makeRelative "/" d) ])) pairs) (Map.toList mp)
+          access A.atomSet >>= List.mapM_ doAtom . Set.toList
+          where
+            doAtom (A.InstallCabalExecTo b name dest) =
+                T.rulesFragments += (Text.unlines
+                                       [ pack ("binary-fixup" </> show (pretty b)) <> "::"
+                                       , "\tinstall -Dps " <> pack (builddir </> name </> name) <> " "
+                                                           <> pack ("debian" </> show (pretty b) </> makeRelative "/" dest) ])
+            doAtom _ = return ()
 
+      -- Turn A.InstallData into either an Install or an InstallTo
       expandInstallData :: Monad m => FilePath -> DebT m ()
       expandInstallData dDir =
-          do mp <- get >>= return . getL T.installData
-             List.mapM_ (\ (b, pairs) -> Set.mapM_ (\ (s, d) ->
-                                                        if takeFileName s == takeFileName d
-                                                        then T.install +++= (b, singleton (s, (dDir </> makeRelative "/" (takeDirectory d))))
-                                                        else T.installTo +++= (b, singleton (s, (dDir </> makeRelative "/" d)))) pairs) (Map.toList mp)
+          access A.atomSet >>= List.mapM_ doAtom . Set.toList
+          where
+            doAtom (A.InstallData b from dest) =
+                if takeFileName from == takeFileName dest
+                then T.install b from (dDir </> makeRelative "/" (takeDirectory dest))
+                else T.installTo b from (dDir </> makeRelative "/" dest)
+            doAtom _ = return ()
 
+      -- Turn A.InstallTo into a make rule
       expandInstallTo :: Monad m => DebT m ()
       expandInstallTo =
-          do mp <- get >>= return . getL T.installTo
-             List.mapM_ (\ (p, pairs) -> Set.mapM_ (\ (s, d) -> T.rulesFragments += (Text.unlines
-                                                                                     [ pack ("binary-fixup" </> show (pretty p)) <> "::"
-                                                                                     , "\tinstall -Dp " <> pack s <> " " <> pack ("debian" </> show (pretty p) </> makeRelative "/" d) ])) pairs) (Map.toList mp)
+          access A.atomSet >>= List.mapM_ doAtom . Set.toList
+          where
+            doAtom (A.InstallTo b from dest) =
+                T.rulesFragments += (Text.unlines [ pack ("binary-fixup" </> show (pretty b)) <> "::"
+                                                  , "\tinstall -Dp " <> pack from <> " " <> pack ("debian" </> show (pretty b) </> makeRelative "/" dest) ])
+            doAtom _ = return ()
 
+      -- Turn A.File into an intermediateFile and an A.Install
       expandFile :: Monad m => DebT m ()
       expandFile =
-          do mp <- get >>= return . getL T.file
-             List.mapM_ (\ (p, pairs) -> Set.mapM_ (\ (path, s) ->
-                                                        do let (destDir', destName') = splitFileName path
-                                                               tmpDir = "debian/cabalInstall" </> show (md5 (fromString (unpack s)))
-                                                               tmpPath = tmpDir </> destName'
-                                                           T.intermediateFiles += (tmpPath, s)
-                                                           T.install +++= (p, singleton (tmpPath, destDir'))) pairs) (Map.toList mp)
+          access A.atomSet >>= List.mapM_ doAtom . Set.toList
+          where
+            doAtom (A.File b path text) =
+                do let (destDir', destName') = splitFileName path
+                       tmpDir = "debian/cabalInstall" </> show (md5 (fromString (unpack text)))
+                       tmpPath = tmpDir </> destName'
+                   T.intermediateFiles += (tmpPath, text)
+                   T.install b tmpPath destDir'
+            doAtom _ = return ()
 
       expandWebsite :: Monad m => DebT m ()
       expandWebsite =

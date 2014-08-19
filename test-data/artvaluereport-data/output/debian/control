@@ -6,8 +6,8 @@ Build-Depends: debhelper (>= 7.0)
                , haskell-devscripts (>= 0.8)
                , cdbs
                , ghc
-               , haskell-hsx-utils
                , ghc-prof
+               , haskell-hsx-utils
                , libghc-extra-dev
                , libghc-extra-prof
                , libghc-hunit-dev
@@ -90,8 +90,6 @@ Build-Depends: debhelper (>= 7.0)
                , libghc-text-prof
                , libghc-utf8-string-dev
                , libghc-utf8-string-prof
-               , libghc-xhtml-dev
-               , libghc-xhtml-prof
 Build-Depends-Indep: ghc-doc
                      , libghc-extra-doc
                      , libghc-hunit-doc
@@ -134,7 +132,6 @@ Build-Depends-Indep: ghc-doc
                      , libghc-syb-with-class-doc
                      , libghc-text-doc
                      , libghc-utf8-string-doc
-                     , libghc-xhtml-doc
 Standards-Version: 3.9.3
 Homepage: http://artvaluereportonline.com
 

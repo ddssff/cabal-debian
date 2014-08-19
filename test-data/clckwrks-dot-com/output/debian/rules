@@ -1,7 +1,7 @@
 #!/usr/bin/make -f
 
 DEB_CABAL_PACKAGE = clckwrks-dot-com
-HC = ghc
+DEB_DEFAULT_COMPILER = ghc
 
 DEB_SETUP_GHC_CONFIGURE_ARGS = -fbackups
 

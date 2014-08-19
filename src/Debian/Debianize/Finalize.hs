@@ -361,7 +361,11 @@ makeUtilsPackage pkgDesc hc =
 
 expandAtoms :: Monad m => DebT m ()
 expandAtoms =
-    do builddir <- get >>= return . fromEmpty (singleton "dist-ghc/build") . getL T.buildDir
+    do hcs <- access A.compilerFlavors >>= return . Set.toList
+       builddir <- access T.buildDir >>= return . fromEmpty (case hcs of
+                                                               [GHC] -> singleton "dist-ghc/build"
+                                                               [GHCJS] -> singleton "dist-ghcjs/build"
+                                                               _ -> error $ "Unexpected compiler: " ++ show hcs)
        dDir <- access T.packageDescription >>= maybe (error "expandAtoms") (return . dataDir)
        expandApacheSites
        expandInstallCabalExecs (fromSingleton (error "no builddir") (\ xs -> error $ "multiple builddirs:" ++ show xs) builddir)

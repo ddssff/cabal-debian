@@ -401,8 +401,8 @@ expandAtoms =
                 T.rulesFragments +=
                      (Text.unlines
                         [ pack ("binary-fixup" </> show (pretty b)) <> "::"
-                        , pack ("\t(cd " <> builddir <> " && find " <> name </> name <.> "jsexe" <> " -type f) |\\\n" <>
-                                       "\t  while read i; do install -Dp " <> builddir </> "$$i debian" </> show (pretty b) </> makeRelative "/" dest </> "$$i; done") ])
+                        , pack ("\t(cd " <> builddir </> name <> " && find " <> name <.> "jsexe" <> " -type f) |\\\n" <>
+                                       "\t  while read i; do install -Dp " <> builddir </> name </> "$$i debian" </> show (pretty b) </> makeRelative "/" dest </> "$$i; done") ])
             doAtom _ _ = return ()
 
       -- Turn A.InstallCabalExecTo into a make rule

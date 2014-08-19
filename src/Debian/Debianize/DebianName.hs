@@ -74,9 +74,9 @@ mkPkgName' cfl typ (DebBase base) =
                 Documentation -> prefix ++ base ++ "-doc"
                 Development -> prefix ++ base ++ "-dev"
                 Profiling -> prefix ++ base ++ "-prof"
-                Utilities -> base ++ case cfl of
-                                       GHC -> ""
-                                       _ -> "-" ++ map toLower (show cfl)
+                Utilities -> base {- ++ case cfl of
+                                          GHC -> ""
+                                          _ -> "-" ++ map toLower (show cfl) -}
                 Exec -> base
                 Source -> base
                 HaskellSource -> "haskell-" ++ base

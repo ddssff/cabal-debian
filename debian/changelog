@@ -1,3 +1,10 @@
+haskell-cabal-debian (4.17.1) unstable; urgency=low
+
+  * Fix install of ghcjs executables - there was an extra subdir.
+  * Don't append -ghcjs to default package name.
+
+ -- David Fox <dsf@seereason.com>  Tue, 19 Aug 2014 10:15:46 -0700
+
 haskell-cabal-debian (4.17) unstable; urgency=low
 
   * Fix bug in architecture dependent build dependency generation - it

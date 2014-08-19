@@ -1,3 +1,9 @@
+haskell-cabal-debian (4.17.2) unstable; urgency=low
+
+  * Fix formatting of the generated debian/*.install files.
+
+ -- David Fox <dsf@seereason.com>  Tue, 19 Aug 2014 16:04:27 -0700
+
 haskell-cabal-debian (4.17.1) unstable; urgency=low
 
   * Fix install of ghcjs executables - there was an extra subdir.

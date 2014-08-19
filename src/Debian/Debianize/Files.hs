@@ -10,7 +10,7 @@ import Control.Monad.Trans (lift)
 import Control.Monad.Writer (WriterT, execWriterT, tell)
 import Data.Lens.Lazy (access, getL)
 import Data.List as List (map)
-import Data.Map as Map (Map, toList, fromListWithKey, mapKeys, insertWith)
+import Data.Map as Map (Map, map, toList, fromListWithKey, mapKeys, insertWith)
 import Data.Maybe
 import Data.Monoid ((<>), mempty)
 import Data.Set as Set (toList, member, fold)
@@ -72,23 +72,18 @@ intermediates = Set.toList <$> (lift $ access T.intermediateFiles)
 
 installs :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
 installs =
-    (Map.toList . Set.fold doAtom mempty) <$> (lift $ access T.atomSet)
+    (Map.toList . Map.map unlines . Set.fold doAtom mempty) <$> (lift $ access T.atomSet)
     where
-      doAtom (T.Install b from dest) mp = Map.insertWith (\ text line -> text <> line <> "\n") (pathf b) (pack (from <> " " <> dest)) mp
+      doAtom (T.Install b from dest) mp = Map.insertWith (++) (pathf b) [pack (from <> " " <> dest)] mp
       doAtom _ mp = mp
       pathf name = "debian" </> show (pretty name) ++ ".install"
-{-
-    (map (\ (path, pairs) -> (path, pack (List.unlines (map (\ (src, dst) -> src <> " " <> dst) (Set.toList pairs))))) . Map.toList . mapKeys pathf) <$> (lift $ access T.atomSet)
--}
 
 dirs :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
 dirs =
-    (Map.toList . Set.fold doAtom mempty) <$> (lift $ access T.atomSet)
+    (Map.toList . Map.map unlines . Set.fold doAtom mempty) <$> (lift $ access T.atomSet)
     where
-      doAtom (T.InstallDir b dir) mp = Map.insertWith (\ text line -> text <> line <> "\n") (pathf b) (pack dir) mp
+      doAtom (T.InstallDir b dir) mp = Map.insertWith (++) (pathf b) [pack dir] mp
       doAtom _ mp = mp
-    -- (map (\ (path, dirs') -> (path, pack (List.unlines (Set.toList dirs')))) . Map.toList . mapKeys pathf) <$> (lift $ access T.installDir)
-    -- where
       pathf name = "debian" </> show (pretty name) ++ ".dirs"
 
 init :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
@@ -100,19 +95,17 @@ init =
 -- FIXME - use a map and insertWith, check for multiple entries
 logrotate :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
 logrotate =
-    (map (\ (path, stanzas) -> (path, Text.unlines (Set.toList stanzas))) . Map.toList . mapKeys pathf) <$> (lift $ access T.logrotateStanza)
+    (Map.toList . Map.map (\ stanzas -> Text.unlines (Set.toList stanzas)) . mapKeys pathf) <$> (lift $ access T.logrotateStanza)
     where
       pathf name = "debian" </> show (pretty name) ++ ".logrotate"
 
 -- | Assemble all the links by package and output one file each
 links :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
 links =
-    (Map.toList . Set.fold doAtom mempty) <$> (lift $ access T.atomSet)
+    (Map.toList . Map.map unlines . Set.fold doAtom mempty) <$> (lift $ access T.atomSet)
     where
-      doAtom (T.Link b loc text) mp = Map.insertWith (\ text line -> text <> line <> "\n") (pathf b) (pack loc <> " " <> pack text) mp
+      doAtom (T.Link b loc text) mp = Map.insertWith (++) (pathf b) [pack loc <> " " <> pack text] mp
       doAtom _ mp = mp
-    -- (map (\ (path, pairs) -> (path, pack (List.unlines (map (\ (loc, txt) -> loc ++ " " ++ txt) (Set.toList pairs))))) . Map.toList . mapKeys pathf) <$> (lift $ access T.link)
-    -- where
       pathf name = "debian" </> show (pretty name) ++ ".links"
 
 postinstFiles :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]

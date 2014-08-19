@@ -42,7 +42,7 @@ import qualified Debian.Relation as D (BinPkgName(BinPkgName), Relation(..))
 import Debian.Release (parseReleaseName)
 import Debian.Time (getCurrentLocalRFC822Time)
 import Debian.Version (buildDebianVersion, DebianVersion, parseDebianVersion)
-import Distribution.Compiler (CompilerFlavor(GHC))
+import Distribution.Compiler (CompilerFlavor(GHC, GHCJS))
 import Distribution.Package (Dependency(..), PackageIdentifier(..), PackageName(PackageName))
 import Distribution.PackageDescription (PackageDescription)
 import Distribution.PackageDescription as Cabal (allBuildInfo, BuildInfo(buildable, extraLibs), Executable(buildInfo, exeName))
@@ -386,23 +386,34 @@ expandAtoms =
 
       -- Turn A.InstallCabalExec into A.Install
       expandInstallCabalExecs :: Monad m => FilePath -> DebT m ()
-      expandInstallCabalExecs builddir =
-          access A.atomSet >>= List.mapM_ doAtom . Set.toList
+      expandInstallCabalExecs builddir = do
+        hcs <- access A.compilerFlavors >>= return . Set.toList
+        access A.atomSet >>= List.mapM_ (doAtom hcs) . Set.toList
           where
-            doAtom (A.InstallCabalExec b name dest) = T.install b (builddir </> name </> name) dest
-            doAtom _ = return ()
+            doAtom [GHC] (A.InstallCabalExec b name dest) = T.install b (builddir </> name </> name) dest
+            -- A GHCJS executable is a directory with files, copy them
+            -- all into place.
+            doAtom [GHCJS] (A.InstallCabalExec b name dest) =
+                T.rulesFragments +=
+                     (Text.unlines
+                        [ pack ("binary-fixup" </> show (pretty b)) <> "::"
+                        , pack ("\t(cd " <> builddir <> " && find " <> name </> name <.> "jsexe" <> " -type f) |\\" <>
+                                       "\t  while read i; do sudo install -Dp " <> builddir </> "$$i debian" </> show (pretty b) </> makeRelative "/" dest </> "$$i; done") ])
+            doAtom _ _ = return ()
 
       -- Turn A.InstallCabalExecTo into a make rule
       expandInstallCabalExecTo :: Monad m => FilePath -> DebT m ()
-      expandInstallCabalExecTo builddir =
-          access A.atomSet >>= List.mapM_ doAtom . Set.toList
+      expandInstallCabalExecTo builddir = do
+        hcs <- access A.compilerFlavors >>= return . Set.toList
+        access A.atomSet >>= List.mapM_ (doAtom hcs) . Set.toList
           where
-            doAtom (A.InstallCabalExecTo b name dest) =
+            doAtom [GHC] (A.InstallCabalExecTo b name dest) =
                 T.rulesFragments += (Text.unlines
                                        [ pack ("binary-fixup" </> show (pretty b)) <> "::"
                                        , "\tinstall -Dps " <> pack (builddir </> name </> name) <> " "
                                                            <> pack ("debian" </> show (pretty b) </> makeRelative "/" dest) ])
-            doAtom _ = return ()
+            doAtom hcs (A.InstallCabalExecTo b name dest) = error $ "expandInstallCabalExecTo " ++ show hcs ++ " " ++ show (A.InstallCabalExecTo b name dest)
+            doAtom _ _ = return ()
 
       -- Turn A.InstallData into either an Install or an InstallTo
       expandInstallData :: Monad m => FilePath -> DebT m ()

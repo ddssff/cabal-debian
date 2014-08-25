@@ -9,10 +9,9 @@ import Data.Maybe (fromMaybe)
 import Data.Monoid ((<>))
 import Data.Version (Version(..), showVersion)
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(..))
-import Debian.Control (Field'(..))
 import Debian.Pretty (Pretty(pretty), text, cat, empty)
 import Debian.Relation (Relation(..), VersionReq(..), ArchitectureReq(..),
-                        BinPkgName(..), SrcPkgName(..))
+                        SrcPkgName(..))
 import Debian.Version (DebianVersion)
 import Distribution.Compiler (CompilerId(..))
 #if !MIN_VERSION_Cabal(1,18,0)
@@ -59,56 +58,23 @@ instance Ord Executable where
 instance Ord PackageDescription where
     compare = compare `on` package
 
-{-
-instance Show (Control' String) where
-    show _ = "<control file>"
-
-instance Show ChangeLog where
-    show _ = "<log entry>"
--}
-
-deriving instance Read ArchitectureReq
-deriving instance Read BinPkgName
-deriving instance Read ChangeLog
-deriving instance Read ChangeLogEntry
-deriving instance Read Relation
-deriving instance Read SrcPkgName
-deriving instance Read VersionReq
-
-deriving instance Show ChangeLog
-deriving instance Show ChangeLogEntry
-
 dropPrefix :: String -> String -> Maybe String
 dropPrefix p s = if isPrefixOf p s then Just (drop (length p) s) else Nothing
 
 deriving instance Data ArchitectureReq
-deriving instance Data BinPkgName
 deriving instance Data ChangeLog
 deriving instance Data ChangeLogEntry
--- deriving instance Data NameAddr
 deriving instance Data Relation
-deriving instance Data SrcPkgName
 deriving instance Data VersionReq
 
 deriving instance Typeable ArchitectureReq
-deriving instance Typeable BinPkgName
 deriving instance Typeable ChangeLog
 deriving instance Typeable ChangeLogEntry
--- deriving instance Typeable NameAddr
 deriving instance Typeable Relation
-deriving instance Typeable SrcPkgName
 deriving instance Typeable VersionReq
 
 deriving instance Ord ChangeLog
 deriving instance Ord ChangeLogEntry
-
-{-
-instance Pretty SrcPkgName where
-    pretty (SrcPkgName x) = pretty x
-
-instance Pretty BinPkgName where
-    pretty (BinPkgName x) = pretty x
--}
 
 #if !MIN_VERSION_Cabal(1,18,0)
 deriving instance Typeable License
@@ -147,8 +113,6 @@ instance Pretty [NameAddr] where
 instance Pretty (Maybe NameAddr) where
     pretty Nothing = empty
     pretty (Just x) = pretty x
-
-deriving instance Show (Field' String)
 
 instance Pretty VersionRange where
     pretty range =

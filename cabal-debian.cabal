@@ -216,7 +216,7 @@ Library
 --    Hs-Source-Dirs: ., ../../haskell-debian
 --    Build-Depends: regex-compat, bytestring, process-listlike, network, old-locale, time
 --  else
- Build-depends: debian >= 3.81
+ Build-depends: debian >= 3.83.2
 
 Executable cabal-debian
  Hs-Source-Dirs: .

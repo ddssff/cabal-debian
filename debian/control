@@ -19,8 +19,8 @@ Build-Depends: debhelper (>= 7.0)
                , libghc-data-lens-prof
                , libghc-data-lens-template-dev
                , libghc-data-lens-template-prof
-               , libghc-debian-dev (>= 3.81)
-               , libghc-debian-prof (>= 3.81)
+               , libghc-debian-dev (>= 3.83.2)
+               , libghc-debian-prof (>= 3.83.2)
                , libghc-hsemail-dev
                , libghc-hsemail-prof
                , libghc-memoize-dev
@@ -41,8 +41,6 @@ Build-Depends: debhelper (>= 7.0)
                , libghc-text-prof
                , libghc-utf8-string-dev
                , libghc-utf8-string-prof
-               , libghc-debian-dev
-               , libghc-debian-prof
 Build-Depends-Indep: ghc-doc
 	       	     , libghc-cabal-ghcjs-doc | libghc-cabal-doc
                      , libghc-diff-doc
@@ -50,7 +48,7 @@ Build-Depends-Indep: ghc-doc
                      , libghc-unixutils-doc
                      , libghc-data-lens-doc
                      , libghc-data-lens-template-doc
-                     , libghc-debian-doc (>= 3.81)
+                     , libghc-debian-doc (>= 3.83.2)
                      , libghc-hsemail-doc
                      , libghc-memoize-doc
                      , libghc-mtl-doc

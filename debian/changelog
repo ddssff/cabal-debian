@@ -1,3 +1,9 @@
+haskell-cabal-debian (4.17.3) unstable; urgency=low
+
+  * Moved source repository to github.com.
+
+ -- David Fox <dsf@seereason.com>  Fri, 29 Aug 2014 13:55:26 -0700
+
 haskell-cabal-debian (4.17.2) unstable; urgency=low
 
   * Fix formatting of the generated debian/*.install files.

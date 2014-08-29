@@ -1,11 +1,11 @@
 Name:           cabal-debian
-Version:        4.17.2
+Version:        4.17.3
 License:        BSD3
 License-File:   debian/copyright
 Author:         David Fox <dsf@seereason.com>
 Category:       Debian, Distribution, System
 Maintainer:     David Fox <dsf@seereason.com>
-Homepage:       http://src.seereason.com/cabal-debian
+Homepage:       https://github.com/ddssff/cabal-debian
 Build-Type:     Simple
 Synopsis:       Create a debianization for a cabal package
 Cabal-Version: >= 1.8
@@ -150,8 +150,8 @@ Flag ghcjs-support
 --   Manual: True
 
 Source-Repository head
-  type: darcs
-  location: http://src.seereason.com/cabal-debian
+  type: git
+  location: https://github.com/ddssff/cabal-debian
 
 Library
  Hs-Source-Dirs: src

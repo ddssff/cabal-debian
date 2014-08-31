@@ -1,5 +1,5 @@
 -- | Compute the debianization of a cabal package.
-{-# LANGUAGE OverloadedStrings, ScopedTypeVariables #-}
+{-# LANGUAGE CPP, OverloadedStrings, ScopedTypeVariables #-}
 module Debian.Debianize.Finalize
     ( debianization
     , finalizeDebianization' -- external use deprecated - used in test script
@@ -42,7 +42,10 @@ import qualified Debian.Relation as D (BinPkgName(BinPkgName), Relation(..))
 import Debian.Release (parseReleaseName)
 import Debian.Time (getCurrentLocalRFC822Time)
 import Debian.Version (buildDebianVersion, DebianVersion, parseDebianVersion)
-import Distribution.Compiler (CompilerFlavor(GHC, GHCJS))
+import Distribution.Compiler (CompilerFlavor(GHC))
+#if MIN_VERSION_Cabal(1,21,0)
+import Distribution.Compiler (CompilerFlavor(GHCJS))
+#endif
 import Distribution.Package (Dependency(..), PackageIdentifier(..), PackageName(PackageName))
 import Distribution.PackageDescription (PackageDescription)
 import Distribution.PackageDescription as Cabal (allBuildInfo, BuildInfo(buildable, extraLibs), Executable(buildInfo, exeName))
@@ -364,7 +367,9 @@ expandAtoms =
     do hcs <- access A.compilerFlavors >>= return . Set.toList
        builddir <- access T.buildDir >>= return . fromEmpty (case hcs of
                                                                [GHC] -> singleton "dist-ghc/build"
+#if MIN_VERSION_Cabal(1,21,0)
                                                                [GHCJS] -> singleton "dist-ghcjs/build"
+#endif
                                                                _ -> error $ "Unexpected compiler: " ++ show hcs)
        dDir <- access T.packageDescription >>= maybe (error "expandAtoms") (return . dataDir)
        expandApacheSites
@@ -397,12 +402,14 @@ expandAtoms =
             doAtom [GHC] (A.InstallCabalExec b name dest) = T.install b (builddir </> name </> name) dest
             -- A GHCJS executable is a directory with files, copy them
             -- all into place.
+#if MIN_VERSION_Cabal(1,21,0)
             doAtom [GHCJS] (A.InstallCabalExec b name dest) =
                 T.rulesFragments +=
                      (Text.unlines
                         [ pack ("binary-fixup" </> show (pretty b)) <> "::"
                         , pack ("\t(cd " <> builddir </> name <> " && find " <> name <.> "jsexe" <> " -type f) |\\\n" <>
                                        "\t  while read i; do install -Dp " <> builddir </> name </> "$$i debian" </> show (pretty b) </> makeRelative "/" dest </> "$$i; done") ])
+#endif
             doAtom _ _ = return ()
 
       -- Turn A.InstallCabalExecTo into a make rule

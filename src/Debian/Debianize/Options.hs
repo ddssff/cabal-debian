@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Debian.Debianize.Options
     ( options
     , compileArgs
@@ -183,8 +184,10 @@ options =
                       , "set to /, but it must be set."]),
       Option "" ["ghc"] (NoArg (compilerFlavors %= (insert GHC))) "Generate packages for GHC - same as --with-compiler GHC",
       Option "" ["no-ghc"] (NoArg (compilerFlavors %= (delete GHC))) "Do not generate packages for GHC - same as --without-compiler GHC",
+#if MIN_VERSION_Cabal(1,21,0)
       Option "" ["ghcjs"] (NoArg (compilerFlavors %= (insert GHCJS))) "Generate packages for GHCJS - same as --with-compiler GHCJS",
       Option "" ["no-ghcjs"] (NoArg (compilerFlavors %= (delete GHCJS))) "Do not generate packages for GHCJS - same as --without-compiler GHCJS",
+#endif
       Option "" ["hugs"] (NoArg (compilerFlavors %= (insert Hugs))) "Generate packages for Hugs - same as --with-compiler GHC",
       Option "" ["no-hugs"] (NoArg (compilerFlavors %= (delete Hugs))) "Do not generate packages for Hugs - same as --without-compiler Hugs",
       Option "" ["with-compiler"] (ReqArg (\ s -> maybe (error $ "Invalid compiler id: " ++ show s)

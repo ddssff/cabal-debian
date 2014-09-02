@@ -1,3 +1,11 @@
+haskell-cabal-debian (4.17.4) unstable; urgency=low
+
+  * Add missing ifdefs to hide the GHCJS constructor when ghcjs-support
+    flag is False.
+  * Require Cabal < 1.21 when ghcjs-support flag is False.
+
+ -- David Fox <dsf@seereason.com>  Tue, 02 Sep 2014 09:06:20 -0700
+
 haskell-cabal-debian (4.17.3) unstable; urgency=low
 
   * Moved source repository to github.com.

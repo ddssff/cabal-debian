@@ -1,5 +1,5 @@
 Name:           cabal-debian
-Version:        4.17.3
+Version:        4.17.4
 License:        BSD3
 License-File:   debian/copyright
 Author:         David Fox <dsf@seereason.com>
@@ -182,7 +182,7 @@ Library
  if flag(ghcjs-support)
    Build-Depends: Cabal >= 1.21
  else
-   Build-Depends: Cabal >= 1.9
+   Build-Depends: Cabal >= 1.9 && < 1.21
  Exposed-Modules:
    Data.Algorithm.Diff.Context
    Data.Algorithm.Diff.Pretty

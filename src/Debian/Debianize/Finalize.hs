@@ -35,7 +35,7 @@ import qualified Debian.Debianize.Types.Atoms as A (InstallFile(execName, source
 import qualified Debian.Debianize.Types.BinaryDebDescription as B (BinaryDebDescription, package, PackageType(Development, Documentation, Exec, Profiling, Source, HaskellSource, Utilities), PackageType)
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
 import Debian.Orphans ()
-import Debian.Policy (getDebhelperCompatLevel, haskellMaintainer, PackageArchitectures(Any, All), PackagePriority(Optional), Section(..))
+import Debian.Policy (getDebhelperCompatLevel, haskellMaintainer, PackageArchitectures(Any, All), PackagePriority(Extra), Section(..))
 import Debian.Pretty (pretty)
 import Debian.Relation (BinPkgName, BinPkgName(BinPkgName), SrcPkgName(SrcPkgName), Relation(Rel), Relations)
 import qualified Debian.Relation as D (BinPkgName(BinPkgName), Relation(..))
@@ -92,7 +92,7 @@ finalizeDebianization date debhelperCompat =
        Just pkgDesc <- access T.packageDescription
        T.watch ~?= Just (watchAtom (pkgName $ Cabal.package $ pkgDesc))
        T.sourceSection ~?= Just (MainSection "haskell")
-       T.sourcePriority ~?= Just Optional
+       T.sourcePriority ~?= Just Extra
        T.compat ~?= debhelperCompat
        finalizeChangelog date
        finalizeControl

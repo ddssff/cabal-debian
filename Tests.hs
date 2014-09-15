@@ -16,7 +16,7 @@ import qualified Data.Map as Map (elems, Map, toList)
 import Data.Maybe (fromMaybe)
 import Data.Monoid ((<>), mconcat, mempty)
 import Data.Set as Set (fromList, singleton, union)
-import Data.Text as Text (intercalate, lines, split, Text, unlines)
+import Data.Text as Text (intercalate, lines, split, Text, unlines, unpack)
 import Data.Version (Version(Version, versionBranch))
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(..), parseEntry)
 import Debian.Debianize.DebianName (mapCabal, splitCabal)
@@ -31,8 +31,8 @@ import Debian.Debianize.Types.Atoms as T
 import qualified Debian.Debianize.Types.BinaryDebDescription as B
 import qualified Debian.Debianize.Types.SourceDebDescription as S
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
+import Debian.Pretty (ppDisplay)
 import Debian.Policy (databaseDirectory, PackageArchitectures(All), PackagePriority(Extra), parseMaintainer, Section(MainSection), SourceFormat(Native3), StandardsVersion(..), getDebhelperCompatLevel, getDebianStandardsVersion)
-import Debian.Pretty (pretty, text, Doc)
 import Debian.Relation (BinPkgName(..), Relation(..), SrcPkgName(..), VersionReq(..))
 import Debian.Release (ReleaseName(ReleaseName, relName))
 import Debian.Version (parseDebianVersion, buildDebianVersion)
@@ -45,6 +45,7 @@ import System.FilePath ((</>))
 import System.Process (readProcessWithExitCode)
 import Test.HUnit hiding ((~?=))
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr(..))
+import Text.PrettyPrint.HughesPJClass (pPrint, text, Doc)
 
 -- | A suitable defaultAtoms value for the debian repository.
 defaultAtoms :: Monad m => DebT m ()
@@ -465,7 +466,7 @@ test4 label =
                      ]
                  , installFile =
                      InstallFile { execName   = "clckwrks-dot-com-server"
-                                 , destName   = show (pretty deb)
+                                 , destName   = ppDisplay deb
                                  , sourceDir  = Nothing
                                  , destDir    = Nothing }
                  }
@@ -554,7 +555,7 @@ test5 label =
                      ]
                  , installFile =
                      InstallFile { execName   = "creativeprompts-server"
-                                 , destName   = show (pretty deb)
+                                 , destName   = ppDisplay deb
                                  , sourceDir  = Nothing
                                  , destDir    = Nothing }
                  }
@@ -694,21 +695,18 @@ diffDebianizations old new =
       isUnchanged (Unchanged _ _) = True
       isUnchanged _ = False
       prettyChange :: Change FilePath Text -> Doc
-      prettyChange (Unchanged p _) = text "Unchanged: " <> pretty p <> text "\n"
-      prettyChange (Deleted p _) = text "Deleted: " <> pretty p <> text "\n"
+      prettyChange (Unchanged p _) = text "Unchanged: " <> pPrint p <> text "\n"
+      prettyChange (Deleted p _) = text "Deleted: " <> pPrint p <> text "\n"
       prettyChange (Created p b) =
-          text "Created: " <> pretty p <> text "\n" <>
-          prettyDiff ("old" </> p) ("new" </> p)
+          text "Created: " <> pPrint p <> text "\n" <>
+          prettyDiff (text ("old" </> p)) (text ("new" </> p)) (text . unpack)
                      -- We use split here instead of lines so we can
                      -- detect whether the file has a final newline
                      -- character.
                      (contextDiff 2 mempty (split (== '\n') b))
       prettyChange (Modified p a b) =
-          text "Modified: " <> pretty p <> text "\n" <>
-          prettyDiff ("old" </> p) ("new" </> p)
-                     -- We use split here instead of lines so we can
-                     -- detect whether the file has a final newline
-                     -- character.
+          text "Modified: " <> pPrint p <> text "\n" <>
+          prettyDiff (text ("old" </> p)) (text ("new" </> p)) (text . unpack)
                      (contextDiff 2 (split (== '\n') a) (split (== '\n') b))
 
 sortBinaryDebs :: DebT IO ()

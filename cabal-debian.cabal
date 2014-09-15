@@ -1,5 +1,5 @@
 Name:           cabal-debian
-Version:        4.17.4
+Version:        4.17.5
 License:        BSD3
 License-File:   debian/copyright
 Author:         David Fox <dsf@seereason.com>
@@ -170,6 +170,8 @@ Library
    memoize,
    mtl,
    parsec >= 3,
+   pretty,
+   prettyclass,
    process,
    pureMD5,
    regex-tdfa,
@@ -216,13 +218,13 @@ Library
 --    Hs-Source-Dirs: ., ../../haskell-debian
 --    Build-Depends: regex-compat, bytestring, process-listlike, network, old-locale, time
 --  else
- Build-depends: debian >= 3.83.2
+ Build-depends: debian >= 3.84
 
 Executable cabal-debian
  Hs-Source-Dirs: .
  Main-is: CabalDebian.hs
  ghc-options: -threaded -Wall -O2
- Build-Depends: base, cabal-debian, data-lens, mtl
+ Build-Depends: base, cabal-debian, data-lens, mtl, pretty
  if flag(ghcjs-support)
    Build-Depends: Cabal >= 1.21
  else
@@ -232,7 +234,7 @@ Executable cabal-debian-tests
  Hs-Source-Dirs: .
  Main-is: Tests.hs
  ghc-options: -threaded -Wall -O2
- Build-Depends: base, cabal-debian, containers, data-lens, debian, filepath, hsemail, HUnit, process, text
+ Build-Depends: base, cabal-debian, containers, data-lens, debian >= 3.84, filepath, hsemail, HUnit, prettyclass, process, text
  if flag(ghcjs-support)
    Build-Depends: Cabal >= 1.21
  else

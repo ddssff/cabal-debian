@@ -1,5 +1,5 @@
 Source: haskell-alex
-Priority: optional
+Priority: extra
 Section: haskell
 Maintainer: Simon Marlow <marlowsd@gmail.com>
 Build-Depends: debhelper (>= 7.0)

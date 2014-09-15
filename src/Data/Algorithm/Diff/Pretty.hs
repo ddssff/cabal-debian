@@ -1,20 +1,29 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, ScopedTypeVariables #-}
 module Data.Algorithm.Diff.Pretty
     ( prettyDiff
+    , prettyHunk
+    , prettyChange
     ) where
 
 import Data.Algorithm.Diff (Diff(..))
-import Data.Monoid (mconcat, (<>))
-import Debian.Pretty (Pretty(pretty), Doc, text, empty)
+import Data.Monoid ((<>))
+import Text.PrettyPrint (Doc, text, empty, hcat)
 
--- | Format the output of 'contextDiff' to look approximately like the
--- output of the unix diff command.
-prettyDiff :: (Pretty a, Pretty b, Pretty c) => a -> b -> [[Diff [c]]] -> Doc
-prettyDiff _ _ [] = empty
-prettyDiff old new hunks =
-    text "--- " <> pretty old <> text "\n+++ " <> pretty new <> text "\n" <> mconcat (map (\ hunk -> text "@@\n" <> p hunk) hunks)
-    where
-      p (Both ts _ : more) = mconcat (map (\ l -> text " " <> pretty l <> text "\n") ts) <> p more
-      p (First ts : more)  = mconcat (map (\ l -> text "-" <> pretty l <> text "\n") ts) <> p more
-      p (Second ts : more) = mconcat (map (\ l -> text "+" <> pretty l <> text "\n") ts) <> p more
-      p [] = empty
+-- | Pretty print a list of hunks.
+prettyDiff :: forall c. Doc -> Doc -> (c -> Doc) -> [[Diff [c]]] -> Doc
+prettyDiff _ _ _ [] = empty
+prettyDiff old new prettyElem hunks =
+    hcat . map (<> text "\n") $ (text "--- " <> old :
+                                 text "+++ " <> new :
+                                 concatMap (prettyHunk prettyElem) hunks)
+
+-- | Pretty print a hunk of adjacent changes
+prettyHunk :: (c -> Doc) -> [Diff [c]] -> [Doc]
+prettyHunk prettyElem hunk =
+    text "@@" : concatMap (prettyChange prettyElem) hunk
+
+-- | Pretty print a single change (e.g. a line of a text file)
+prettyChange :: (c -> Doc) -> Diff [c] -> [Doc]
+prettyChange prettyElem (Both ts _) = map (\ l -> text " " <> prettyElem l) ts
+prettyChange prettyElem (First ts)  = map (\ l -> text "-" <> prettyElem l) ts
+prettyChange prettyElem (Second ts) = map (\ l -> text "+" <> prettyElem l) ts

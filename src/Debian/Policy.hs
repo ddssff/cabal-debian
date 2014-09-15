@@ -45,7 +45,7 @@ import Data.Maybe (mapMaybe)
 import Data.Monoid ((<>))
 import Data.Text (Text, pack, unpack, strip)
 import Debian.Debianize.Prelude (read')
-import Debian.Pretty (Pretty(pretty), text, empty)
+import Debian.Pretty (PP(..))
 import Debian.Relation (BinPkgName)
 import Debian.Version (DebianVersion, parseDebianVersion, version)
 import System.Environment (getEnvironment)
@@ -53,12 +53,13 @@ import System.FilePath ((</>))
 import System.Process (readProcess)
 import Text.Parsec (parse)
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr(..), address)
+import Text.PrettyPrint.HughesPJClass (Pretty(pPrint), text)
 
 databaseDirectory :: BinPkgName -> String
-databaseDirectory x = "/srv" </> show (pretty x)
+databaseDirectory x = "/srv" </> show (pPrint . PP $ x)
 
 apacheLogDirectory :: BinPkgName -> String
-apacheLogDirectory x =  "/var/log/apache2/" ++ show (pretty x)
+apacheLogDirectory x =  "/var/log/apache2/" ++ show (pPrint . PP $ x)
 
 apacheErrorLog :: BinPkgName -> String
 apacheErrorLog x = apacheLogDirectory x </> errorLogBaseName
@@ -67,7 +68,7 @@ apacheAccessLog :: BinPkgName -> String
 apacheAccessLog x = apacheLogDirectory x </> accessLogBaseName
 
 serverLogDirectory :: BinPkgName -> String
-serverLogDirectory x = "/var/log/" ++ show (pretty x)
+serverLogDirectory x = "/var/log/" ++ show (pPrint . PP $ x)
 
 serverAppLog :: BinPkgName -> String
 serverAppLog x = serverLogDirectory x </> appLogBaseName
@@ -104,9 +105,9 @@ getDebhelperCompatLevel =
 
 data StandardsVersion = StandardsVersion Int Int Int (Maybe Int) deriving (Eq, Ord, Show, Data, Typeable)
 
-instance Pretty StandardsVersion where
-    pretty (StandardsVersion a b c (Just d)) = pretty (show a) <> text "." <> pretty (show b) <> text "." <> pretty (show c) <> text "." <> pretty (show d)
-    pretty (StandardsVersion a b c Nothing) = pretty (show a) <> text "." <> pretty (show b) <> text "." <> pretty (show c)
+instance Pretty (PP StandardsVersion) where
+    pPrint (PP (StandardsVersion a b c (Just d))) = text (show a) <> text "." <> text (show b) <> text "." <> text (show c) <> text "." <> text (show d)
+    pPrint (PP (StandardsVersion a b c Nothing)) = text (show a) <> text "." <> text (show b) <> text "." <> text (show c)
 
 -- | Assumes debian-policy is installed
 getDebianStandardsVersion :: IO (Maybe StandardsVersion)
@@ -129,9 +130,9 @@ data SourceFormat
     | Quilt3
     deriving (Eq, Ord, Show, Data, Typeable)
 
-instance Pretty SourceFormat where
-    pretty Quilt3 = text "3.0 (quilt)\n"
-    pretty Native3 = text "3.0 (native)\n"
+instance Pretty (PP SourceFormat) where
+    pPrint (PP Quilt3) = text "3.0 (quilt)\n"
+    pPrint (PP Native3) = text "3.0 (native)\n"
 
 readSourceFormat :: Text -> Either Text SourceFormat
 readSourceFormat s =
@@ -158,8 +159,8 @@ readPriority s =
       "extra" -> Extra
       x -> error $ "Invalid priority string: " ++ show x
 
-instance Pretty PackagePriority where
-    pretty = pretty . map toLower . show
+instance Pretty (PP PackagePriority) where
+    pPrint = text . map toLower . show . unPP
 
 -- | The architectures for which a binary deb can be built.
 data PackageArchitectures
@@ -168,14 +169,10 @@ data PackageArchitectures
     | Names [String] -- ^ The list of suitable architectures
     deriving (Read, Eq, Ord, Show, Data, Typeable)
 
-instance Pretty PackageArchitectures where
-    pretty All = text "all"
-    pretty Any = text "any"
-    pretty (Names xs) = pretty $ intercalate " " xs
-
-instance Pretty (Maybe PackageArchitectures) where
-    pretty Nothing = empty
-    pretty (Just x) = pretty x
+instance Pretty (PP PackageArchitectures) where
+    pPrint (PP All) = text "all"
+    pPrint (PP Any) = text "any"
+    pPrint (PP (Names xs)) = text $ intercalate " " xs
 
 parsePackageArchitectures :: String -> PackageArchitectures
 parsePackageArchitectures "all" = All
@@ -196,9 +193,9 @@ readSection s =
       (a, '/' : _) -> error $ "readSection - unknown area: " ++ show a
       (a, _) -> MainSection a
 
-instance Pretty Section where
-    pretty (MainSection sec) = pretty sec
-    pretty (AreaSection area sec) = pretty area <> text "/" <> pretty sec
+instance Pretty (PP Section) where
+    pPrint (PP (MainSection sec)) = text sec
+    pPrint (PP (AreaSection area sec)) = pPrint (PP area) <> text "/" <> text sec
 
 -- Is this really all that is allowed here?  Doesn't Ubuntu have different areas?
 data Area
@@ -207,10 +204,10 @@ data Area
     | NonFree
     deriving (Read, Eq, Ord, Show, Data, Typeable)
 
-instance Pretty Area where
-    pretty Main = text "main"
-    pretty Contrib = text "contrib"
-    pretty NonFree = text "non-free"
+instance Pretty (PP Area) where
+    pPrint (PP Main) = text "main"
+    pPrint (PP Contrib) = text "contrib"
+    pPrint (PP NonFree) = text "non-free"
 
 {-
 Create a debian maintainer field from the environment variables:

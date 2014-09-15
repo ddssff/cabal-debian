@@ -35,7 +35,7 @@ import qualified Debian.Debianize.Types.Atoms as T
 import qualified Debian.Debianize.Types.BinaryDebDescription as B
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
 import Debian.Orphans ()
-import Debian.Pretty (Pretty(pretty))
+import Debian.Pretty (ppDisplay, ppDisplay')
 import Debian.Policy (apacheLogDirectory, apacheErrorLog, apacheAccessLog, databaseDirectory, serverAppLog, serverAccessLog)
 import Debian.Relation (BinPkgName(BinPkgName), Relation(Rel))
 import Distribution.Package (PackageIdentifier(..), PackageName(PackageName))
@@ -75,7 +75,7 @@ tightDependencyFixup pairs p =
       equals (installed, dependent) = "\tdpkg-query -W -f='" <> display' dependent <> " (=$${Version})' " <>  display' installed <> " >> debian/" <> name <> ".substvars"
       newer  (installed, dependent) = "\tdpkg-query -W -f='" <> display' dependent <> " (>>$${Version})' " <> display' installed <> " >> debian/" <> name <> ".substvars"
       name = display' p
-      display' = pack . show . pretty
+      display' = ppDisplay'
 
 -- | Add a debian binary package to the debianization containing a cabal executable file.
 doExecutable :: Monad m => BinPkgName -> T.InstallFile -> DebT m ()
@@ -289,7 +289,7 @@ serverAtoms b server' isSite =
                           , "    service apache2 restart" ]
                      else []) ++
                     [ -- This gets done by the #DEBHELPER# code below.
-                      {- "    service " <> pack (show (pretty b)) <> " start", -}
+                      {- "    service " <> pack (show (pPrint b)) <> " start", -}
                       "    ;;"
                     , "esac"
                     , ""
@@ -335,7 +335,7 @@ backupAtoms b name =
 -- FIXME - use Atoms
 execAtoms :: BinPkgName -> T.InstallFile -> Atoms -> Atoms
 execAtoms b ifile r =
-    modL T.rulesFragments (Set.insert (pack ("build" </> show (pretty b) ++ ":: build-ghc-stamp"))) .
+    modL T.rulesFragments (Set.insert (pack ("build" </> ppDisplay b ++ ":: build-ghc-stamp"))) .
     fileAtoms b ifile $
     r
 

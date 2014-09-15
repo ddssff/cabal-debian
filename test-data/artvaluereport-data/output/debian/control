@@ -1,5 +1,5 @@
 Source: haskell-artvaluereport-data
-Priority: optional
+Priority: extra
 Section: haskell
 Maintainer: David Fox <dsf@seereason.com>
 Build-Depends: debhelper (>= 7.0)

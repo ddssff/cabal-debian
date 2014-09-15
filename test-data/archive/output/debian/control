@@ -1,5 +1,5 @@
 Source: seereason-darcs-backups
-Priority: optional
+Priority: extra
 Maintainer: David Fox <dsf@seereason.com>
 Section: haskell
 Build-Depends: debhelper (>= 7.0)

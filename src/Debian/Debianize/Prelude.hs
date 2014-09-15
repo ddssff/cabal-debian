@@ -1,6 +1,6 @@
 -- | Functions and instances used by but not related to cabal-debian.
 -- These could conceivably be moved into more general libraries.
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wall -fno-warn-orphans #-}
 module Debian.Debianize.Prelude
     ( curry3
@@ -41,7 +41,6 @@ module Debian.Debianize.Prelude
     , maybeLens
     , fromEmpty
     , fromSingleton
-    , Pretty(pretty)
     ) where
 
 import Control.Applicative ((<$>))
@@ -63,7 +62,8 @@ import Data.Text as Text (Text, unpack, lines)
 import Data.Text.IO (hGetContents)
 import Debian.Control (parseControl, lookupP, Field'(Field), unControl, stripWS)
 import Debian.Orphans ()
-import Debian.Pretty (Pretty(pretty))
+import Debian.Pretty (PP(PP), ppPrint)
+import Debian.Relation.Common ({- Pretty instances -})
 import Debian.Version (DebianVersion, prettyDebianVersion)
 import Debian.Version.String (parseDebianVersion)
 import qualified Debian.Relation as D
@@ -76,6 +76,10 @@ import System.FilePath ((</>), dropExtension)
 import System.IO (IOMode (ReadMode), withFile, openFile, hSetBinaryMode)
 import System.IO.Error (isDoesNotExistError, catchIOError)
 import System.Process (readProcessWithExitCode, showCommandForUser)
+import Text.PrettyPrint.HughesPJClass as PP (Pretty(pPrint), text, empty)
+
+instance Pretty (PP a) => Pretty (PP (Maybe a)) where
+    pPrint (PP x) = maybe PP.empty ppPrint x
 
 curry3 :: ((a, b, c) -> d) -> a -> b -> c -> d
 curry3 f a b c = f (a, b, c)
@@ -94,7 +98,7 @@ buildDebVersionMap =
     return . Map.fromList . catMaybes
 
 (!) :: DebMap -> D.BinPkgName -> DebianVersion
-m ! k = maybe (error ("No version number for " ++ (show . pretty $ k) ++ " in " ++ show (Map.map (maybe Nothing (Just . prettyDebianVersion)) m))) id (Map.findWithDefault Nothing k m)
+m ! k = maybe (error ("No version number for " ++ (show . pPrint . PP $ k) ++ " in " ++ show (Map.map (maybe Nothing (Just . prettyDebianVersion)) m))) id (Map.findWithDefault Nothing k m)
 
 trim :: String -> String
 trim = dropWhile isSpace
@@ -185,15 +189,13 @@ readFile' path =
 readFileMaybe :: FilePath -> IO (Maybe Text)
 readFileMaybe path = (Just <$> readFile' path) `catchIOError` (\ _ -> return Nothing)
 
--- Would like to call pretty instead of D.prettyRelations, but the
--- Pretty instance for [a] doesn't work for us.
-showDeps :: [[D.Relation]] -> String
-showDeps = show . pretty
+showDeps :: D.Relations -> String
+showDeps = show . pPrint . PP
 
 -- The extra space after prefix' is here for historical reasons(?)
-showDeps' :: [a] -> [[D.Relation]] -> String
+showDeps' :: [a] -> D.Relations -> String
 showDeps' prefix xss =
-    intercalate  ("\n" ++ prefix' ++ " ") . Prelude.lines . show . pretty $ xss
+    intercalate  ("\n" ++ prefix' ++ " ") . Prelude.lines . show . pPrint . PP $ xss
     where prefix' = List.map (\ _ -> ' ') prefix
 
 -- | From Darcs.Utils - set the working directory and run an IO operation.
@@ -242,7 +244,7 @@ setMapMaybe p = Set.fromList . mapMaybe p . toList
 
 zipMaps :: Ord k => (k -> Maybe a -> Maybe b -> Maybe c) -> Map k a -> Map k b -> Map k c
 zipMaps f m n =
-    foldWithKey h (foldWithKey g empty m) n
+    foldWithKey h (foldWithKey g Map.empty m) n
     where
       g k a r = case f k (Just a) (lookup k n) of
                   Just c -> Map.insert k c r              -- Both m and n have entries for k
@@ -347,8 +349,8 @@ fromSingleton e multiple s =
       [] -> e
       xs -> multiple xs
 
-instance Pretty PackageIdentifier where
-    pretty p = pretty (pkgName p) <> pretty "-" <> pretty (pkgVersion p)
+instance Pretty (PP PackageIdentifier) where
+    pPrint (PP p) = pPrint (PP (pkgName p)) <> text "-" <> pPrint (PP (pkgVersion p))
 
-instance Pretty PackageName where
-    pretty (PackageName s) = pretty s
+instance Pretty (PP PackageName) where
+    pPrint (PP (PackageName s)) = text s

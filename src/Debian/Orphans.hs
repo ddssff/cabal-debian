@@ -9,10 +9,8 @@ import Data.Maybe (fromMaybe)
 import Data.Monoid ((<>))
 import Data.Version (Version(..), showVersion)
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(..))
-import Debian.Pretty (Pretty(pretty), text, cat, empty)
-import Debian.Relation (Relation(..), VersionReq(..), ArchitectureReq(..),
-                        SrcPkgName(..))
-import Debian.Version (DebianVersion)
+import Debian.Pretty (PP(PP, unPP))
+import Debian.Relation (Relation(..), VersionReq(..), ArchitectureReq(..))
 import Distribution.Compiler (CompilerId(..))
 #if !MIN_VERSION_Cabal(1,18,0)
 import Distribution.Compiler (CompilerFlavor(..))
@@ -23,6 +21,7 @@ import Distribution.Simple.Compiler (Compiler(..))
 import Distribution.Version (VersionRange(..), foldVersionRange')
 import Language.Haskell.Extension (Extension(..), KnownExtension(..), Language(..))
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr(..))
+import Text.PrettyPrint.HughesPJClass (Pretty(pPrint), text, hcat)
 
 deriving instance Typeable Compiler
 deriving instance Typeable CompilerId
@@ -84,17 +83,17 @@ deriving instance Data License
 
 -- Convert from license to RPM-friendly description.  The strings are
 -- taken from TagsCheck.py in the rpmlint distribution.
-instance Pretty License where
-    pretty (GPL _) = text "GPL"
-    pretty (LGPL _) = text "LGPL"
-    pretty BSD3 = text "BSD"
-    pretty BSD4 = text "BSD-like"
-    pretty PublicDomain = text "Public Domain"
-    pretty AllRightsReserved = text "Proprietary"
-    pretty OtherLicense = text "Non-distributable"
-    pretty MIT = text "MIT"
-    pretty (UnknownLicense _) = text "Unknown"
-    pretty x = pretty (show x)
+instance Pretty (PP License) where
+    pPrint (PP (GPL _)) = text "GPL"
+    pPrint (PP (LGPL _)) = text "LGPL"
+    pPrint (PP BSD3) = text "BSD"
+    pPrint (PP BSD4) = text "BSD-like"
+    pPrint (PP PublicDomain) = text "Public Domain"
+    pPrint (PP AllRightsReserved) = text "Proprietary"
+    pPrint (PP OtherLicense) = text "Non-distributable"
+    pPrint (PP MIT) = text "MIT"
+    pPrint (PP (UnknownLicense _)) = text "Unknown"
+    pPrint (PP x) = text (show x)
 
 deriving instance Data NameAddr
 deriving instance Typeable NameAddr
@@ -103,41 +102,27 @@ deriving instance Read NameAddr
 -- This Pretty instance gives a string used to create a valid
 -- changelog entry, it *must* have a name followed by an email address
 -- in angle brackets.
-instance Pretty NameAddr where
-    pretty x = pretty (fromMaybe (nameAddr_addr x) (nameAddr_name x) ++ " <" ++ nameAddr_addr x ++ ">")
-    -- pretty x = text (maybe (nameAddr_addr x) (\ n -> n ++ " <" ++ nameAddr_addr x ++ ">") (nameAddr_name x))
+instance Pretty (PP NameAddr) where
+    pPrint (PP x) = text (fromMaybe (nameAddr_addr x) (nameAddr_name x) ++ " <" ++ nameAddr_addr x ++ ">")
+    -- pPrint x = text (maybe (nameAddr_addr x) (\ n -> n ++ " <" ++ nameAddr_addr x ++ ">") (nameAddr_name x))
 
-instance Pretty [NameAddr] where
-    pretty = cat . intersperse (text ", ") . map pretty
+instance Pretty (PP [NameAddr]) where
+    pPrint = hcat . intersperse (text ", ") . map (pPrint . PP) . unPP
 
-instance Pretty (Maybe NameAddr) where
-    pretty Nothing = empty
-    pretty (Just x) = pretty x
-
-instance Pretty VersionRange where
-    pretty range =
+instance Pretty (PP VersionRange) where
+    pPrint (PP range) =
         foldVersionRange'
           (text "*")
-          (\ v -> text "=" <> pretty v)
-          (\ v -> text ">" <> pretty v)
-          (\ v -> text "<" <> pretty v)
-          (\ v -> text ">=" <> pretty v)
-          (\ v -> text "<=" <> pretty v)
-          (\ x _ -> text "=" <> pretty x <> text ".*") -- not exactly right
+          (\ v -> text "=" <> pPrint (PP v))
+          (\ v -> text ">" <> pPrint (PP v))
+          (\ v -> text "<" <> pPrint (PP v))
+          (\ v -> text ">=" <> pPrint (PP v))
+          (\ v -> text "<=" <> pPrint (PP v))
+          (\ x _ -> text "=" <> pPrint (PP x) <> text ".*") -- not exactly right
           (\ x y -> text "(" <> x <> text " || " <> y <> text ")")
           (\ x y -> text "(" <> x <> text " && " <> y <> text ")")
           (\ x -> text "(" <> x <> text ")")
           range
 
-instance Pretty Version where
-    pretty = pretty . showVersion
-
-instance Pretty DebianVersion where
-    pretty = pretty . show
-
-instance Pretty (Maybe SrcPkgName) where
-    pretty Nothing = empty
-    pretty (Just x) = pretty x
-
-instance Pretty Bool where
-    pretty = pretty . show
+instance Pretty (PP Version) where
+    pPrint = text . showVersion . unPP

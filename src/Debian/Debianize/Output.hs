@@ -34,7 +34,7 @@ import Debian.Debianize.Prelude (indent, replaceFile, zipMaps)
 import qualified Debian.Debianize.Types as T
 import qualified Debian.Debianize.Types.BinaryDebDescription as B (package)
 import qualified Debian.Debianize.Types.SourceDebDescription as S (source)
-import Debian.Pretty (Pretty(pretty))
+import Debian.Pretty (ppPrint, ppDisplay)
 import Prelude hiding (unlines, writeFile, (.))
 import System.Directory (createDirectoryIfMissing, doesFileExist, getPermissions, Permissions(executable), setPermissions)
 --import System.Environment (getEnv)
@@ -42,6 +42,7 @@ import System.Exit (ExitCode(ExitSuccess))
 import System.FilePath ((</>), takeDirectory)
 import System.IO (hPutStrLn, stderr)
 import System.Process (readProcessWithExitCode, showCommandForUser)
+import Text.PrettyPrint.HughesPJClass (text)
 
 -- | Run the script in @debian/Debianize.hs@ with the given command
 -- line arguments.  Returns @True@ if the script exists and succeeds.
@@ -115,7 +116,7 @@ compareDebianization old new =
       doFile path (Just o) (Just n) =
           if o == n
           then Nothing -- Just (path ++ ": Unchanged\n")
-          else Just (show (prettyDiff ("old" </> path) ("new" </> path) (contextDiff 2 (split (== '\n') o) (split (== '\n') n))))
+          else Just (show (prettyDiff (text ("old" </> path)) (text ("new" </> path)) (text . unpack) (contextDiff 2 (split (== '\n') o) (split (== '\n') n))))
       doFile _path Nothing Nothing = error "Internal error in zipMaps"
 
 -- | Make sure the new debianization matches the existing
@@ -126,9 +127,9 @@ compareDebianization old new =
 validateDebianization :: Atoms -> Atoms -> ()
 validateDebianization old new =
     case () of
-      _ | oldVersion /= newVersion -> throw (userError ("Version mismatch, expected " ++ show (pretty oldVersion) ++ ", found " ++ show (pretty newVersion)))
-        | oldSource /= newSource -> throw (userError ("Source mismatch, expected " ++ show (pretty oldSource) ++ ", found " ++ show (pretty newSource)))
-        | oldPackages /= newPackages -> throw (userError ("Package mismatch, expected " ++ show (map pretty oldPackages) ++ ", found " ++ show (map pretty newPackages)))
+      _ | oldVersion /= newVersion -> throw (userError ("Version mismatch, expected " ++ ppDisplay oldVersion ++ ", found " ++ ppDisplay newVersion))
+        | oldSource /= newSource -> throw (userError ("Source mismatch, expected " ++ ppDisplay oldSource ++ ", found " ++ ppDisplay newSource))
+        | oldPackages /= newPackages -> throw (userError ("Package mismatch, expected " ++ show (map ppPrint oldPackages) ++ ", found " ++ show (map ppPrint newPackages)))
         | True -> ()
     where
       oldVersion = logVersion (head (unChangeLog (fromMaybe (error "Missing changelog") (getL T.changelog old))))

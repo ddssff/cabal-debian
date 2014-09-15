@@ -1,3 +1,12 @@
+haskell-cabal-debian (4.17.5) unstable; urgency=low
+
+  * Use the prettyclass package and the PP wrappers in the latest
+    debian package to do pretty printing.
+  * Change default priority to extra
+  * Use the new watch file suggested by nomeata
+
+ -- David Fox <dsf@seereason.com>  Mon, 15 Sep 2014 13:28:36 -0700
+
 haskell-cabal-debian (4.17.4) unstable; urgency=low
 
   * Add missing ifdefs to hide the GHCJS constructor when ghcjs-support

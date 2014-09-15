@@ -1,6 +1,6 @@
 Source: haskell-clckwrks-dot-com
 Maintainer: Jeremy Shaw <jeremy@n-heptane.com>
-Priority: optional
+Priority: extra
 Section: haskell
 Build-Depends: debhelper (>= 7.0)
                , haskell-devscripts (>= 0.8)

@@ -42,7 +42,6 @@ import Distribution.Text (display)
 import Prelude hiding (unlines)
 import System.Directory (doesDirectoryExist, getDirectoryContents)
 import System.FilePath ((</>))
-import Text.PrettyPrint.HughesPJClass (pPrint)
 
 #if !MIN_VERSION_Cabal(1,18,0)
 buildCompilerId :: CompilerId

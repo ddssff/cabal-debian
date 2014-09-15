@@ -62,7 +62,7 @@ import Data.Text as Text (Text, unpack, lines)
 import Data.Text.IO (hGetContents)
 import Debian.Control (parseControl, lookupP, Field'(Field), unControl, stripWS)
 import Debian.Orphans ()
-import Debian.Pretty (PP(PP), ppPrint)
+import Debian.Pretty (PP(PP))
 import Debian.Relation.Common ({- Pretty instances -})
 import Debian.Version (DebianVersion, prettyDebianVersion)
 import Debian.Version.String (parseDebianVersion)
@@ -76,10 +76,7 @@ import System.FilePath ((</>), dropExtension)
 import System.IO (IOMode (ReadMode), withFile, openFile, hSetBinaryMode)
 import System.IO.Error (isDoesNotExistError, catchIOError)
 import System.Process (readProcessWithExitCode, showCommandForUser)
-import Text.PrettyPrint.HughesPJClass as PP (Pretty(pPrint), text, empty)
-
-instance Pretty (PP a) => Pretty (PP (Maybe a)) where
-    pPrint (PP x) = maybe PP.empty ppPrint x
+import Text.PrettyPrint.HughesPJClass as PP (Pretty(pPrint), text)
 
 curry3 :: ((a, b, c) -> d) -> a -> b -> c -> d
 curry3 f a b c = f (a, b, c)

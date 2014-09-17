@@ -141,14 +141,7 @@ describe =
 debianDescriptionBase :: PackageDescription -> Text
 debianDescriptionBase p =
     (pack . unwords . words $ Cabal.synopsis p) <>
-    case Cabal.description p of
-      "" -> ""
-      text ->
-          let text' = text ++ "\n" ++
-                      list "" ("\n Author: " ++) (Cabal.author p) ++
-                      list "" ("\n Upstream-Maintainer: " ++) (Cabal.maintainer p) ++
-                      list "" ("\n Url: " ++) (Cabal.pkgUrl p) in
-          "\n " <> (pack . trim . List.intercalate "\n " . List.map addDot . lines $ text')
+    "\n " <> (pack . trim . List.intercalate "\n " . List.map addDot . lines $ Cabal.description p)
     where
       addDot line = if all (flip elem " \t") line then "." else line
       list :: b -> ([a] -> b) -> [a] -> b

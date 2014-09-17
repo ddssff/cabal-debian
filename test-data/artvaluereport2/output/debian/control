@@ -1,5 +1,5 @@
 Source: haskell-artvaluereport2
-Priority: optional
+Priority: extra
 Section: haskell
 Maintainer: Clifford Beshers <beshers@seereason.com>
 Build-Depends: debhelper (>= 7.0)
@@ -29,20 +29,12 @@ Build-Depends: debhelper (>= 7.0)
                , libghc-artvaluereport-data-prof (>= 1.66)
                , libghc-authenticate-dev
                , libghc-authenticate-prof
-               , libghc-base-dev | ghc
-               , libghc-base-prof | ghc-prof
-               , libghc-binary-dev | ghc
-               , libghc-binary-prof | ghc-prof
-               , libghc-blaze-html-dev (>= 0.6) | libghc-blaze-html-5-dev (<< 0.6)
-               , libghc-blaze-html-prof (>= 0.6) | libghc-blaze-html-5-prof (<< 0.6)
+               , libghc-blaze-html-dev
+               , libghc-blaze-html-prof
                , libghc-blaze-markup-dev
                , libghc-blaze-markup-prof
-               , libghc-bytestring-dev | ghc
-               , libghc-bytestring-prof | ghc-prof
                , libghc-cereal-dev
                , libghc-cereal-prof
-               , libghc-containers-dev | ghc
-               , libghc-containers-prof | ghc-prof
                , libghc-data-accessor-dev
                , libghc-data-accessor-prof
                , libghc-debian-dev
@@ -53,20 +45,16 @@ Build-Depends: debhelper (>= 7.0)
                , libghc-digestive-functors-prof
                , libghc-digestive-functors-happstack-dev
                , libghc-digestive-functors-happstack-prof
-               , libghc-directory-dev | ghc
-               , libghc-directory-prof | ghc-prof
                , libghc-directory-tree-dev
                , libghc-directory-tree-prof
                , libghc-fb-dev
                , libghc-fb-prof
-               , libghc-filepath-dev | ghc
-               , libghc-filepath-prof | ghc-prof
                , libghc-groom-dev
                , libghc-groom-prof
                , libghc-happstack-dev
                , libghc-happstack-prof
-               , libghc-happstack-authenticate-dev (>= 0.10) | libghc-happstack-authenticate-9-dev (<< 0.10)
-               , libghc-happstack-authenticate-prof (>= 0.10) | libghc-happstack-authenticate-9-prof (<< 0.10)
+               , libghc-happstack-authenticate-dev
+               , libghc-happstack-authenticate-prof
                , libghc-happstack-extra-dev
                , libghc-happstack-extra-prof
                , libghc-happstack-hsp-dev
@@ -103,18 +91,10 @@ Build-Depends: debhelper (>= 7.0)
                , libghc-mtl-prof
                , libghc-network-dev (>= 2.4)
                , libghc-network-prof (>= 2.4)
-               , libghc-old-locale-dev | ghc
-               , libghc-old-locale-prof | ghc-prof
-               , libghc-old-time-dev | ghc
-               , libghc-old-time-prof | ghc-prof
                , libghc-pandoc-dev
                , libghc-pandoc-prof
                , libghc-parsec3-dev (>= 3) | libghc-parsec2-dev (<< 3)
                , libghc-parsec3-prof (>= 3) | libghc-parsec2-prof (<< 3)
-               , libghc-pretty-dev | ghc
-               , libghc-pretty-prof | ghc-prof
-               , libghc-process-dev | ghc
-               , libghc-process-prof | ghc-prof
                , libghc-process-extras-dev (>= 0.5)
                , libghc-process-extras-prof (>= 0.5)
                , libghc-puremd5-dev
@@ -137,14 +117,8 @@ Build-Depends: debhelper (>= 7.0)
                , libghc-tagged-prof
                , libghc-text-dev
                , libghc-text-prof
-               , libghc-time-dev | ghc
-               , libghc-time-prof | ghc-prof
-               , libghc-transformers-dev
-               , libghc-transformers-prof
                , libghc-uniplate-dev
                , libghc-uniplate-prof
-               , libghc-unix-dev | ghc
-               , libghc-unix-prof | ghc-prof
                , libghc-utf8-string-dev
                , libghc-utf8-string-prof
                , libghc-web-routes-dev
@@ -155,8 +129,8 @@ Build-Depends: debhelper (>= 7.0)
                , libghc-web-routes-hsp-prof
                , libghc-web-routes-th-dev
                , libghc-web-routes-th-prof
-               , libghc-xhtml-dev
-               , libghc-xhtml-prof
+               , libghc-extra-dev
+               , libghc-extra-prof
 Build-Depends-Indep: ghc-doc
                      , libjs-jquery-ui (<< 1.10)
                      , libjs-jquery
@@ -172,25 +146,19 @@ Build-Depends-Indep: ghc-doc
                      , libghc-archive-doc (>= 1.2.9)
                      , libghc-artvaluereport-data-doc (>= 1.66)
                      , libghc-authenticate-doc
-                     , libghc-base-doc | ghc-doc
-                     , libghc-binary-doc | ghc-doc
-                     , libghc-blaze-html-doc (>= 0.6) | libghc-blaze-html-5-doc (<< 0.6)
+                     , libghc-blaze-html-doc
                      , libghc-blaze-markup-doc
-                     , libghc-bytestring-doc | ghc-doc
                      , libghc-cereal-doc
-                     , libghc-containers-doc | ghc-doc
                      , libghc-data-accessor-doc
                      , libghc-debian-doc
                      , libghc-debian-packaging-doc (>= 0.8)
                      , libghc-digestive-functors-doc
                      , libghc-digestive-functors-happstack-doc
-                     , libghc-directory-doc | ghc-doc
                      , libghc-directory-tree-doc
                      , libghc-fb-doc
-                     , libghc-filepath-doc | ghc-doc
                      , libghc-groom-doc
                      , libghc-happstack-doc
-                     , libghc-happstack-authenticate-doc (>= 0.10)
+                     , libghc-happstack-authenticate-doc
                      , libghc-happstack-extra-doc
                      , libghc-happstack-hsp-doc
                      , libghc-happstack-scaffolding-doc (>= 0.23)
@@ -209,12 +177,8 @@ Build-Depends-Indep: ghc-doc
                      , libghc-lifted-base-doc
                      , libghc-mtl-doc
                      , libghc-network-doc (>= 2.4)
-                     , libghc-old-locale-doc | ghc-doc
-                     , libghc-old-time-doc | ghc-doc
                      , libghc-pandoc-doc
                      , libghc-parsec3-doc (>= 3) | libghc-parsec2-doc (<< 3)
-                     , libghc-pretty-doc | ghc-doc
-                     , libghc-process-doc | ghc-doc
                      , libghc-process-extras-doc (>= 0.5)
                      , libghc-puremd5-doc
                      , libghc-random-doc
@@ -226,16 +190,12 @@ Build-Depends-Indep: ghc-doc
                      , libghc-syb-with-class-doc
                      , libghc-tagged-doc
                      , libghc-text-doc
-                     , libghc-time-doc | ghc-doc
-                     , libghc-transformers-doc
                      , libghc-uniplate-doc
-                     , libghc-unix-doc | ghc-doc
                      , libghc-utf8-string-doc
                      , libghc-web-routes-doc
                      , libghc-web-routes-happstack-doc
                      , libghc-web-routes-hsp-doc
                      , libghc-web-routes-th-doc
-                     , libghc-xhtml-doc
 Standards-Version: 3.9.1
 Homepage: http://appraisalreportonline.com
 

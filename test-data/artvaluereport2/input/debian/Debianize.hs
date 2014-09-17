@@ -5,21 +5,20 @@ import Data.Monoid (mempty)
 import Data.Set (singleton)
 import Data.Text as Text (intercalate)
 import Debian.Changes (ChangeLog(..))
-import Debian.Debianize (debianization, doBackups, doExecutable, doServer, doWebsite, inputChangeLog, inputDebianization, seereasonDefaultAtoms)
+import Debian.Debianize (debianization, doBackups, doExecutable, doServer, doWebsite, inputChangeLog, inputDebianization, debianDefaultAtoms)
 import Debian.Debianize.Types as T
     (changelog, binaryArchitectures, buildDependsIndep, changelog, compat, control, depends, debianDescription,
      installCabalExec, installData, sourcePackageName, homepage, standardsVersion)
 import Debian.Debianize.Types.Atoms as T
-    (Atoms, newAtoms, InstallFile(..), Server(..), Site(..))
+    (Atoms, newAtoms, InstallFile(..), Server(..), Site(..), EnvSet(..))
 import Debian.Debianize.Monad (execDebT, evalDebT, DebT, execDebM)
-import Debian.Debianize.Types (Top(Top))
 import Debian.Debianize.Types.SourceDebDescription (SourceDebDescription)
 import Debian.Debianize.Output (compareDebianization)
-import Debian.Debianize.Prelude ((~=), (%=), (+=), (++=), (+++=), (~?=))
+import Debian.Debianize.Prelude ((~=), (%=), (+=), (++=), (+++=), (~?=), withCurrentDirectory)
+import Debian.Pretty (ppDisplay)
 import Debian.Policy (databaseDirectory, PackageArchitectures(All), StandardsVersion(StandardsVersion))
 import Debian.Relation (BinPkgName(BinPkgName), Relation(Rel), SrcPkgName(..), VersionReq(SLT))
 import Debian.Version (parseDebianVersion)
-import Text.PrettyPrint.ANSI.Leijen (Pretty(pretty))
 
 -- This looks just like a "real" Debianize.hs file except that it
 -- returns the comparison string instead of doing a
@@ -28,9 +27,9 @@ import Text.PrettyPrint.ANSI.Leijen (Pretty(pretty))
 -- copyFirstLogEntry.
 main :: IO ()
 main =
-    do log <- evalDebT (inputChangeLog (Top "test-data/artvaluereport2/input") >> access changelog) newAtoms
-       new <- execDebT (debianization (Top "test-data/artvaluereport2/input") seereasonDefaultAtoms (customize log)) newAtoms
-       old <- execDebT (inputDebianization (Top "test-data/artvaluereport2/output")) newAtoms
+    do log <- withCurrentDirectory "test-data/artvaluereport2/input" $ newAtoms >>= evalDebT (inputChangeLog >> access changelog)
+       new <- withCurrentDirectory "test-data/artvaluereport2/input" $ newAtoms >>= execDebT (debianization debianDefaultAtoms (customize log))
+       old <- withCurrentDirectory "test-data/artvaluereport2/output" $ newAtoms >>= execDebT (inputDebianization (T.EnvSet "/" "/" "/"))
        -- The newest log entry gets modified when the Debianization is
        -- generated, it won't match so drop it for the comparison.
        compareDebianization old (copyFirstLogEntry old new) >>= putStr
@@ -38,7 +37,7 @@ main =
       customize :: Maybe ChangeLog -> DebT IO ()
       customize log =
           do T.changelog ~?= log
-             installCabalExec +++= (BinPkgName "appraisalscope", singleton ("lookatareport", "usr/bin"))
+             installCabalExec (BinPkgName "appraisalscope") "lookatareport" "usr/bin"
              doExecutable (BinPkgName "appraisalscope") (InstallFile {execName = "appraisalscope", sourceDir = Nothing, destDir = Nothing, destName = "appraisalscope"})
              doServer (BinPkgName "artvaluereport2-development") (theServer (BinPkgName "artvaluereport2-development"))
              doServer (BinPkgName "artvaluereport2-staging") (theServer (BinPkgName "artvaluereport2-staging"))
@@ -75,10 +74,10 @@ main =
       addServerData :: DebT IO ()
       addServerData = mapM_ addData (map BinPkgName ["artvaluereport2-development", "artvaluereport2-staging", "artvaluereport2-production"])
       addData p =
-          do installData +++= (p, singleton ("theme/ArtValueReport_SunsetSpectrum.ico", "ArtValueReport_SunsetSpectrum.ico"))
+          do installData p "theme/ArtValueReport_SunsetSpectrum.ico" "ArtValueReport_SunsetSpectrum.ico"
              mapM_ (addDataFile p) ["Udon.js", "flexbox.css", "DataTables-1.8.2", "html5sortable", "jGFeed", "searchMag.png",
                                     "Clouds.jpg", "tweaks.css", "verticalTabs.css", "blueprint", "jquery.blockUI", "jquery.tinyscrollbar"]
-      addDataFile p path = installData +++= (p, singleton (path, path))
+      addDataFile p path = installData p path path
 
       theSite :: BinPkgName -> Site
       theSite deb =
@@ -100,7 +99,7 @@ main =
                                        BinPkgName "artvaluereport2-production" -> "http://" ++ hostname' ++ "/"
                                        _ -> "http://seereason.com:" ++ show (portNum deb) ++ "/"
                      , "--top", databaseDirectory deb
-                     , "--logs", "/var/log/" ++ show (pretty deb)
+                     , "--logs", "/var/log/" ++ ppDisplay deb
                      , "--log-mode", case deb of
                                        BinPkgName "artvaluereport2-production" -> "Production"
                                        _ -> "Development"
@@ -115,7 +114,7 @@ main =
                      , "--json2-path",json2Path ] -})
                  , installFile =
                      InstallFile { execName   = "artvaluereport2-server"
-                                 , destName   = show (pretty deb)
+                                 , destName   = ppDisplay deb
                                  , sourceDir  = Nothing
                                  , destDir    = Nothing }
                  }

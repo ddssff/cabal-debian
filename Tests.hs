@@ -25,7 +25,7 @@ import Debian.Debianize.Finalize (debianization, finalizeDebianization')
 import Debian.Debianize.Goodies (doBackups, doExecutable, doServer, doWebsite, makeRulesHead, tightDependencyFixup)
 import Debian.Debianize.Input (inputChangeLog, inputDebianization)
 import Debian.Debianize.Monad (DebT, evalDebT, execDebM, execDebT)
-import Debian.Debianize.Prelude ((%=), (+++=), (++=), (+=), (~=), withCurrentDirectory)
+import Debian.Debianize.Prelude ((%=), (++=), (+=), (~=), withCurrentDirectory)
 import Debian.Debianize.Types as T
 import Debian.Debianize.Types.Atoms as T
 import qualified Debian.Debianize.Types.BinaryDebDescription as B
@@ -36,7 +36,7 @@ import Debian.Policy (databaseDirectory, PackageArchitectures(All), PackagePrior
 import Debian.Relation (BinPkgName(..), Relation(..), SrcPkgName(..), VersionReq(..))
 import Debian.Release (ReleaseName(ReleaseName, relName))
 import Debian.Version (parseDebianVersion, buildDebianVersion)
-import Distribution.Compiler (CompilerId(..), CompilerFlavor(GHC))
+import Distribution.Compiler (CompilerFlavor(GHC))
 import Distribution.License (License(..))
 import Distribution.Package (PackageName(PackageName))
 import Prelude hiding (log)
@@ -573,13 +573,13 @@ test5 label =
 test6 :: String -> Test
 test6 label =
     TestLabel label $
-    TestCase (do result <- readProcessWithExitCode "runhaskell" ["-isrc", "-DMIN_VERSION_Cabal(1,18,0)", "test-data/artvaluereport2/input/debian/Debianize.hs"] ""
+    TestCase (do result <- readProcessWithExitCode "runhaskell" ["-isrc", "-DMIN_VERSION_Cabal(a,b,c)=1", "test-data/artvaluereport2/input/debian/Debianize.hs"] ""
                  assertEqual label (ExitSuccess, "", "") result)
 
 test7 :: String -> Test
 test7 label =
     TestLabel label $
-    TestCase (do new <- readProcessWithExitCode "runhaskell" ["-isrc", "debian/Debianize.hs"] ""
+    TestCase (do new <- readProcessWithExitCode "runhaskell" ["-isrc", "-DMIN_VERSION_Cabal(a,b,c)=1", "debian/Debianize.hs"] ""
                  assertEqual label (ExitSuccess, "", "Ignored: ./debian/cabal-debian.1\nIgnored: ./debian/cabal-debian.manpages\n") new)
 
 test8 :: String -> Test

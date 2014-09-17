@@ -14,7 +14,7 @@ import Debian.Debianize.Types as T
 import Debian.Debianize.Types.Atoms as T (Atoms, newAtoms, EnvSet(EnvSet))
 import Debian.Debianize.Monad (Atoms, DebT, execDebT, evalDebT, execDebM)
 import Debian.Debianize.Output (compareDebianization)
-import Debian.Debianize.Prelude ((~=), (~?=), (%=), (+=), (++=), (+++=))
+import Debian.Debianize.Prelude ((~=), (~?=), (%=), (+=), (++=))
 import Debian.Debianize.Types.SourceDebDescription (SourceDebDescription)
 import Debian.Policy (SourceFormat(Native3), StandardsVersion(StandardsVersion))
 import Debian.Relation (BinPkgName(BinPkgName), Relation(Rel), VersionReq(SLT, GRE))
@@ -63,8 +63,8 @@ main =
              depends (BinPkgName "libghc-cabal-debian-dev") %= (++ [[Rel (BinPkgName "debian-policy") Nothing Nothing]])
              depends (BinPkgName "cabal-debian") %= (++ [[Rel (BinPkgName "debhelper") Nothing Nothing]])
              depends (BinPkgName "cabal-debian") %= (++ [[Rel (BinPkgName "haskell-devscripts") (Just (GRE (parseDebianVersion ("0.8.19" :: String)))) Nothing]])
-             installCabalExec +++= (BinPkgName "cabal-debian-tests", singleton ("cabal-debian-tests", "/usr/bin"))
-             installCabalExec +++= (BinPkgName "cabal-debian", singleton ("cabal-debian", "/usr/bin"))
+             installCabalExec (BinPkgName "cabal-debian-tests") "cabal-debian-tests" "/usr/bin"
+             installCabalExec (BinPkgName "cabal-debian") "cabal-debian" "/usr/bin"
              utilsPackageNameBase ~= Just "cabal-debian"
              -- extraDevDeps (BinPkgName "debian-policy")
              homepage ~= Just (pack "http://src.seereason.com/cabal-debian")

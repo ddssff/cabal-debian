@@ -23,7 +23,7 @@ import Debian.Debianize.Types
      recommends, suggests, extraLibMap, debVersion, revision, epochMap, execMap, utilsPackageNameBase)
 import Debian.Debianize.Types.Atoms (Atoms, EnvSet(..), InstallFile(..), DebAction(..), setBuildEnv, compilerFlavors)
 import Debian.Orphans ()
-import Debian.Policy (SourceFormat(Quilt3), parseMaintainer)
+import Debian.Policy (SourceFormat(Quilt3, Native3), parseMaintainer)
 import Debian.Relation (BinPkgName(..), SrcPkgName(..), Relations, Relation(..))
 import Debian.Relation.String (parseRelations)
 import Debian.Version (parseDebianVersion)
@@ -170,6 +170,8 @@ options =
                       , "google 'cabal hell'."]),
       Option "" ["quilt"] (NoArg (sourceFormat ~= Just Quilt3))
              "The package has an upstream tarball, write '3.0 (quilt)' into source/format.",
+      Option "" ["native"] (NoArg (sourceFormat ~= Just Native3))
+             "The package has an no upstream tarball, write '3.0 (native)' into source/format.",
       Option "" ["builddir"] (ReqArg (\ s -> buildDir ~= singleton (s </> "build")) "PATH")
              (unlines [ "Subdirectory where cabal does its build, dist/build by default, dist-ghc when"
                       , "run by haskell-devscripts.  The build subdirectory is added to match the"

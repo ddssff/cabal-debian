@@ -7,7 +7,14 @@ Category:       Debian, Distribution, System
 Maintainer:     David Fox <dsf@seereason.com>
 Homepage:       https://github.com/ddssff/cabal-debian
 Build-Type:     Simple
-Synopsis:       Create a debianization for a cabal package
+Synopsis:       Create a Debianization for a Cabal package
+Description:
+ This package supports the generation of a package Debianization (i.e.
+ the files in the @debian@ subdirectory) for a cabal package,
+ either through a library API or using the cabal-debian executable.
+ For documentation of the executable, run
+ @cabal-debian --help@, for documentation of the library API follow
+ the link to the @Debian.Debianize@ module below.
 Cabal-Version: >= 1.8
 Extra-Source-Files:
   changelog
@@ -126,14 +133,6 @@ Extra-Source-Files:
   test-data/artvaluereport2/output/debian/control
   test-data/artvaluereport2/output/debian/artvaluereport2-backups.install
   test-data/artvaluereport2/output/debian/copyright
-
-Description:
- This package provides two methods for generating the debianization
- (i.e. the contents of the 'debian' subdirectory) for a cabal package.
- An executable named cabal-debian, and a library API to handle more
- complex packaging issues.  For documentation of the executable run
- @cabal-debian --help@, for documentation of the library API follow
- the link to the @Debian.Debianize@ module below.
 
 Flag tests
   Description: enable the unit test executable (disabled by default because it has a lot of wacky dependencies.)

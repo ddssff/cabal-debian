@@ -256,7 +256,7 @@ binaryPackageRelations :: Monad m => BinPkgName -> B.PackageType -> DebT m ()
 binaryPackageRelations b typ =
     do edds <- access T.extraDevDeps
        T.depends b %= \ rels -> [anyrel "${haskell:Depends}", anyrel "${misc:Depends}"] ++
-                                (if typ == B.Development then (anyrel "${shlibs:Depends}": edds) else []) ++ rels
+                                (if typ == B.Development then [anyrel "${shlibs:Depends}"] else []) ++ edds ++ rels
        T.recommends b %= \ rels -> [anyrel "${haskell:Recommends}"] ++ rels
        T.suggests b %= \ rels -> [anyrel "${haskell:Suggests}"] ++ rels
        T.preDepends b ~= []
@@ -286,7 +286,7 @@ librarySpecs pkgDesc hc =
 docSpecsParagraph :: (Monad m, Functor m) => CompilerFlavor -> DebT m ()
 docSpecsParagraph hc =
     do b <- debianName B.Documentation hc
-       binaryPackageRelations b B.Development -- not sure why this isn't Documentation, but I think there's a "good" reason
+       binaryPackageRelations b B.Documentation
        T.packageType b ~?= Just B.Documentation
        T.packageType b ~?= Just B.Documentation
        T.binaryArchitectures b ~= Just All
@@ -296,7 +296,7 @@ docSpecsParagraph hc =
 librarySpec :: (Monad m, Functor m) => PackageArchitectures -> B.PackageType -> CompilerFlavor -> DebT m ()
 librarySpec arch typ hc =
     do b <- debianName typ hc
-       binaryPackageRelations b B.Development
+       binaryPackageRelations b typ
        T.packageType b ~?= Just typ
        T.packageType b ~?= Just typ
        T.binaryArchitectures b ~?= Just arch

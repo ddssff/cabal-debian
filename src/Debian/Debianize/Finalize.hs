@@ -30,13 +30,13 @@ import Debian.Debianize.Input (dataDir, inputCabalization, inputChangeLog, input
 import Debian.Debianize.Monad as Monad (DebT)
 import Debian.Debianize.Options (compileCommandlineArgs, compileEnvironmentArgs)
 import Debian.Debianize.Prelude ((%=), (+=), foldEmpty, fromEmpty, fromSingleton, (~=), (~?=))
-import qualified Debian.Debianize.Types as T (apacheSite, backups, binaryArchitectures, binaryPackages, binarySection, breaks, buildDepends, buildDependsIndep, buildDir, builtUsing, changelog, comments, compat, conflicts, debianDescription, debVersion, depends, epochMap, executable, extraDevDeps, extraLibMap, file, install, installCabalExec, installData, installDir, installTo, intermediateFiles, license, link, maintainer, noDocumentationLibrary, noProfilingLibrary, noHoogle, packageDescription, packageType, preDepends, provides, recommends, replaces, revision, rulesFragments, serverInfo, source, sourcePackageName, sourcePriority, sourceSection, suggests, utilsPackageNameBase, verbosity, watch, website)
+import qualified Debian.Debianize.Types as T (apacheSite, backups, binaryArchitectures, binaryPackages, binarySection, breaks, buildDepends, buildDependsIndep, buildDir, builtUsing, changelog, comments, compat, conflicts, debianDescription, debVersion, depends, epochMap, executable, extraDevDeps, extraLibMap, file, install, installCabalExec, installData, installDir, installTo, intermediateFiles, license, link, maintainer, noDocumentationLibrary, noProfilingLibrary, noHoogle, packageDescription, packageType, preDepends, provides, recommends, replaces, revision, rulesFragments, serverInfo, source, sourceFormat, sourcePackageName, sourcePriority, sourceSection, suggests, utilsPackageNameBase, verbosity, watch, website)
 import qualified Debian.Debianize.Types.Atoms as A (InstallFile(execName, sourceDir), showAtoms, compilerFlavors, Atom(..), atomSet)
 import qualified Debian.Debianize.Types.BinaryDebDescription as B (BinaryDebDescription, package, PackageType(Development, Documentation, Exec, Profiling, Source, HaskellSource, Utilities), PackageType)
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
 import Debian.Orphans ()
 import Debian.Pretty (ppDisplay, PP(..))
-import Debian.Policy (getDebhelperCompatLevel, haskellMaintainer, PackageArchitectures(Any, All), PackagePriority(Extra), Section(..))
+import Debian.Policy (getDebhelperCompatLevel, haskellMaintainer, PackageArchitectures(Any, All), PackagePriority(Extra), Section(..), SourceFormat(Quilt3))
 import Debian.Relation (BinPkgName, BinPkgName(BinPkgName), SrcPkgName(SrcPkgName), Relation(Rel), Relations)
 import qualified Debian.Relation as D (BinPkgName(BinPkgName), Relation(..))
 import Debian.Release (parseReleaseName)
@@ -94,6 +94,7 @@ finalizeDebianization date debhelperCompat =
        T.watch ~?= Just (watchAtom (pkgName $ Cabal.package $ pkgDesc))
        T.sourceSection ~?= Just (MainSection "haskell")
        T.sourcePriority ~?= Just Extra
+       T.sourceFormat ~?= Just Quilt3
        T.compat ~?= debhelperCompat
        finalizeChangelog date
        finalizeControl

@@ -7,8 +7,10 @@ Build-Depends: debhelper (>= 7.0)
                , cdbs
                , ghc
                , ghc-prof
-               , libghc-cabal-ghcjs-dev | libghc-cabal-dev
-               , libghc-cabal-ghcjs-prof | libghc-cabal-prof
+               , libghc-cabal-ghcjs-dev (>= 1.21) | ghc | libghc-cabal-dev (>= 1.9)
+               , libghc-cabal-ghcjs-dev (>= 1.21) | ghc | libghc-cabal-dev (<< 1.21)
+               , libghc-cabal-ghcjs-prof (>= 1.21) | ghc-prof | libghc-cabal-prof (>= 1.9)
+               , libghc-cabal-ghcjs-prof (>= 1.21) | ghc-prof | libghc-cabal-prof (<< 1.21)
                , libghc-diff-dev
                , libghc-diff-prof
                , libghc-hunit-dev
@@ -44,7 +46,8 @@ Build-Depends: debhelper (>= 7.0)
                , libghc-utf8-string-dev
                , libghc-utf8-string-prof
 Build-Depends-Indep: ghc-doc
-	       	     , libghc-cabal-ghcjs-doc | libghc-cabal-doc
+                     , libghc-cabal-ghcjs-doc (>= 1.21) | ghc-doc | libghc-cabal-doc (>= 1.9)
+                     , libghc-cabal-ghcjs-doc (>= 1.21) | ghc-doc | libghc-cabal-doc (<< 1.21)
                      , libghc-diff-doc
                      , libghc-hunit-doc
                      , libghc-unixutils-doc

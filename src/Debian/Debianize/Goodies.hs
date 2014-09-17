@@ -96,12 +96,11 @@ doBackups bin s =
        T.depends bin %= (++ [[Rel (BinPkgName "anacron") Nothing Nothing]])
        -- depends +++= (bin, Rel (BinPkgName "anacron") Nothing Nothing)
 
-describe :: Monad m => BinPkgName -> DebT m Text
-describe b =
+describe :: Monad m => DebT m Text
+describe =
     do Just p <- access T.packageDescription
-       typ <- access (T.packageType b)
        return $
-          debianDescriptionBase p <> "\n" <>
+          debianDescriptionBase p {- <> "\n" <>
           case typ of
             Just B.Profiling ->
                 Text.intercalate "\n"
@@ -132,6 +131,7 @@ describe b =
                         [" .",
                          " Files associated with the " <> pack (display (pkgName (Cabal.package p))) <> " package."]
             -- x -> error $ "Unexpected library package name suffix: " ++ show x
+-}
 
 -- | The Cabal package has one synopsis and one description field
 -- for the entire package, while in a Debian package there is a

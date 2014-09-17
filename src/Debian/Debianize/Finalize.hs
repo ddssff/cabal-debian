@@ -6,6 +6,7 @@ module Debian.Debianize.Finalize
     ) where
 
 import Control.Applicative ((<$>))
+import Control.Category ((.))
 import Control.Monad (when)
 import Control.Monad as List (mapM_)
 import Control.Monad.State (get, modify)
@@ -20,7 +21,7 @@ import Data.Maybe (fromMaybe, isJust)
 import Data.Monoid ((<>), mempty)
 import Data.Set as Set (difference, filter, fromList, map, null, Set, singleton, toList, union, unions, fold)
 import Data.Set.Extra as Set (mapM_)
-import Data.Text as Text (pack, unlines, unpack)
+import Data.Text as Text (Text, pack, unlines, unpack)
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(..))
 import Debian.Debianize.BuildDependencies (debianBuildDeps, debianBuildDepsIndep)
 import Debian.Debianize.Changelog (dropFutureEntries)
@@ -30,9 +31,10 @@ import Debian.Debianize.Input (dataDir, inputCabalization, inputChangeLog, input
 import Debian.Debianize.Monad as Monad (DebT)
 import Debian.Debianize.Options (compileCommandlineArgs, compileEnvironmentArgs)
 import Debian.Debianize.Prelude ((%=), (+=), foldEmpty, fromEmpty, fromSingleton, (~=), (~?=))
-import qualified Debian.Debianize.Types as T (apacheSite, backups, binaryArchitectures, binaryPackages, binarySection, breaks, buildDepends, buildDependsIndep, buildDir, builtUsing, changelog, comments, compat, conflicts, debianDescription, debVersion, depends, epochMap, executable, extraDevDeps, extraLibMap, file, install, installCabalExec, installData, installDir, installTo, intermediateFiles, license, link, maintainer, noDocumentationLibrary, noProfilingLibrary, noHoogle, packageDescription, packageType, preDepends, provides, recommends, replaces, revision, rulesFragments, serverInfo, source, sourceFormat, sourcePackageName, sourcePriority, sourceSection, suggests, utilsPackageNameBase, verbosity, watch, website)
+import qualified Debian.Debianize.Types as T (apacheSite, backups, binaryArchitectures, binaryPackages, binarySection, breaks, buildDepends, buildDependsIndep, buildDir, builtUsing, changelog, comments, compat, conflicts, debianDescription, debVersion, depends, epochMap, executable, extraDevDeps, extraLibMap, file, install, installCabalExec, installData, installDir, installTo, intermediateFiles, license, link, maintainer, noDocumentationLibrary, noProfilingLibrary, noHoogle, packageDescription, packageType, preDepends, provides, recommends, replaces, revision, rulesFragments, serverInfo, source, sourceFormat, sourcePackageName, sourcePriority, sourceSection, suggests, utilsPackageNameBase, verbosity, watch, website, control)
 import qualified Debian.Debianize.Types.Atoms as A (InstallFile(execName, sourceDir), showAtoms, compilerFlavors, Atom(..), atomSet)
 import qualified Debian.Debianize.Types.BinaryDebDescription as B (BinaryDebDescription, package, PackageType(Development, Documentation, Exec, Profiling, Source, HaskellSource, Utilities), PackageType)
+import qualified Debian.Debianize.Types.SourceDebDescription as S (xDescription)
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
 import Debian.Orphans ()
 import Debian.Pretty (ppDisplay, PP(..))
@@ -50,7 +52,7 @@ import Distribution.Package (Dependency(..), PackageIdentifier(..), PackageName(
 import Distribution.PackageDescription (PackageDescription)
 import Distribution.PackageDescription as Cabal (allBuildInfo, BuildInfo(buildable, extraLibs), Executable(buildInfo, exeName))
 import qualified Distribution.PackageDescription as Cabal (PackageDescription(dataDir, dataFiles, executables, library, license, package))
-import Prelude hiding (init, log, map, unlines, unlines, writeFile)
+import Prelude hiding (init, log, map, unlines, unlines, writeFile, (.))
 import System.FilePath ((<.>), (</>), makeRelative, splitFileName, takeDirectory, takeFileName)
 import Text.PrettyPrint.HughesPJClass (Pretty(pPrint))
 
@@ -88,7 +90,8 @@ finalizeDebianization' =
 --        paramter type to Maybe PackageDescription and propagate down thru code
 finalizeDebianization  :: (MonadIO m, Functor m) => String -> Maybe Int -> DebT m ()
 finalizeDebianization date debhelperCompat =
-    do hcs <- Set.toList <$> access A.compilerFlavors
+    do -- In reality, hcs must be a singleton or many things won't work.  But some day...
+       hcs <- Set.toList <$> access A.compilerFlavors
        List.mapM_ addExtraLibDependencies hcs
        Just pkgDesc <- access T.packageDescription
        T.watch ~?= Just (watchAtom (pkgName $ Cabal.package $ pkgDesc))
@@ -112,19 +115,21 @@ finalizeDebianization date debhelperCompat =
        -- executed since the last expandAtoms.  Anyway, should be idempotent.
        expandAtoms
        -- Turn atoms related to priority, section, and description into debianization elements
-       finalizeDescriptions
+       -- finalizeDescriptions
 
 -- | Compute the final values of the BinaryDebDescription record
 -- description fields from the cabal descriptions and the values that
 -- have already been set.
+{-
 finalizeDescriptions :: (Monad m, Functor m) => DebT m ()
 finalizeDescriptions = access T.binaryPackages >>= List.mapM_ finalizeDescription
 
 finalizeDescription :: (Monad m, Functor m) => B.BinaryDebDescription -> DebT m ()
 finalizeDescription bdd =
     do let b = getL B.package bdd
-       cabDesc <- describe b
-       T.debianDescription b ~?= Just cabDesc
+       cabDesc <- describe
+       T.debianDescription ~?= Just cabDesc
+-}
 
 -- | Combine various bits of information to produce the debian version
 -- which will be used for the debian package.  If the override
@@ -179,6 +184,8 @@ finalizeControl =
        maint <- access T.maintainer >>= return . fromMaybe (error "No maintainer")
        T.source ~= Just src
        T.maintainer ~= Just maint
+       desc <- describe
+       (S.xDescription . T.control) ~?= Just desc
        -- control %= (\ y -> y { D.source = Just src, D.maintainer = Just maint })
 
 -- | Make sure there is a changelog entry with the version number and
@@ -241,23 +248,22 @@ cabalExecBinaryPackage b =
     do T.packageType b ~?= Just B.Exec
        T.binaryArchitectures b ~?= Just Any
        T.binarySection b ~?= Just (MainSection "misc")
-       desc <- describe b
-       T.debianDescription b ~?= Just desc
+       T.debianDescription b ~?= Just desc -- yeah, this same line is all over the place.
        binaryPackageRelations b B.Exec
     where
 
 binaryPackageRelations :: Monad m => BinPkgName -> B.PackageType -> DebT m ()
 binaryPackageRelations b typ =
     do edds <- access T.extraDevDeps
-       T.depends b %= \ rels -> [anyrel "${shlibs:Depends}", anyrel "${haskell:Depends}", anyrel "${misc:Depends}"] ++
-                                (if typ == B.Development then edds else []) ++ rels
+       T.depends b %= \ rels -> [anyrel "${haskell:Depends}", anyrel "${misc:Depends}"] ++
+                                (if typ == B.Development then (anyrel "${shlibs:Depends}": edds) else []) ++ rels
        T.recommends b %= \ rels -> [anyrel "${haskell:Recommends}"] ++ rels
        T.suggests b %= \ rels -> [anyrel "${haskell:Suggests}"] ++ rels
        T.preDepends b ~= []
        T.breaks b ~= []
        T.conflicts b %= \ rels -> [anyrel "${haskell:Conflicts}"] ++ rels
-       T.provides b %= \ rels -> [anyrel "${haskell:Provides}"] ++ rels
-       T.replaces b %= \ rels -> [anyrel "${haskell:Replaces}"] ++ rels
+       T.provides b %= \ rels -> (if typ /= B.Documentation then [anyrel "${haskell:Provides}"] else []) ++ rels
+       -- T.replaces b %= \ rels -> [anyrel "${haskell:Replaces}"] ++ rels
        T.builtUsing b ~= []
 
 -- | Add the library paragraphs for a particular compiler flavor.
@@ -282,7 +288,6 @@ docSpecsParagraph hc =
     do b <- debianName B.Documentation hc
        binaryPackageRelations b B.Development -- not sure why this isn't Documentation, but I think there's a "good" reason
        T.packageType b ~?= Just B.Documentation
-       desc <- describe b
        T.packageType b ~?= Just B.Documentation
        T.binaryArchitectures b ~= Just All
        T.binarySection b ~?= Just (MainSection "doc")
@@ -293,10 +298,17 @@ librarySpec arch typ hc =
     do b <- debianName typ hc
        binaryPackageRelations b B.Development
        T.packageType b ~?= Just typ
-       desc <- describe b
        T.packageType b ~?= Just typ
        T.binaryArchitectures b ~?= Just arch
        T.debianDescription b ~?= Just desc
+
+-- | This is the standard value for the Description field of a binary
+-- package control file stanza.
+desc :: Text
+desc = Text.unlines ["${haskell:ShortDescription}${haskell:ShortBlurb}",
+                     " ${haskell:LongDescription}",
+                     " .",
+                     " ${haskell:Blurb}"]
 
 -- | Make sure all data and executable files are assigned to at least
 -- one binary package and make sure all binary packages are in the
@@ -337,6 +349,7 @@ makeUtilsPackage pkgDesc hc =
              Nothing -> debianName B.Utilities hc >>= \ (BinPkgName name') -> T.utilsPackageNameBase ~= Just name'
              _ -> return ()
        b <- debianName B.Utilities hc
+       T.debianDescription b ~?= Just desc
 
        -- Files that are installed into packages other than the utils packages
        let installedDataOther = Set.map (\ a -> (a, a)) $ Set.unions $ Map.elems $ Map.delete b installedDataMap

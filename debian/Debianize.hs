@@ -1,3 +1,10 @@
+-- To run the test: runhaskell -isrc -DMIN_VERSION_Cabal\(a,b,c\)=1 debian/Debianize.hs
+--
+-- This doesn't actually modify the debianization, it just sees
+-- whether the debianization it would have generated matches the one
+-- that is already in debian/.  If not it either means a bug was
+-- introduced, or the changes are good and need to be checked in.
+
 import Control.Monad.State (get)
 import Data.Lens.Lazy (getL, access)
 import Data.List (intercalate)
@@ -10,7 +17,7 @@ import Debian.Debianize.Details (debianDefaultAtoms)
 import Debian.Debianize.Finalize (debianization)
 import Debian.Debianize.Types as T
     (changelog, compat, conflicts, control, depends, debianDescription, homepage,
-     installCabalExec, sourceFormat, standardsVersion, utilsPackageNameBase, copyright)
+     installCabalExec, sourceFormat, standardsVersion, utilsPackageNameBase, copyright, xDescription)
 import Debian.Debianize.Types.Atoms as T (Atoms, newAtoms, EnvSet(EnvSet))
 import Debian.Debianize.Monad (Atoms, DebT, execDebT, evalDebT, execDebM)
 import Debian.Debianize.Output (compareDebianization)
@@ -28,6 +35,9 @@ main =
     do -- Copy the changelog into the top directory so that hackage
        -- will see it.
        copyFile "debian/changelog" "changelog"
+       -- This is both a debianization script and a unit test - it
+       -- makes sure the debianization generated matches the one
+       -- checked into version control.
        log <- newAtoms >>= evalDebT (inputChangeLog >> access changelog)
        old <- newAtoms >>= execDebT (inputDebianization (T.EnvSet "/" "/" "/"))
        new <- newAtoms >>= execDebT (debianization debianDefaultAtoms (changelog ~?= log >> customize >> copyFirstLogEntry old))
@@ -48,7 +58,7 @@ main =
                                               , ""
                                               , "Copyright: (c) 2010-2011, SeeReason Partners LLC"
                                               , "License: All Rights Reserved"]))
-             debianDescription (BinPkgName "cabal-debian") ~=
+             T.xDescription ~=
                    Just (pack (intercalate "\n"
                                   [ "Create a debianization for a cabal package"
                                   , " Tool for creating debianizations of Haskell packages based on the .cabal"

@@ -67,12 +67,19 @@ Build-Depends-Indep: ghc-doc
                      , libghc-utf8-string-doc
 Standards-Version: 3.9.3
 Homepage: http://src.seereason.com/cabal-debian
+X-Description: Create a debianization for a cabal package
+ Tool for creating debianizations of Haskell packages based on the
+ package's .cabal file.  Two methods are provided for generating the
+ debianization (i.e. the contents of the 'debian' subdirectory): (1)
+ an executable named cabal-debian, and (2) a library API to handle
+ more complex packaging issues.  For documentation of the executable
+ run @cabal-debian --help@, for documentation of the library API
+ follow the link to the @Debian.Debianize@ module below.
 
 Package: cabal-debian
 Architecture: any
 Section: misc
-Depends: ${shlibs:Depends}
-         , ${haskell:Depends}
+Depends: ${haskell:Depends}
 	 , ${misc:Depends}
 	 , apt-file
          , debian-policy
@@ -82,86 +89,46 @@ Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}, haskell-debian-utils (<< 3.59)
 Provides: ${haskell:Provides}
-Replaces: ${haskell:Replaces}
-Description: Create a debianization for a cabal package
- Tool for creating debianizations of Haskell packages based on the .cabal
- file.  If apt-file is installed it will use it to discover what is the
- debian package name of a C library.
- .
-  Author: David Fox <dsf@seereason.com>
-  Upstream-Maintainer: David Fox <dsf@seereason.com>
 
 Package: libghc-cabal-debian-dev
 Architecture: any
-Depends: ${shlibs:Depends}
-         , ${haskell:Depends}
+Depends: ${haskell:Depends}
          , ${misc:Depends}
+ 	 , ${shlibs:Depends}
          , debian-policy
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}
 Provides: ${haskell:Provides}
-Replaces: ${haskell:Replaces}
-Description: Create a debianization for a cabal package
- This package provides two methods for generating the debianization
- (i.e. the contents of the 'debian' subdirectory) for a cabal package.
- An executable named cabal-debian, and a library API to handle more
- complex packaging issues.  For documentation of the executable run
- @cabal-debian --help@, for documentation of the library API follow
- the link to the @Debian.Debianize@ module below.
+Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
+ ${haskell:LongDescription}
  .
-  Author: David Fox <dsf@seereason.com>
-  Upstream-Maintainer: David Fox <dsf@seereason.com>
- .
- This package provides a library for the Haskell programming language.
- See http:///www.haskell.org/ for more information on Haskell.
+ ${haskell:Blurb}
 
 Package: libghc-cabal-debian-prof
 Architecture: any
-Depends: ${shlibs:Depends}
-         , ${haskell:Depends}
+Depends: ${haskell:Depends}
          , ${misc:Depends}
+	 , ${shlibs:Depends}
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}
 Provides: ${haskell:Provides}
-Replaces: ${haskell:Replaces}
-Description: Create a debianization for a cabal package
- This package provides two methods for generating the debianization
- (i.e. the contents of the 'debian' subdirectory) for a cabal package.
- An executable named cabal-debian, and a library API to handle more
- complex packaging issues.  For documentation of the executable run
- @cabal-debian --help@, for documentation of the library API follow
- the link to the @Debian.Debianize@ module below.
+Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
+ ${haskell:LongDescription}
  .
-  Author: David Fox <dsf@seereason.com>
-  Upstream-Maintainer: David Fox <dsf@seereason.com>
- .
- This package provides a library for the Haskell programming language, compiled
- for profiling.  See http:///www.haskell.org/ for more information on Haskell.
+ ${haskell:Blurb}
 
 Package: libghc-cabal-debian-doc
 Architecture: all
 Section: doc
-Depends: ${shlibs:Depends}
-         , ${haskell:Depends}
+Depends: ${haskell:Depends}
          , ${misc:Depends}
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}
 Provides: ${haskell:Provides}
-Replaces: ${haskell:Replaces}
-Description: Create a debianization for a cabal package
- This package provides two methods for generating the debianization
- (i.e. the contents of the 'debian' subdirectory) for a cabal package.
- An executable named cabal-debian, and a library API to handle more
- complex packaging issues.  For documentation of the executable run
- @cabal-debian --help@, for documentation of the library API follow
- the link to the @Debian.Debianize@ module below.
+Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
+ ${haskell:LongDescription}
  .
-  Author: David Fox <dsf@seereason.com>
-  Upstream-Maintainer: David Fox <dsf@seereason.com>
- .
- This package provides the documentation for a library for the Haskell
- programming language.
- See http:///www.haskell.org/ for more information on Haskell.
+ ${haskell:Blurb}

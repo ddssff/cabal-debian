@@ -41,6 +41,7 @@ module Debian.Debianize.Types
     , utilsPackageNameBase
     , buildDir
     , watch
+    , xDescription
 
     -- * Source Package Build Dependencies
     , omitLTDeps

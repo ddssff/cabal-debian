@@ -133,6 +133,8 @@ data Atoms
       , utilsPackageNameBase_ :: Maybe String
       -- ^ Name of a package that will get left-over data files and executables.
       -- If there are more than one, each package will get those files.
+      , xDescription_ :: Maybe Text
+      -- ^ The text for the X-Description field of the Source package stanza.
       , changelog_ :: Maybe ChangeLog
       -- ^ The changelog, first entry contains the source package name and version
       , comments_ :: Maybe [[Text]]
@@ -290,6 +292,7 @@ makeAtoms envset =
       , warning_ = mempty
       , utilsPackageNameBase_ = Nothing
       , changelog_ = Nothing
+      , xDescription_ = Nothing
       , comments_ = Nothing
       , missingDependencies_ = mempty
       , extraLibMap_ = mempty
@@ -615,6 +618,9 @@ watch = lens watch_ (\ a b -> b {watch_ = a})
 -- | the @debian\/changelog@ file
 changelog :: Lens Atoms (Maybe ChangeLog)
 changelog = lens changelog_ (\ a b -> b {changelog_ = a})
+
+xDescription :: Lens Atoms (Maybe Text)
+xDescription = lens xDescription_ (\ a b -> b {xDescription_ = a})
 
 -- | Comment entries for the latest changelog entry (DebLogComments [[Text]])
 comments :: Lens Atoms (Maybe [[Text]])

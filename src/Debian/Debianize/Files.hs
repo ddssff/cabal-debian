@@ -186,6 +186,7 @@ controlFile src =
             depField "Build-Conflicts-Indep" (getL S.buildConflictsIndep src) ++
             mField "Standards-Version" (getL S.standardsVersion src) ++
             mField "Homepage" (getL S.homepage src) ++
+            mField "X-Description" (getL S.xDescription src) ++
             List.map vcsField (Set.toList (getL S.vcsFields src)) ++
             List.map xField (Set.toList (getL S.xFields src))) :
            List.map binary (getL S.binaryPackages src))

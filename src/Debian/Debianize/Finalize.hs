@@ -21,7 +21,7 @@ import Data.Maybe (fromMaybe, isJust)
 import Data.Monoid ((<>), mempty)
 import Data.Set as Set (difference, filter, fromList, map, null, Set, singleton, toList, union, unions, fold)
 import Data.Set.Extra as Set (mapM_)
-import Data.Text as Text (Text, pack, unlines, unpack)
+import Data.Text as Text (Text, pack, unlines, unpack, intercalate)
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(..))
 import Debian.Debianize.BuildDependencies (debianBuildDeps, debianBuildDepsIndep)
 import Debian.Debianize.Changelog (dropFutureEntries)
@@ -305,10 +305,11 @@ librarySpec arch typ hc =
 -- | This is the standard value for the Description field of a binary
 -- package control file stanza.
 desc :: Text
-desc = Text.unlines ["${haskell:ShortDescription}${haskell:ShortBlurb}",
-                     " ${haskell:LongDescription}",
-                     " .",
-                     " ${haskell:Blurb}"]
+desc = Text.intercalate "\n"
+         ["${haskell:ShortDescription}${haskell:ShortBlurb}",
+          " ${haskell:LongDescription}",
+          " .",
+          " ${haskell:Blurb}"]
 
 -- | Make sure all data and executable files are assigned to at least
 -- one binary package and make sure all binary packages are in the

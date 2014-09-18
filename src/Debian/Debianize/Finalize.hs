@@ -305,7 +305,7 @@ librarySpec arch typ hc =
 -- | This is the standard value for the Description field of a binary
 -- package control file stanza.
 desc :: Text
-desc = Text.intercalate "\n"
+desc = Text.intercalate "\n "
          ["${haskell:ShortDescription}${haskell:ShortBlurb}",
           " ${haskell:LongDescription}",
           " .",

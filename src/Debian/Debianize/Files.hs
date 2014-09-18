@@ -9,13 +9,14 @@ import Control.Applicative ((<$>))
 import Control.Monad.Trans (lift)
 import Control.Monad.Writer (WriterT, execWriterT, tell)
 import Debian.Control.Common ()
+import Data.Char (isSpace)
 import Data.Lens.Lazy (access, getL)
-import Data.List as List (map, dropWhileEnd)
+import Data.List as List (map, dropWhileEnd, dropWhile)
 import Data.Map as Map (Map, map, toList, fromListWithKey, mapKeys, insertWith)
 import Data.Maybe
 import Data.Monoid ((<>), mempty)
 import Data.Set as Set (toList, member, fold)
-import Data.Text as Text (Text, pack, unpack, lines, unlines, strip, null, intercalate)
+import Data.Text as Text (Text, pack, unpack, lines, unlines, null, intercalate, dropWhile, dropWhileEnd)
 import Debian.Control (Control'(Control, unControl), Paragraph'(Paragraph), Field'(Field))
 import Debian.Debianize.Goodies (makeRulesHead)
 import Debian.Debianize.Monad (DebT)
@@ -26,7 +27,7 @@ import qualified Debian.Debianize.Types.SourceDebDescription as S
 import Debian.Pretty (PP(..), ppDisplay, ppPrint, ppDisplay')
 import Debian.Relation (Relations, BinPkgName(BinPkgName))
 import Distribution.License (License(AllRightsReserved))
-import Prelude hiding (init, unlines, writeFile, log)
+import Prelude hiding (init, unlines, writeFile, log, dropWhile)
 --import System.Directory (getCurrentDirectory)
 import System.FilePath ((</>))
 import Text.PrettyPrint.HughesPJClass (Pretty(pPrint), text, empty)
@@ -204,11 +205,11 @@ controlFile src =
             [Field ("Description", " " ++ (unpack . ensureDescription . fromMaybe mempty . getL B.description $ bin))])
           where
             ensureDescription t =
-                case dropWhileEnd Text.null (dropWhile Text.null (List.map Text.strip (Text.lines t))) of
+                case List.dropWhileEnd Text.null (List.dropWhile Text.null (List.map (Text.dropWhileEnd isSpace) (Text.lines t))) of
                   [] -> "WARNING: No description available for package " <> ppDisplay' (getL B.package bin)
                   (short : long) ->
                       Text.intercalate "\n"
-                        ((if Text.null (strip short) then ("WARNING: No short description available for package " <> ppDisplay' (getL B.package bin)) else short) : long)
+                        ((if Text.null (Text.dropWhile isSpace short) then ("WARNING: No short description available for package " <> ppDisplay' (getL B.package bin)) else short) : long)
       mField tag = maybe [] (\ x -> [Field (tag, " " <> (show . ppPrint $ x))])
       lField _ [] = []
       lField tag xs = [Field (tag, " " <> (show . ppPrint $ xs))]

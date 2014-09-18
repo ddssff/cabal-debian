@@ -19,28 +19,26 @@ module Debian.Debianize.Goodies
     , makeRulesHead
     ) where
 
-import Data.Char (toLower)
+import Data.Char (toLower, isSpace)
 import Data.Lens.Lazy (modL, access)
-import Data.List as List (map, intersperse, intercalate)
+import Data.List as List (map, intersperse, intercalate, dropWhileEnd)
 import Data.Map as Map (insertWith)
 import Data.Maybe (fromMaybe)
 import Data.Monoid ((<>))
 import Data.Set as Set (insert, union, singleton, toList)
-import Data.Text as Text (Text, pack, unlines, intercalate)
+import Data.Text as Text (Text, pack, unlines)
 import Debian.Debianize.DebianName (debianNameBase)
 import Debian.Debianize.Monad (Atoms, DebT, execDebM)
-import Debian.Debianize.Prelude (trim, (%=), (+=), (++=), (+++=))
+import Debian.Debianize.Prelude (stripWith, (%=), (+=), (++=), (+++=))
 import qualified Debian.Debianize.Types as T
 import qualified Debian.Debianize.Types.Atoms as T
-import qualified Debian.Debianize.Types.BinaryDebDescription as B
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
 import Debian.Orphans ()
 import Debian.Pretty (ppDisplay, ppDisplay')
 import Debian.Policy (apacheLogDirectory, apacheErrorLog, apacheAccessLog, databaseDirectory, serverAppLog, serverAccessLog)
 import Debian.Relation (BinPkgName(BinPkgName), Relation(Rel))
-import Distribution.Package (PackageIdentifier(..), PackageName(PackageName))
-import Distribution.PackageDescription as Cabal (PackageDescription(package, synopsis, description, author, maintainer, pkgUrl))
-import Distribution.Text (display)
+import Distribution.Package (PackageName(PackageName))
+import Distribution.PackageDescription as Cabal (PackageDescription(package, synopsis, description))
 import Prelude hiding (writeFile, init, unlines, log, map)
 import System.FilePath ((</>))
 
@@ -140,12 +138,20 @@ describe =
 -- of the debian description, each of which is amended.
 debianDescriptionBase :: PackageDescription -> Text
 debianDescriptionBase p =
-    (pack . unwords . words $ Cabal.synopsis p) <>
-    "\n " <> (pack . trim . List.intercalate "\n " . List.map addDot . lines $ Cabal.description p)
+    pack $ List.intercalate "\n " $ (synop' : desc)
     where
-      addDot line = if all (flip elem " \t") line then "." else line
-      list :: b -> ([a] -> b) -> [a] -> b
-      list d f l = case l of [] -> d; _ -> f l
+      -- If we have a one line description and no synopsis, use
+      -- the description as the synopsis.
+      synop' = if null synop && length desc /= 1
+               then "WARNING: No synopsis available for package " ++ ppDisplay (package p)
+               else synop
+      synop :: String
+      -- I don't know why (unwords . words) was applied here.  Maybe I'll find out when
+      -- this version goes into production.  :-/
+      synop = {- unwords . words $ -} dropWhileEnd isSpace $ Cabal.synopsis p
+      desc :: [String]
+      desc = List.map addDot . stripWith null $ map (dropWhileEnd isSpace) $ lines $ Cabal.description p
+      addDot line = if null line then "." else line
 
 oldClckwrksSiteFlags :: T.Site -> [String]
 oldClckwrksSiteFlags x =

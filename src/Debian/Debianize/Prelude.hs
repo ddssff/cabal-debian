@@ -7,7 +7,8 @@ module Debian.Debianize.Prelude
     , DebMap
     , buildDebVersionMap
     , (!)
-    , trim
+    , strip
+    , stripWith
     , strictReadF
     , replaceFile
     , modifyFile
@@ -52,7 +53,7 @@ import Control.Monad.State (MonadState, StateT, get, put)
 import Data.Char (isSpace)
 import qualified Data.Lens.Lazy as Lens ((~=), (%=))
 import Data.Lens.Lazy (getL, Lens, lens, modL, setL)
-import Data.List as List (isSuffixOf, intercalate, map, lines)
+import Data.List as List (isSuffixOf, intercalate, map, lines, dropWhileEnd)
 import Data.Map as Map (Map, foldWithKey, empty, fromList, findWithDefault, insert, map, lookup, insertWith)
 import Data.Maybe (catMaybes, mapMaybe, listToMaybe, fromMaybe, fromJust)
 import Data.Monoid (Monoid, (<>), mappend)
@@ -97,8 +98,11 @@ buildDebVersionMap =
 (!) :: DebMap -> D.BinPkgName -> DebianVersion
 m ! k = maybe (error ("No version number for " ++ (show . pPrint . PP $ k) ++ " in " ++ show (Map.map (maybe Nothing (Just . prettyDebianVersion)) m))) id (Map.findWithDefault Nothing k m)
 
-trim :: String -> String
-trim = dropWhile isSpace
+strip :: String -> String
+strip = stripWith isSpace
+
+stripWith :: (a -> Bool) -> [a] -> [a]
+stripWith f = dropWhile f . dropWhileEnd f
 
 strictReadF :: (Text -> r) -> FilePath -> IO r
 strictReadF f path = withFile path ReadMode (\h -> hGetContents h >>= (\x -> return $! f x))

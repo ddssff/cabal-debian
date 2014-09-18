@@ -198,16 +198,17 @@ Build-Depends-Indep: ghc-doc
                      , libghc-web-routes-th-doc
 Standards-Version: 3.9.1
 Homepage: http://appraisalreportonline.com
+X-Description: Haskell modules for fine art appraisal applications
+ Haskell modules for fine art appraisal applications
 
 Package: artvaluereport2-backups
 Architecture: any
 Section: misc
-Depends: ${shlibs:Depends}, ${haskell:Depends}, ${misc:Depends}, anacron
+Depends: ${haskell:Depends}, ${misc:Depends}, anacron
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}
 Provides: ${haskell:Provides}
-Replaces: ${haskell:Replaces}
 Description: backup program for the appraisalreportonline.com site
   Install this somewhere other than where the server is running get
   automated backups of the database.
@@ -215,61 +216,48 @@ Description: backup program for the appraisalreportonline.com site
 Package: artvaluereport2-production
 Architecture: all
 Section: misc
-Depends: ${shlibs:Depends}, ${haskell:Depends}, ${misc:Depends}, apache2, libjpeg-progs, libjs-jcrop, libjs-jquery, libjs-jquery-ui, netpbm, texlive-fonts-extra, texlive-fonts-recommended, texlive-latex-extra, texlive-latex-recommended
+Depends: ${haskell:Depends}, ${misc:Depends}, apache2, libjpeg-progs, libjs-jcrop, libjs-jquery, libjs-jquery-ui, netpbm, texlive-fonts-extra, texlive-fonts-recommended, texlive-latex-extra, texlive-latex-recommended
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}
 Provides: ${haskell:Provides}
-Replaces: ${haskell:Replaces}
-Description: Haskell modules for fine art appraisal applications
- Haskell modules for fine art appraisal applications
+Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
+ ${haskell:LongDescription}
  .
-  Author: David Fox <dsf@seereason.com>, Clifford Beshers <beshers@seereason.com>
-  Upstream-Maintainer: Clifford Beshers <beshers@seereason.com>
- .
- An executable built from the ArtValueReport package.
+ ${haskell:Blurb}
 
 Package: artvaluereport2-development
 Architecture: all
 Section: misc
-Depends: ${shlibs:Depends}, ${haskell:Depends}, ${misc:Depends}, libjpeg-progs, libjs-jcrop, libjs-jquery, libjs-jquery-ui, netpbm, texlive-fonts-extra, texlive-fonts-recommended, texlive-latex-extra, texlive-latex-recommended
+Depends: ${haskell:Depends}, ${misc:Depends}, libjpeg-progs, libjs-jcrop, libjs-jquery, libjs-jquery-ui, netpbm, texlive-fonts-extra, texlive-fonts-recommended, texlive-latex-extra, texlive-latex-recommended
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}
 Provides: ${haskell:Provides}
-Replaces: ${haskell:Replaces}
-Description: Haskell modules for fine art appraisal applications
- Haskell modules for fine art appraisal applications
+Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
+ ${haskell:LongDescription}
  .
-  Author: David Fox <dsf@seereason.com>, Clifford Beshers <beshers@seereason.com>
-  Upstream-Maintainer: Clifford Beshers <beshers@seereason.com>
- .
- An executable built from the ArtValueReport package.
+ ${haskell:Blurb}
 
 Package: artvaluereport2-staging
 Architecture: all
 Section: misc
-Depends: ${shlibs:Depends}, ${haskell:Depends}, ${misc:Depends}, libjpeg-progs, libjs-jcrop, libjs-jquery, libjs-jquery-ui, netpbm, texlive-fonts-extra, texlive-fonts-recommended, texlive-latex-extra, texlive-latex-recommended
+Depends: ${haskell:Depends}, ${misc:Depends}, libjpeg-progs, libjs-jcrop, libjs-jquery, libjs-jquery-ui, netpbm, texlive-fonts-extra, texlive-fonts-recommended, texlive-latex-extra, texlive-latex-recommended
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}
 Provides: ${haskell:Provides}
-Replaces: ${haskell:Replaces}
-Description: Haskell modules for fine art appraisal applications
- Haskell modules for fine art appraisal applications
+Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
+ ${haskell:LongDescription}
  .
-  Author: David Fox <dsf@seereason.com>, Clifford Beshers <beshers@seereason.com>
-  Upstream-Maintainer: Clifford Beshers <beshers@seereason.com>
- .
- An executable built from the ArtValueReport package.
+ ${haskell:Blurb}
 
 Package: appraisalscope
 Architecture: any
 Section: misc
-Depends: ${shlibs:Depends}, ${haskell:Depends}, ${misc:Depends}
+Depends: ${haskell:Depends}, ${misc:Depends}
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}
 Provides: ${haskell:Provides}
-Replaces: ${haskell:Replaces}
 Description: Offline manipulation of appraisal database

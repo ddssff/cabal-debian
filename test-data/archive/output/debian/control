@@ -18,21 +18,19 @@ Build-Depends-Indep: ghc-doc
                      , libghc-archive-doc (>= 1.7)
                      , libghc-network-doc
 Standards-Version: 3.8.1
+X-Description: Backups of the seereason darcs repositories
+ Install this somewhere other than where the server is running get
+ automated backups of the database.
 
 Package: seereason-darcs-backups
 Architecture: any
 Section: misc
-Depends: ${shlibs:Depends}, ${haskell:Depends}, ${misc:Depends}, anacron
+Depends: ${haskell:Depends}, ${misc:Depends}, anacron
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}
 Provides: ${haskell:Provides}
-Replaces: ${haskell:Replaces}
-Description: Backups of the seereason darcs repositories
- Install this somewhere other than where the server is running get
- automated backups of the database.
+Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
+ ${haskell:LongDescription}
  .
-  Author: SeeReason Partners <partners@seereason.com>
-  Upstream-Maintainer: SeeReason Partners <partners@seereason.com>
- .
- Files associated with the seereason-darcs-backups package.
+ ${haskell:Blurb}

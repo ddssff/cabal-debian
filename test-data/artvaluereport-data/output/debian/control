@@ -134,65 +134,46 @@ Build-Depends-Indep: ghc-doc
                      , libghc-utf8-string-doc
 Standards-Version: 3.9.3
 Homepage: http://artvaluereportonline.com
+X-Description: Data structures used by the fine art appraisal application
+ Data structures used by the fine art appraisal application
 
 Package: libghc-artvaluereport-data-dev
 Architecture: any
-Depends: ${shlibs:Depends}
-         , ${haskell:Depends}
+Depends: ${haskell:Depends}
          , ${misc:Depends}
+         , ${shlibs:Depends}
 Conflicts: ${haskell:Conflicts}
 Provides: ${haskell:Provides}
-Replaces: ${haskell:Replaces}
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
-Description: Data structures used by the fine art appraisal application
- Data structures used by the fine art appraisal application
+Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
+ ${haskell:LongDescription}
  .
-  Author: David Fox <dsf@seereason.com>
-  Upstream-Maintainer: David Fox <dsf@seereason.com>
- .
- This package provides a library for the Haskell programming language.
- See http:///www.haskell.org/ for more information on Haskell.
-
+ ${haskell:Blurb}
 
 Package: libghc-artvaluereport-data-prof
 Architecture: any
-Depends: ${shlibs:Depends}
-         , ${haskell:Depends}
+Depends: ${haskell:Depends}
          , ${misc:Depends}
 Conflicts: ${haskell:Conflicts}
 Provides: ${haskell:Provides}
-Replaces: ${haskell:Replaces}
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
-Description: Data structures used by the fine art appraisal application
- Data structures used by the fine art appraisal application
+Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
+ ${haskell:LongDescription}
  .
-  Author: David Fox <dsf@seereason.com>
-  Upstream-Maintainer: David Fox <dsf@seereason.com>
- .
- This package provides a library for the Haskell programming language, compiled
- for profiling.  See http:///www.haskell.org/ for more information on Haskell.
-
+ ${haskell:Blurb}
 
 Package: libghc-artvaluereport-data-doc
 Architecture: all
 Section: doc
-Depends: ${shlibs:Depends}
-         , ${haskell:Depends}
+Depends: ${haskell:Depends}
          , ${misc:Depends}
 Conflicts: ${haskell:Conflicts}
-Provides: ${haskell:Provides}
-Replaces: ${haskell:Replaces}
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
-Description: Data structures used by the fine art appraisal application
- Data structures used by the fine art appraisal application
+Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
+ ${haskell:LongDescription}
  .
-  Author: David Fox <dsf@seereason.com>
-  Upstream-Maintainer: David Fox <dsf@seereason.com>
- .
- This package provides the documentation for a library for the Haskell
- programming language.
- See http:///www.haskell.org/ for more information on Haskell.
+ ${haskell:Blurb}
 

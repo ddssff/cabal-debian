@@ -14,18 +14,18 @@ Build-Depends-Indep: ghc-doc
                      , libghc-quickcheck2-doc (>= 2)
 Standards-Version: 3.9.3
 Homepage: http://www.haskell.org/alex/
+X-Description: Alex is a tool for generating lexical analysers in Haskell
 
 Package: alex
 Architecture: any
 Section: misc
-Depends: ${shlibs:Depends}
-        , ${haskell:Depends}
+Depends: ${haskell:Depends}
         , ${misc:Depends}
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}
 Provides: ${haskell:Provides}
-Replaces: ${haskell:Replaces}
-Description: Alex is a tool for generating lexical analysers in Haskell
+Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
+ ${haskell:LongDescription}
  .
- An executable built from the alex package.
+ ${haskell:Blurb}

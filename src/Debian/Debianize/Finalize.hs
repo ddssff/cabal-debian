@@ -317,7 +317,7 @@ desc = Text.intercalate "\n"
 -- files, assign them to the packages returned by the
 -- utilsPackageNames lens, and make sure those packages are in the
 -- source deb description.
-makeUtilsPackage :: forall m. (Monad m, Functor m) => PackageDescription -> CompilerFlavor -> DebT m ()
+makeUtilsPackage :: forall m. (MonadIO m, Functor m) => PackageDescription -> CompilerFlavor -> DebT m ()
 makeUtilsPackage pkgDesc hc =
     do -- Files the cabal package expects to be installed
        -- Files that are already assigned to any binary deb

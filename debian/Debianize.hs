@@ -4,6 +4,8 @@
 -- whether the debianization it would have generated matches the one
 -- that is already in debian/.  If not it either means a bug was
 -- introduced, or the changes are good and need to be checked in.
+--
+-- Be sure to run it with the local-debian flag turned off!
 
 import Control.Monad.State (get)
 import Data.Lens.Lazy (getL, access)
@@ -58,15 +60,6 @@ main =
                                               , ""
                                               , "Copyright: (c) 2010-2011, SeeReason Partners LLC"
                                               , "License: All Rights Reserved"]))
-             T.xDescription ~=
-                   Just (pack (intercalate "\n"
-                                  [ "Create a debianization for a cabal package"
-                                  , " Tool for creating debianizations of Haskell packages based on the .cabal"
-                                  , " file.  If apt-file is installed it will use it to discover what is the"
-                                  , " debian package name of a C library."
-                                  , " ."
-                                  , "  Author: David Fox <dsf@seereason.com>"
-                                  , "  Upstream-Maintainer: David Fox <dsf@seereason.com>" ]))
              conflicts (BinPkgName "cabal-debian") %= (++ [[Rel (BinPkgName "haskell-debian-utils") (Just (SLT (parseDebianVersion ("3.59" :: String)))) Nothing]])
              depends (BinPkgName "cabal-debian") %= (++ [[Rel (BinPkgName "apt-file") Nothing Nothing]])
              depends (BinPkgName "cabal-debian") %= (++ [[Rel (BinPkgName "debian-policy") Nothing Nothing]])

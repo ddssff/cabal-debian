@@ -10,12 +10,12 @@ import Control.Monad.Trans (lift)
 import Control.Monad.Writer (WriterT, execWriterT, tell)
 import Debian.Control.Common ()
 import Data.Lens.Lazy (access, getL)
-import Data.List as List (map)
+import Data.List as List (map, dropWhileEnd)
 import Data.Map as Map (Map, map, toList, fromListWithKey, mapKeys, insertWith)
 import Data.Maybe
 import Data.Monoid ((<>), mempty)
 import Data.Set as Set (toList, member, fold)
-import Data.Text as Text (Text, pack, unpack, lines, unlines, strip, null)
+import Data.Text as Text (Text, pack, unpack, lines, unlines, strip, null, intercalate)
 import Debian.Control (Control'(Control, unControl), Paragraph'(Paragraph), Field'(Field))
 import Debian.Debianize.Goodies (makeRulesHead)
 import Debian.Debianize.Monad (DebT)
@@ -204,10 +204,11 @@ controlFile src =
             [Field ("Description", " " ++ (unpack . ensureDescription . fromMaybe mempty . getL B.description $ bin))])
           where
             ensureDescription t =
-                case Text.lines t of
-                  [] -> "No description available."
-                  (short : long) | Text.null (strip short) -> Text.unlines ("No short description available" : long)
-                  _ -> t
+                case dropWhileEnd Text.null (dropWhile Text.null (List.map Text.strip (Text.lines t))) of
+                  [] -> "WARNING: No description available for package " <> ppDisplay' (getL B.package bin)
+                  (short : long) ->
+                      Text.intercalate "\n"
+                        ((if Text.null (strip short) then ("WARNING: No short description available for package " <> ppDisplay' (getL B.package bin)) else short) : long)
       mField tag = maybe [] (\ x -> [Field (tag, " " <> (show . ppPrint $ x))])
       lField _ [] = []
       lField tag xs = [Field (tag, " " <> (show . ppPrint $ xs))]

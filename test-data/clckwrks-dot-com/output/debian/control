@@ -62,34 +62,33 @@ Build-Depends-Indep: ghc-doc
                      , libghc-web-plugins-doc (<< 0.2)
 Standards-Version: 3.9.4
 Homepage: http://www.clckwrks.com/
+X-Description: clckwrks.com
 
 Package: clckwrks-dot-com-production
 Architecture: any
 Section: misc
-Depends: ${shlibs:Depends}
-         , ${haskell:Depends}
+Depends: ${haskell:Depends}
          , ${misc:Depends}
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}
 Provides: ${haskell:Provides}
-Replaces: ${haskell:Replaces}
-Description: clckwrks.com
+Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
+ ${haskell:LongDescription}
  .
- An executable built from the clckwrks-dot-com package.
+ ${haskell:Blurb}
 
 Package: clckwrks-dot-com-backups
 Architecture: any
 Section: misc
-Depends: ${shlibs:Depends}
-         , ${haskell:Depends}
+Depends: ${haskell:Depends}
          , ${misc:Depends}
          , anacron
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}
 Provides: ${haskell:Provides}
-Replaces: ${haskell:Replaces}
-Description: clckwrks.com
+Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
+ ${haskell:LongDescription}
  .
- An executable built from the clckwrks-dot-com package.
+ ${haskell:Blurb}

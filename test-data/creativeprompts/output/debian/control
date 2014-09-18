@@ -136,33 +136,31 @@ Build-Depends-Indep: ghc-doc
                      , libghc-web-routes-th-doc
                      , libghc-xss-sanitize-doc (>= 0.3.0.1)
 Standards-Version: 3.8.1
+X-Description: creativeprompts.com
+ A social site for sharing story ideas.
 
 Package: creativeprompts-data
 Architecture: all
 Section: misc
-Depends: ${shlibs:Depends}
-         , ${haskell:Depends}
+Depends: ${haskell:Depends}
          , ${misc:Depends}
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}
 Provides: ${haskell:Provides}
-Replaces: ${haskell:Replaces}
 Description:  creativeprompts.com data files
   Static data files for creativeprompts.com
 
 Package: creativeprompts-production
 Architecture: all
 Section: misc
-Depends: ${shlibs:Depends}
-         , ${haskell:Depends}
+Depends: ${haskell:Depends}
          , ${misc:Depends}
          , markdown
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}
 Provides: ${haskell:Provides}
-Replaces: ${haskell:Replaces}
 Description:  Configuration for running the creativeprompts.com server
   Production version of the blog server, runs on port
   9021 with HTML validation turned off.
@@ -170,15 +168,13 @@ Description:  Configuration for running the creativeprompts.com server
 Package: creativeprompts-development
 Architecture: all
 Section: misc
-Depends: ${shlibs:Depends}
-         , ${haskell:Depends}
+Depends: ${haskell:Depends}
          , ${misc:Depends}
          , markdown
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}
 Provides: ${haskell:Provides}
-Replaces: ${haskell:Replaces}
 Description:  Configuration for running the creativeprompts.com server
   Testing version of the blog server, runs on port
   8000 with HTML validation turned on.
@@ -186,15 +182,13 @@ Description:  Configuration for running the creativeprompts.com server
 Package: creativeprompts-backups
 Architecture: any
 Section: misc
-Depends: ${shlibs:Depends}
-         , ${haskell:Depends}
+Depends: ${haskell:Depends}
          , ${misc:Depends}
          , anacron
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}
 Provides: ${haskell:Provides}
-Replaces: ${haskell:Replaces}
 Description: backup program for creativeprompts.com
   Install this somewhere other than creativeprompts.com to run automated
   backups of the database.

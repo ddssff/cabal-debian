@@ -350,7 +350,6 @@ makeUtilsPackage pkgDesc hc =
              Nothing -> debianName B.Utilities hc >>= \ (BinPkgName name') -> T.utilsPackageNameBase ~= Just name'
              _ -> return ()
        b <- debianName B.Utilities hc
-       T.debianDescription b ~?= Just desc
 
        -- Files that are installed into packages other than the utils packages
        let installedDataOther = Set.map (\ a -> (a, a)) $ Set.unions $ Map.elems $ Map.delete b installedDataMap
@@ -364,6 +363,7 @@ makeUtilsPackage pkgDesc hc =
            utilsExecMissing = Set.difference utilsExec installedExec
        -- If any files belong in the utils packages, make sure they exist
        when (not (Set.null utilsData && Set.null utilsExec)) $ do
+         T.debianDescription b ~?= Just desc
          -- This is really for all binary debs except the libraries - I'm not sure why
          T.rulesFragments += (pack ("build" </> ppDisplay b ++ ":: build-ghc-stamp"))
          T.binaryArchitectures b ~?= Just (if Set.null utilsExec then All else Any)

@@ -89,9 +89,9 @@ Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}, haskell-debian-utils (<< 3.59)
 Provides: ${haskell:Provides}
 Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
- ${haskell:LongDescription}
- .
- ${haskell:Blurb}
+  ${haskell:LongDescription}
+  .
+  ${haskell:Blurb}
 
 Package: libghc-cabal-debian-dev
 Architecture: any
@@ -104,9 +104,9 @@ Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}
 Provides: ${haskell:Provides}
 Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
- ${haskell:LongDescription}
- .
- ${haskell:Blurb}
+  ${haskell:LongDescription}
+  .
+  ${haskell:Blurb}
 
 Package: libghc-cabal-debian-prof
 Architecture: any
@@ -117,9 +117,9 @@ Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}
 Provides: ${haskell:Provides}
 Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
- ${haskell:LongDescription}
- .
- ${haskell:Blurb}
+  ${haskell:LongDescription}
+  .
+  ${haskell:Blurb}
 
 Package: libghc-cabal-debian-doc
 Architecture: all
@@ -130,6 +130,6 @@ Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}
 Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
- ${haskell:LongDescription}
- .
- ${haskell:Blurb}
+  ${haskell:LongDescription}
+  .
+  ${haskell:Blurb}

@@ -147,8 +147,9 @@ debianDescriptionBase p =
                else synop
       synop :: String
       -- I don't know why (unwords . words) was applied here.  Maybe I'll find out when
-      -- this version goes into production.  :-/
-      synop = {- unwords . words $ -} dropWhileEnd isSpace $ Cabal.synopsis p
+      -- this version goes into production.  :-/  Ok, now I know, because sometimes the
+      -- short cabal description has more than one line.
+      synop = intercalate " " $ map (dropWhileEnd isSpace) $ lines $ Cabal.synopsis p
       desc :: [String]
       desc = List.map addDot . stripWith null $ map (dropWhileEnd isSpace) $ lines $ Cabal.description p
       addDot line = if null line then "." else line

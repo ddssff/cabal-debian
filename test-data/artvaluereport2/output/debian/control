@@ -222,9 +222,9 @@ Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}
 Provides: ${haskell:Provides}
 Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
- ${haskell:LongDescription}
- .
- ${haskell:Blurb}
+  ${haskell:LongDescription}
+  .
+  ${haskell:Blurb}
 
 Package: artvaluereport2-development
 Architecture: all
@@ -235,9 +235,9 @@ Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}
 Provides: ${haskell:Provides}
 Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
- ${haskell:LongDescription}
- .
- ${haskell:Blurb}
+  ${haskell:LongDescription}
+  .
+  ${haskell:Blurb}
 
 Package: artvaluereport2-staging
 Architecture: all
@@ -248,9 +248,9 @@ Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}
 Provides: ${haskell:Provides}
 Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
- ${haskell:LongDescription}
- .
- ${haskell:Blurb}
+  ${haskell:LongDescription}
+  .
+  ${haskell:Blurb}
 
 Package: appraisalscope
 Architecture: any

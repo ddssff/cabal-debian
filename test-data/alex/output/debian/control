@@ -26,6 +26,6 @@ Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}
 Provides: ${haskell:Provides}
 Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
- ${haskell:LongDescription}
- .
- ${haskell:Blurb}
+  ${haskell:LongDescription}
+  .
+  ${haskell:Blurb}

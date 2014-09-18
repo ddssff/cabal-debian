@@ -4,6 +4,7 @@ haskell-cabal-debian (4.17.5) unstable; urgency=low
     debian package to do pretty printing.
   * Change default priority to extra
   * Use the new watch file suggested by nomeata
+  * Use the control file template suggested in issue #3
 
  -- David Fox <dsf@seereason.com>  Mon, 15 Sep 2014 13:28:36 -0700
 

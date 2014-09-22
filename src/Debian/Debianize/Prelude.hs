@@ -194,8 +194,8 @@ showDeps :: D.Relations -> String
 showDeps = show . pPrint . PP
 
 showDeps' :: D.Relations -> String
-showDeps' xss = show $ mconcat $ intersperse (text "\n") $
-    [text " " <> pPrint (PP xs) <> text "," | xs <- xss ]
+showDeps' xss = show $ mconcat $ intersperse (text "\n ") $
+    [pPrint (PP xs) <> text "," | xs <- xss ]
 
 -- | From Darcs.Utils - set the working directory and run an IO operation.
 withCurrentDirectory :: FilePath -> IO a -> IO a

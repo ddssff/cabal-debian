@@ -17,7 +17,7 @@ import Debian.Debianize.Goodies (doExecutable)
 import Debian.Debianize.Monad (DebT)
 import Debian.Debianize.Prelude (read', maybeRead, (+=), (~=), (%=), (++=), (+++=))
 import Debian.Debianize.Types
-    (verbosity, dryRun, debAction, noDocumentationLibrary, noProfilingLibrary, noHoogle,
+    (verbosity, dryRun, debAction, noDocumentationLibrary, noProfilingLibrary,
      missingDependencies, sourcePackageName, cabalFlagAssignments, maintainer, buildDir, omitLTDeps,
      sourceFormat, buildDepends, buildDependsIndep, extraDevDeps, depends, conflicts, replaces, provides,
      recommends, suggests, extraLibMap, debVersion, revision, epochMap, execMap, utilsPackageNameBase,
@@ -98,10 +98,6 @@ options =
       Option "" ["disable-library-profiling"] (NoArg (noProfilingLibrary ~= True))
              (unlines [ "Don't generate profiling (-prof) library packages.  This has been used in one case"
                       , "where the package code triggered a compiler bug."]),
-      Option "" ["no-hoogle"] (NoArg (noHoogle ~= True))
-             (unlines [ "Do not create the link from /usr/lib/ghc-doc/hoogle/Package.txt to the top"
-                      , "of the package's html documentation tree.  This path does not contain"
-                      , "the package version, so it may conflict with libraries built into ghc."]),
       Option "" ["maintainer"] (ReqArg (\ maint -> either (error ("Invalid maintainer string: " ++ show maint)) ((maintainer ~=) . Just) (parseMaintainer maint)) "Maintainer Name <email addr>")
              (unlines [ "Override the Maintainer name and email given in $DEBEMAIL or $EMAIL or $DEBFULLNAME or $FULLNAME"]),
       Option "" ["standards-version"] (ReqArg (\ sv -> standardsVersion ~= Just (parseStandardsVersion sv)) "VERSION")

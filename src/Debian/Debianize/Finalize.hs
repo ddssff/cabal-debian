@@ -31,7 +31,7 @@ import Debian.Debianize.Input (dataDir, inputCabalization, inputChangeLog, input
 import Debian.Debianize.Monad as Monad (DebT)
 import Debian.Debianize.Options (compileCommandlineArgs, compileEnvironmentArgs)
 import Debian.Debianize.Prelude ((%=), (+=), foldEmpty, fromEmpty, fromSingleton, (~=), (~?=))
-import qualified Debian.Debianize.Types as T (apacheSite, backups, binaryArchitectures, binaryPackages, binarySection, breaks, buildDepends, buildDependsIndep, buildDir, builtUsing, changelog, comments, compat, conflicts, debianDescription, debVersion, depends, epochMap, executable, extraDevDeps, extraLibMap, file, install, installCabalExec, installData, installDir, installTo, intermediateFiles, license, link, maintainer, noDocumentationLibrary, noProfilingLibrary, noHoogle, packageDescription, packageType, preDepends, provides, recommends, replaces, revision, rulesFragments, serverInfo, standardsVersion, source, sourceFormat, sourcePackageName, sourcePriority, sourceSection, suggests, utilsPackageNameBase, verbosity, watch, website, control)
+import qualified Debian.Debianize.Types as T (apacheSite, backups, binaryArchitectures, binaryPackages, binarySection, breaks, buildDepends, buildDependsIndep, buildDir, builtUsing, changelog, comments, compat, conflicts, debianDescription, debVersion, depends, epochMap, executable, extraDevDeps, extraLibMap, file, install, installCabalExec, installData, installDir, installTo, intermediateFiles, license, link, maintainer, noDocumentationLibrary, noProfilingLibrary, packageDescription, packageType, preDepends, provides, recommends, replaces, revision, rulesFragments, serverInfo, standardsVersion, source, sourceFormat, sourcePackageName, sourcePriority, sourceSection, suggests, utilsPackageNameBase, verbosity, watch, website, control)
 import qualified Debian.Debianize.Types.Atoms as A (InstallFile(execName, sourceDir), showAtoms, compilerFlavors, Atom(..), atomSet)
 import qualified Debian.Debianize.Types.BinaryDebDescription as B (BinaryDebDescription, package, PackageType(Development, Documentation, Exec, Profiling, Source, HaskellSource, Utilities), PackageType)
 import qualified Debian.Debianize.Types.SourceDebDescription as S (xDescription)
@@ -53,7 +53,7 @@ import Distribution.PackageDescription (PackageDescription)
 import Distribution.PackageDescription as Cabal (allBuildInfo, BuildInfo(buildable, extraLibs), Executable(buildInfo, exeName))
 import qualified Distribution.PackageDescription as Cabal (PackageDescription(dataDir, dataFiles, executables, library, license, package))
 import Prelude hiding (init, log, map, unlines, unlines, writeFile, (.))
-import System.FilePath ((<.>), (</>), makeRelative, splitFileName, takeDirectory, takeFileName)
+import System.FilePath ((</>), makeRelative, splitFileName, takeDirectory, takeFileName)
 import Text.PrettyPrint.HughesPJClass (Pretty(pPrint))
 
 -- | Given an Atoms value, get any additional configuration
@@ -277,19 +277,12 @@ binaryPackageRelations b typ =
 -- | Add the library paragraphs for a particular compiler flavor.
 librarySpecs :: (Monad m, Functor m) => PackageDescription -> CompilerFlavor -> DebT m ()
 librarySpecs pkgDesc hc =
-    do debName <- debianName B.Documentation hc
-       let dev = isJust (Cabal.library pkgDesc)
+    do let dev = isJust (Cabal.library pkgDesc)
        doc <- get >>= return . not . getL T.noDocumentationLibrary
        prof <- get >>= return . not . getL T.noProfilingLibrary
-       hoogle <- get >>= return . not . getL T.noHoogle
        when dev (librarySpec Any B.Development hc)
        when (dev && prof && hc == GHC) (librarySpec Any B.Profiling hc)
-       when (dev && doc && hoogle)
-            (do docSpecsParagraph hc
-                T.link debName ("/usr/share/doc" </> ppDisplay debName </> "html" </> cabal <.> "txt")
-                               ("/usr/lib/ghc-doc/hoogle" </> List.map toLower cabal <.> "txt"))
-    where
-      PackageName cabal = pkgName (Cabal.package pkgDesc)
+       when (dev && doc) (docSpecsParagraph hc)
 
 docSpecsParagraph :: (Monad m, Functor m) => CompilerFlavor -> DebT m ()
 docSpecsParagraph hc =

@@ -256,8 +256,10 @@ cabalExecBinaryPackage b =
 binaryPackageRelations :: Monad m => BinPkgName -> B.PackageType -> DebT m ()
 binaryPackageRelations b typ =
     do edds <- access T.extraDevDeps
-       T.depends b %= \ rels -> [anyrel "${haskell:Depends}", anyrel "${misc:Depends}"] ++
-                                (if typ == B.Development then [anyrel "${shlibs:Depends}"] else []) ++ edds ++ rels
+       T.depends b %= \ rels ->
+          [anyrel "${haskell:Depends}", anyrel "${misc:Depends}"] ++
+          [anyrel "${shlibs:Depends}" | typ `notElem` [B.Profiling, B.Documentation] ] ++
+          edds ++ rels
        T.recommends b %= \ rels -> [anyrel "${haskell:Recommends}"] ++ rels
        T.suggests b %= \ rels -> [anyrel "${haskell:Suggests}"] ++ rels
        T.preDepends b ~= []

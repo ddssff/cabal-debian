@@ -29,7 +29,7 @@ import Data.Text.IO (readFile)
 --import Data.Version (showVersion, Version(Version))
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(logWho), parseChangeLog)
 import Debian.Control (Control'(unControl), Paragraph'(..), stripWS, parseControlFromFile, Field, Field'(..), ControlFunctions)
-import qualified Debian.Debianize.Types as T (maintainer)
+import qualified Debian.Debianize.Types as T (maintainer, official)
 import qualified Debian.Debianize.Types.Atoms as T (changelog, makeAtoms, compilerFlavors)
 import Debian.Debianize.Types.BinaryDebDescription (BinaryDebDescription, newBinaryDebDescription)
 import qualified Debian.Debianize.Types.BinaryDebDescription as B
@@ -44,7 +44,7 @@ import Debian.Debianize.Types.Atoms (EnvSet(dependOS))
 import Debian.GHC (newestAvailableCompilerId)
 import Debian.Orphans ()
 import Debian.Policy (Section(..), parseStandardsVersion, readPriority, readSection, parsePackageArchitectures, parseMaintainer,
-                      parseUploaders, readSourceFormat, getDebianMaintainer)
+                      parseUploaders, readSourceFormat, getDebianMaintainer, haskellMaintainer)
 import Debian.Relation (Relations, BinPkgName(..), SrcPkgName(..), parseRelations)
 --import Debian.Version (DebianVersion, parseDebianVersion)
 import Distribution.Compiler (CompilerId)
@@ -330,17 +330,22 @@ autoreconf verbose pkgDesc = do
 -- chroot root task = useEnv root (return . force) task
 
 -- | Try to compute a string for the the debian "Maintainer:" field using, in this order
---    1. the maintainer explicitly specified using "Debian.Debianize.Monad.maintainer"
---    2. the maintainer field of the cabal package,
---    3. the value returned by getDebianMaintainer, which looks in several environment variables,
---    4. the signature from the latest entry in debian/changelog,
---    5. the Debian Haskell Group, @pkg-haskell-maintainers\@lists.alioth.debian.org@
+--    1. the Debian Haskell Group, @pkg-haskell-maintainers\@lists.alioth.debian.org@,
+--       if --official is set
+--    2. the maintainer explicitly specified using "Debian.Debianize.Monad.maintainer"
+--    3. the maintainer field of the cabal package, but only if --official is not set,
+--    4. the value returned by getDebianMaintainer, which looks in several environment variables,
+--    5. the signature from the latest entry in debian/changelog,
+--    6. the Debian Haskell Group, @pkg-haskell-maintainers\@lists.alioth.debian.org@
 inputMaintainer :: MonadIO m => DebT m ()
 inputMaintainer =
     do Just pkgDesc <- access packageDescription
        let cabalMaintainer = case Cabal.maintainer pkgDesc of
                                "" -> Nothing
                                x -> either (const Nothing) Just (parseMaintainer (takeWhile (\ c -> c /= ',' && c /= '\n') x))
+       o <- access T.official
+       when o $ T.maintainer ~?= Just haskellMaintainer
+
        T.maintainer ~?= cabalMaintainer
        debianMaintainer <- liftIO getDebianMaintainer
        T.maintainer ~?= debianMaintainer

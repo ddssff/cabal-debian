@@ -193,11 +193,9 @@ readFileMaybe path = (Just <$> readFile' path) `catchIOError` (\ _ -> return Not
 showDeps :: D.Relations -> String
 showDeps = show . pPrint . PP
 
--- The extra space after prefix' is here for historical reasons(?)
-showDeps' :: [a] -> D.Relations -> String
-showDeps' prefix xss =
-    intercalate  ("\n" ++ prefix' ++ " ") . Prelude.lines . show . pPrint . PP $ xss
-    where prefix' = List.map (\ _ -> ' ') prefix
+showDeps' :: D.Relations -> String
+showDeps' xss =
+    intercalate  ("\n ") . Prelude.lines . show . pPrint . PP $ xss
 
 -- | From Darcs.Utils - set the working directory and run an IO operation.
 withCurrentDirectory :: FilePath -> IO a -> IO a

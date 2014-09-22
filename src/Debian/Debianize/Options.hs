@@ -20,10 +20,11 @@ import Debian.Debianize.Types
     (verbosity, dryRun, debAction, noDocumentationLibrary, noProfilingLibrary, noHoogle,
      missingDependencies, sourcePackageName, cabalFlagAssignments, maintainer, buildDir, omitLTDeps,
      sourceFormat, buildDepends, buildDependsIndep, extraDevDeps, depends, conflicts, replaces, provides,
-     recommends, suggests, extraLibMap, debVersion, revision, epochMap, execMap, utilsPackageNameBase)
+     recommends, suggests, extraLibMap, debVersion, revision, epochMap, execMap, utilsPackageNameBase,
+     standardsVersion)
 import Debian.Debianize.Types.Atoms (Atoms, EnvSet(..), InstallFile(..), DebAction(..), setBuildEnv, compilerFlavors)
 import Debian.Orphans ()
-import Debian.Policy (SourceFormat(Quilt3, Native3), parseMaintainer)
+import Debian.Policy (SourceFormat(Quilt3, Native3), parseMaintainer, parseStandardsVersion)
 import Debian.Relation (BinPkgName(..), SrcPkgName(..), Relations, Relation(..))
 import Debian.Relation.String (parseRelations)
 import Debian.Version (parseDebianVersion)
@@ -103,6 +104,8 @@ options =
                       , "the package version, so it may conflict with libraries built into ghc."]),
       Option "" ["maintainer"] (ReqArg (\ maint -> either (error ("Invalid maintainer string: " ++ show maint)) ((maintainer ~=) . Just) (parseMaintainer maint)) "Maintainer Name <email addr>")
              (unlines [ "Override the Maintainer name and email given in $DEBEMAIL or $EMAIL or $DEBFULLNAME or $FULLNAME"]),
+      Option "" ["standards-version"] (ReqArg (\ sv -> standardsVersion ~= Just (parseStandardsVersion sv)) "VERSION")
+             "Claim compatibility to this version of the Debian policy (i.e. the value of the Standards-Version field)",
       Option "" ["build-dep"]
                  (ReqArg (\ name ->
                               case parseRelations name of

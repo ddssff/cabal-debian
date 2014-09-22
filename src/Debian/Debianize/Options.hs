@@ -21,7 +21,7 @@ import Debian.Debianize.Types
      missingDependencies, sourcePackageName, cabalFlagAssignments, maintainer, buildDir, omitLTDeps,
      sourceFormat, buildDepends, buildDependsIndep, extraDevDeps, depends, conflicts, replaces, provides,
      recommends, suggests, extraLibMap, debVersion, revision, epochMap, execMap, utilsPackageNameBase,
-     standardsVersion)
+     standardsVersion, official)
 import Debian.Debianize.Types.Atoms (Atoms, EnvSet(..), InstallFile(..), DebAction(..), setBuildEnv, compilerFlavors)
 import Debian.Orphans ()
 import Debian.Policy (SourceFormat(Quilt3, Native3), parseMaintainer, parseStandardsVersion)
@@ -171,6 +171,8 @@ options =
              "The package has an upstream tarball, write '3.0 (quilt)' into source/format.",
       Option "" ["native"] (NoArg (sourceFormat ~= Just Native3))
              "The package has an no upstream tarball, write '3.0 (native)' into source/format.",
+      Option "" ["official"] (NoArg (official ~= True))
+             "This packaging is created of the official Debian Haskell Group",
       Option "" ["builddir"] (ReqArg (\ s -> buildDir ~= singleton (s </> "build")) "PATH")
              (unlines [ "Subdirectory where cabal does its build, dist/build by default, dist-ghc when"
                       , "run by haskell-devscripts.  The build subdirectory is added to match the"

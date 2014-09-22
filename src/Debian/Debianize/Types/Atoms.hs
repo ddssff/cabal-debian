@@ -225,6 +225,8 @@ data Atoms
       -- ^ The result of reading a cabal configuration file.
       , compilerFlavors_ :: Set CompilerFlavor
       -- ^ Which compilers should we generate library packages for?
+      , official_ :: Bool
+      -- ^ Whether this packaging is created by the Debian Haskell Group
       } deriving (Eq, Show, Data, Typeable)
 
 data Atom
@@ -332,6 +334,7 @@ makeAtoms envset =
       , extraDevDeps_ = mempty
       , packageDescription_ = Nothing
       , compilerFlavors_ = singleton GHC
+      , official_ = False
       }
 
 -- | This record supplies information about the task we want done -
@@ -545,6 +548,10 @@ noProfilingLibrary = lens noProfilingLibrary_ (\ b a -> a {noProfilingLibrary_ =
 -- | Set this to omit the doc library deb.
 noDocumentationLibrary :: Lens Atoms Bool
 noDocumentationLibrary = lens noDocumentationLibrary_ (\ b a -> a {noDocumentationLibrary_ = b})
+
+-- | Set this to apply offical Debian settings
+official :: Lens Atoms Bool
+official = lens official_ (\ b a -> a {official_ = b})
 
 -- | The copyright information from the cabal file
 copyright :: Lens Atoms (Maybe Text)

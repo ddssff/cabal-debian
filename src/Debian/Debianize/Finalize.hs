@@ -31,10 +31,10 @@ import Debian.Debianize.Input (dataDir, inputCabalization, inputChangeLog, input
 import Debian.Debianize.Monad as Monad (DebT)
 import Debian.Debianize.Options (compileCommandlineArgs, compileEnvironmentArgs)
 import Debian.Debianize.Prelude ((%=), (+=), foldEmpty, fromEmpty, fromSingleton, (~=), (~?=))
-import qualified Debian.Debianize.Types as T (apacheSite, backups, binaryArchitectures, binaryPackages, binarySection, breaks, buildDepends, buildDependsIndep, buildDir, builtUsing, changelog, comments, compat, conflicts, debianDescription, debVersion, depends, epochMap, executable, extraDevDeps, extraLibMap, file, install, installCabalExec, installData, installDir, installTo, intermediateFiles, license, link, maintainer, noDocumentationLibrary, noProfilingLibrary, packageDescription, packageType, preDepends, provides, recommends, replaces, revision, rulesFragments, serverInfo, standardsVersion, source, sourceFormat, sourcePackageName, sourcePriority, sourceSection, suggests, utilsPackageNameBase, verbosity, watch, website, control)
+import qualified Debian.Debianize.Types as T (apacheSite, backups, binaryArchitectures, binaryPackages, binarySection, breaks, buildDepends, buildDependsIndep, buildDir, builtUsing, changelog, comments, compat, conflicts, debianDescription, debVersion, depends, epochMap, executable, extraDevDeps, extraLibMap, file, install, installCabalExec, installData, installDir, installTo, intermediateFiles, license, link, maintainer, noDocumentationLibrary, noProfilingLibrary, packageDescription, packageType, preDepends, provides, recommends, replaces, revision, rulesFragments, serverInfo, standardsVersion, source, sourceFormat, sourcePackageName, sourcePriority, sourceSection, suggests, utilsPackageNameBase, verbosity, watch, website, control, homepage, official, vcsFields)
 import qualified Debian.Debianize.Types.Atoms as A (InstallFile(execName, sourceDir), showAtoms, compilerFlavors, Atom(..), atomSet)
 import qualified Debian.Debianize.Types.BinaryDebDescription as B (BinaryDebDescription, package, PackageType(Development, Documentation, Exec, Profiling, Source, HaskellSource, Utilities), PackageType)
-import qualified Debian.Debianize.Types.SourceDebDescription as S (xDescription)
+import qualified Debian.Debianize.Types.SourceDebDescription as S (xDescription, VersionControlSpec(..))
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
 import Debian.Orphans ()
 import Debian.Pretty (ppDisplay, PP(..))
@@ -92,13 +92,14 @@ finalizeDebianization  :: (MonadIO m, Functor m) => String -> Maybe Int -> DebT 
 finalizeDebianization date debhelperCompat =
     do -- In reality, hcs must be a singleton or many things won't work.  But some day...
        hcs <- Set.toList <$> access A.compilerFlavors
+       finalizeSourceName B.HaskellSource
+       List.mapM_ checkOfficialSettings hcs
        List.mapM_ addExtraLibDependencies hcs
        Just pkgDesc <- access T.packageDescription
        T.watch ~?= Just (watchAtom (pkgName $ Cabal.package $ pkgDesc))
        T.sourceSection ~?= Just (MainSection "haskell")
        T.sourcePriority ~?= Just Extra
        T.sourceFormat ~?= Just Quilt3
-       T.standardsVersion ~?= Just (parseStandardsVersion "3.9.5")
        T.compat ~?= debhelperCompat
        finalizeChangelog date
        finalizeControl
@@ -184,8 +185,7 @@ finalizeMaintainer =
 
 finalizeControl :: (Monad m, Functor m) => DebT m ()
 finalizeControl =
-    do finalizeSourceName B.HaskellSource
-       finalizeMaintainer
+    do finalizeMaintainer
        Just src <- access T.sourcePackageName
        maint <- access T.maintainer >>= return . fromMaybe (error "No maintainer")
        T.source ~= Just src
@@ -200,8 +200,7 @@ finalizeControl =
 -- version number is the exact one in our debianization.)
 finalizeChangelog :: (Monad m, Functor m) => String -> DebT m ()
 finalizeChangelog date =
-    do finalizeSourceName B.HaskellSource
-       finalizeMaintainer
+    do finalizeMaintainer
        ver <- debianVersion
        src <- access T.sourcePackageName
        Just maint <- access T.maintainer
@@ -241,6 +240,28 @@ addExtraLibDependencies hc =
       g pkgDesc libMap = concatMap (devDep libMap) (nub $ concatMap Cabal.extraLibs $ Cabal.allBuildInfo $ pkgDesc)
       devDep :: Map String Relations -> String -> Relations
       devDep libMap cab = maybe [[Rel (BinPkgName ("lib" ++ cab ++ "-dev")) Nothing Nothing]] id (Map.lookup cab libMap)
+
+-- | Applies a few settings to official packages (unless already set)
+checkOfficialSettings :: (Monad m, Functor m) => CompilerFlavor -> DebT m ()
+checkOfficialSettings GHC =
+    do o <- access T.official
+       when o officialSettings
+checkOfficialSettings flavor = error $ "There is no official packaging for " ++ show flavor
+
+officialSettings :: (Monad m, Functor m) => DebT m ()
+officialSettings =
+    do pkgDesc <- access T.packageDescription >>= maybe (error "officialSettings: no PackageDescription") return
+       let PackageName cabal = pkgName (Cabal.package pkgDesc)
+
+       T.standardsVersion ~?= Just (parseStandardsVersion "3.9.5")
+       T.homepage ~?= Just ("http://hackage.haskell.org/package/" <> pack cabal)
+       SrcPkgName src <- access T.sourcePackageName >>= maybe (error "officialSettings: no sourcePackageName") return
+
+       T.vcsFields %= Set.union (Set.fromList
+          [ S.VCSBrowser $ "http://darcs.debian.org/cgi-bin/darcsweb.cgi?r=pkg-haskell/" <> pack src
+          , S.VCSDarcs  $ "http://darcs.debian.org/pkg-haskell/" <> pack src
+          ])
+ 
 
 putBuildDeps :: (MonadIO m, Functor m) => PackageDescription -> DebT m ()
 putBuildDeps pkgDesc =

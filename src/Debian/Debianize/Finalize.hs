@@ -154,8 +154,13 @@ debianVersion =
          Just override -> return override
          Nothing ->
              do let ver = ppDisplay (pkgVersion pkgId)
-                rev <- get >>= return . getL T.revision >>= return . foldEmpty Nothing Just . fromMaybe ""
-                return $ buildDebianVersion epoch ver rev
+                rev <- access T.revision
+                let revMB = case rev of Nothing -> Nothing
+                                        Just "" -> Nothing
+                                        Just "-" -> Nothing
+                                        Just ('-':r) -> Just r
+                                        Just _ -> error "The Debian revision needs to start with a dash"
+                return $ buildDebianVersion epoch ver revMB
 
 -- | Return the Debian epoch number assigned to the given cabal
 -- package - the 1 in version numbers like 1:3.5-2.

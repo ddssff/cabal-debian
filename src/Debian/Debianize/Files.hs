@@ -240,4 +240,4 @@ relFields rels =
     depField "Built-Using" (getL B.builtUsing rels)
 
 depField :: [Char] -> Relations -> [Field' [Char]]
-depField tag rels = case rels of [] -> []; _ -> [Field (tag, " " ++ showDeps' (tag ++ ":") rels)]
+depField tag rels = case rels of [] -> []; _ -> [Field (tag, " " ++ showDeps' rels)]

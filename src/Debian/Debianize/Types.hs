@@ -35,8 +35,8 @@ module Debian.Debianize.Types
     , standardsVersion
     , rulesHead
     , rulesFragments
+    , official
     , noProfilingLibrary
-    , noHoogle
     , noDocumentationLibrary
     , utilsPackageNameBase
     , buildDir

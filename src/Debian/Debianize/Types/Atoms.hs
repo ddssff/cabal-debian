@@ -62,8 +62,6 @@ data Atoms
       -- ^ Do not produce a libghc-foo-doc package.
       , noProfilingLibrary_ :: Bool
       -- ^ Do not produce a libghc-foo-prof package.
-      , noHoogle_ :: Bool
-      -- ^ Don't link the documentation for hoogle.
       , omitLTDeps_ :: Bool
       -- ^ If present, don't generate the << dependency when we see a cabal
       -- equals dependency.  (The implementation of this was somehow lost.)
@@ -227,6 +225,8 @@ data Atoms
       -- ^ The result of reading a cabal configuration file.
       , compilerFlavors_ :: Set CompilerFlavor
       -- ^ Which compilers should we generate library packages for?
+      , official_ :: Bool
+      -- ^ Whether this packaging is created by the Debian Haskell Group
       } deriving (Eq, Show, Data, Typeable)
 
 data Atom
@@ -272,7 +272,6 @@ makeAtoms envset =
     Atoms
       { noDocumentationLibrary_ = False
       , noProfilingLibrary_ = False
-      , noHoogle_ = False
       , omitLTDeps_ = False
       , buildDir_ = mempty
       , buildEnv_ = envset
@@ -335,6 +334,7 @@ makeAtoms envset =
       , extraDevDeps_ = mempty
       , packageDescription_ = Nothing
       , compilerFlavors_ = singleton GHC
+      , official_ = False
       }
 
 -- | This record supplies information about the task we want done -
@@ -545,13 +545,13 @@ omitLTDeps = lens omitLTDeps_ (\ b a -> a {omitLTDeps_ = b})
 noProfilingLibrary :: Lens Atoms Bool
 noProfilingLibrary = lens noProfilingLibrary_ (\ b a -> a {noProfilingLibrary_ = b})
 
--- | Set this to omit the hoogle documentation link
-noHoogle :: Lens Atoms Bool
-noHoogle = lens noHoogle_ (\ b a -> a {noHoogle_ = b})
-
 -- | Set this to omit the doc library deb.
 noDocumentationLibrary :: Lens Atoms Bool
 noDocumentationLibrary = lens noDocumentationLibrary_ (\ b a -> a {noDocumentationLibrary_ = b})
+
+-- | Set this to apply offical Debian settings
+official :: Lens Atoms Bool
+official = lens official_ (\ b a -> a {official_ = b})
 
 -- | The copyright information from the cabal file
 copyright :: Lens Atoms (Maybe Text)

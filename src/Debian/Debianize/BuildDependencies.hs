@@ -227,6 +227,7 @@ dependencies hc typ name cabalRange =
                     Just splits' -> List.map (\ (n, r) -> (mkPkgName' hc typ n, r)) (packageRangesFromVersionSplits splits')
        mapM convert alts >>= mapM (doBundled typ name hc) . convert' . canonical . Or . catMaybes
     where
+      noVersionPackageType = [B.Profiling, B.Documentation]
       convert (dname, range) =
           case isNoVersion range''' of
             True -> return Nothing
@@ -256,8 +257,8 @@ dependencies hc typ name cabalRange =
             -- When we see a cabal equals dependency we need to turn it into
             -- a wildcard because the resulting debian version numbers have
             -- various suffixes added.
-      cabalRange' =
-          foldVersionRange'
+      cabalRange' | typ `elem` noVersionPackageType = anyVersion
+                  | otherwise = foldVersionRange'
             anyVersion
             withinVersion  -- <- Here we are turning equals into wildcard
             laterVersion

@@ -53,10 +53,10 @@ import Control.Monad.State (MonadState, StateT, get, put)
 import Data.Char (isSpace)
 import qualified Data.Lens.Lazy as Lens ((~=), (%=))
 import Data.Lens.Lazy (getL, Lens, lens, modL, setL)
-import Data.List as List (isSuffixOf, intercalate, map, lines, dropWhileEnd)
+import Data.List as List (isSuffixOf, intersperse, map, lines, dropWhileEnd)
 import Data.Map as Map (Map, foldWithKey, empty, fromList, findWithDefault, insert, map, lookup, insertWith)
 import Data.Maybe (catMaybes, mapMaybe, listToMaybe, fromMaybe, fromJust)
-import Data.Monoid (Monoid, (<>), mappend)
+import Data.Monoid (Monoid, (<>), mappend, mconcat)
 import Data.Set as Set (Set, toList)
 import qualified Data.Set as Set
 import Data.Text as Text (Text, unpack, lines)
@@ -193,11 +193,9 @@ readFileMaybe path = (Just <$> readFile' path) `catchIOError` (\ _ -> return Not
 showDeps :: D.Relations -> String
 showDeps = show . pPrint . PP
 
--- The extra space after prefix' is here for historical reasons(?)
-showDeps' :: [a] -> D.Relations -> String
-showDeps' prefix xss =
-    intercalate  ("\n" ++ prefix' ++ " ") . Prelude.lines . show . pPrint . PP $ xss
-    where prefix' = List.map (\ _ -> ' ') prefix
+showDeps' :: D.Relations -> String
+showDeps' xss = show $ mconcat $ intersperse (text "\n ") $
+    [pPrint (PP xs) <> text "," | xs <- xss ]
 
 -- | From Darcs.Utils - set the working directory and run an IO operation.
 withCurrentDirectory :: FilePath -> IO a -> IO a

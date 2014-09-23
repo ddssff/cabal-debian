@@ -53,7 +53,7 @@ import Distribution.PackageDescription (PackageDescription)
 import Distribution.PackageDescription as Cabal (allBuildInfo, BuildInfo(buildable, extraLibs), Executable(buildInfo, exeName))
 import qualified Distribution.PackageDescription as Cabal (PackageDescription(dataDir, dataFiles, executables, library, license, package))
 import Prelude hiding (init, log, map, unlines, unlines, writeFile, (.))
-import System.FilePath ((</>), makeRelative, splitFileName, takeDirectory, takeFileName)
+import System.FilePath ((</>), (<.>), makeRelative, splitFileName, takeDirectory, takeFileName)
 import Text.PrettyPrint.HughesPJClass (Pretty(pPrint))
 
 -- | Given an Atoms value, get any additional configuration

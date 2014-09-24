@@ -243,10 +243,11 @@ addExtraLibDependencies hc =
 
 -- | Applies a few settings to official packages (unless already set)
 checkOfficialSettings :: (Monad m, Functor m) => CompilerFlavor -> DebT m ()
-checkOfficialSettings GHC =
+checkOfficialSettings flavor =
     do o <- access T.official
-       when o officialSettings
-checkOfficialSettings flavor = error $ "There is no official packaging for " ++ show flavor
+       when o $ case flavor of
+                  GHC -> officialSettings
+                  _ -> error $ "There is no official packaging for " ++ show flavor
 
 officialSettings :: (Monad m, Functor m) => DebT m ()
 officialSettings =

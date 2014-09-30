@@ -6,8 +6,9 @@ module Debian.Debianize.Details
 
 import Data.Map as Map (Map, fromList)
 import Data.Version (Version(Version))
+import Debian.Relation (Relation(Rel), BinPkgName(BinPkgName))
 import Debian.Debianize.DebianName (mapCabal, splitCabal)
-import Debian.Debianize.Types.Atoms as T (epochMap)
+import Debian.Debianize.Types.Atoms as T (epochMap, execMap)
 import Debian.Debianize.Monad (DebT)
 import Debian.Debianize.Prelude ((++=))
 import Debian.Debianize.VersionSplits (DebBase(DebBase), VersionSplits, makePackage, insertSplit)
@@ -19,6 +20,7 @@ debianDefaultAtoms :: Monad m => DebT m ()
 debianDefaultAtoms =
     do T.epochMap ++= (PackageName "HaXml", 1)
        T.epochMap ++= (PackageName "HTTP", 1)
+       T.execMap ++= ("hsx2hs", [[Rel (BinPkgName "hsx2hs") Nothing Nothing]])
        mapCabal (PackageName "Cabal") (DebBase "cabal-ghcjs")
        splitCabal (PackageName "Cabal") (DebBase "cabal") (Version [1,21] [])
        mapCabal (PackageName "parsec") (DebBase "parsec3")

@@ -44,8 +44,10 @@ deriving instance Data CompilerFlavor
 #endif
 
 deriving instance Ord Language
+#if !MIN_VERSION_Cabal(1,21,1)
 deriving instance Ord KnownExtension
 deriving instance Ord Extension
+#endif
 deriving instance Eq Compiler
 deriving instance Ord Compiler
 deriving instance Ord NameAddr

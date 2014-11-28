@@ -33,13 +33,14 @@ import qualified Debian.Debianize.Types as T (maintainer, official)
 import qualified Debian.Debianize.Types.Atoms as T (changelog, makeAtoms, compilerFlavors)
 import Debian.Debianize.Types.BinaryDebDescription (BinaryDebDescription, newBinaryDebDescription)
 import qualified Debian.Debianize.Types.BinaryDebDescription as B
+import Debian.Debianize.Types.CopyrightDescription (inputCopyrightDescription, newCopyrightDescription, CopyrightDescription(_summaryCopyright, _summaryLicense))
 import qualified Debian.Debianize.Types.SourceDebDescription as S
 import Debian.Debianize.Types.Atoms
     (control, warning, sourceFormat, watch, rulesHead, compat, packageDescription,
      license, licenseFile, copyright, changelog, installInit, postInst, postRm, preInst, preRm,
      logrotateStanza, link, install, installDir, intermediateFiles, cabalFlagAssignments, verbosity, buildEnv)
 import Debian.Debianize.Monad (DebT)
-import Debian.Debianize.Prelude (getDirectoryContents', readFileMaybe, read', intToVerbosity', (~=), (~?=), (+=), (++=), (+++=))
+import Debian.Debianize.Prelude (getDirectoryContents', readFileMaybe, read', intToVerbosity', (~=), (~?=), (+=), (++=), (+++=), (%=))
 import Debian.Debianize.Types.Atoms (EnvSet(dependOS))
 import Debian.GHC (newestAvailableCompilerId)
 import Debian.Orphans ()
@@ -229,7 +230,7 @@ inputAtoms debian name@"source/format" = liftIO (readFile (debian </> name)) >>=
 inputAtoms debian name@"watch" = liftIO (readFile (debian </> name)) >>= \ text -> watch ~= Just text
 inputAtoms debian name@"rules" = liftIO (readFile (debian </> name)) >>= \ text -> rulesHead ~= (Just text)
 inputAtoms debian name@"compat" = liftIO (readFile (debian </> name)) >>= \ text -> compat ~= Just (read' (\ s -> error $ "compat: " ++ show s) (unpack text))
-inputAtoms debian name@"copyright" = liftIO (readFile (debian </> name)) >>= \ text -> copyright ~= Just text
+inputAtoms debian name@"copyright" = liftIO (inputCopyrightDescription (debian </> name)) >>= \ x -> copyright ~= Just x
 inputAtoms debian name@"changelog" =
     liftIO (readFile (debian </> name)) >>= return . parseChangeLog . unpack >>= \ log -> changelog ~= Just log
 inputAtoms debian name =
@@ -297,9 +298,26 @@ inputCabalization =
                                                       path -> readFileMaybe path
 #endif
                         licenseFile ~?= licenseFileText
-                        copyright ~?= (case Cabal.copyright pkgDesc of
-                                         "" -> Nothing
-                                         s -> Just (pack s))))
+                        -- Create a machine readable copyright file from the information
+                        -- available in the cabal file - specifically, the copyright field,
+                        -- the license field and/or the contents of the file specified by
+                        -- the license file field.
+                        copyright %= (\ x ->
+                                          let newCopyright = newCopyrightDescription { _summaryCopyright = case Cabal.copyright pkgDesc of
+                                                                                                             "" -> Just "Copyright missing"
+                                                                                                             s -> Just (pack s)
+                                                                                     , _summaryLicense = licenseFileText } in
+                                          case x of
+                                            Nothing -> Just $ Left $ newCopyright
+                                            Just (Right _) -> Just $ Left $ newCopyright
+                                            Just (Left t) -> Just (Left t))
+{-
+                        copyright ~?= (Just $ Left $ newCopyrightDescription { _summaryCopyright = case Cabal.copyright pkgDesc of
+                                                                                                     "" -> Just "Copyright missing"
+                                                                                                     s -> Just (pack s)
+                                                                             , _summaryLicense = licenseFileText })
+-}
+                      ))
              ePkgDescs
 
 inputCabalization' :: Verbosity -> Set (FlagName, Bool) -> [CompilerId] -> IO [Either [Dependency] PackageDescription]

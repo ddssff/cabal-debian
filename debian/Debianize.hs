@@ -56,10 +56,10 @@ main =
           do sourceFormat ~= Just Native3
              standardsVersion ~= Just (StandardsVersion 3 9 3 Nothing)
              compat ~= Just 9
-             copyright ~= Just (pack (unlines [ "This package is not part of the Debian GNU/Linux distribution."
-                                              , ""
-                                              , "Copyright: (c) 2010-2011, SeeReason Partners LLC"
-                                              , "License: All Rights Reserved"]))
+             copyright ~= Just (Right (pack (unlines [ "This package is not part of the Debian GNU/Linux distribution."
+                                                     , ""
+                                                     , "Copyright: (c) 2010-2011, SeeReason Partners LLC"
+                                                     , "License: All Rights Reserved"])))
              conflicts (BinPkgName "cabal-debian") %= (++ [[Rel (BinPkgName "haskell-debian-utils") (Just (SLT (parseDebianVersion ("3.59" :: String)))) Nothing]])
              depends (BinPkgName "cabal-debian") %= (++ [[Rel (BinPkgName "apt-file") Nothing Nothing]])
              depends (BinPkgName "cabal-debian") %= (++ [[Rel (BinPkgName "debian-policy") Nothing Nothing]])

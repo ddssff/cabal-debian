@@ -8,25 +8,25 @@ Build-Depends: debhelper (>= 7.0)
                , ghc
                , ghc-prof
                , libghc-extra-dev (>= 1.35)
-               , libghc-extra-prof (>= 1.35)
+               , libghc-extra-prof
                , libghc-hjscript-dev
                , libghc-hjscript-prof
                , libghc-hatex-dev
                , libghc-hatex-prof
                , libghc-quickcheck2-dev (>= 2)
-               , libghc-quickcheck2-prof (>= 2)
+               , libghc-quickcheck2-prof (>= 2) | libghc-quickcheck1-prof (<< 2)
                , libghc-rjson-dev
                , libghc-rjson-prof
                , libghc-unixutils-dev
                , libghc-unixutils-prof
                , libghc-acid-state-dev (>= 0.6)
-               , libghc-acid-state-prof (>= 0.6)
+               , libghc-acid-state-prof
                , libghc-applicative-extras-dev (>= 0.1.5)
-               , libghc-applicative-extras-prof (>= 0.1.5)
+               , libghc-applicative-extras-prof
                , libghc-archive-dev (>= 1.2.9)
-               , libghc-archive-prof (>= 1.2.9)
+               , libghc-archive-prof
                , libghc-artvaluereport-data-dev (>= 1.66)
-               , libghc-artvaluereport-data-prof (>= 1.66)
+               , libghc-artvaluereport-data-prof
                , libghc-authenticate-dev
                , libghc-authenticate-prof
                , libghc-blaze-html-dev
@@ -40,7 +40,7 @@ Build-Depends: debhelper (>= 7.0)
                , libghc-debian-dev
                , libghc-debian-prof
                , libghc-debian-packaging-dev (>= 0.8)
-               , libghc-debian-packaging-prof (>= 0.8)
+               , libghc-debian-packaging-prof
                , libghc-digestive-functors-dev
                , libghc-digestive-functors-prof
                , libghc-digestive-functors-happstack-dev
@@ -60,7 +60,7 @@ Build-Depends: debhelper (>= 7.0)
                , libghc-happstack-hsp-dev
                , libghc-happstack-hsp-prof
                , libghc-happstack-scaffolding-dev (>= 0.23)
-               , libghc-happstack-scaffolding-prof (>= 0.23)
+               , libghc-happstack-scaffolding-prof
                , libghc-happstack-server-dev
                , libghc-happstack-server-prof
                , libghc-happstack-util-dev
@@ -70,7 +70,7 @@ Build-Depends: debhelper (>= 7.0)
                , libghc-hslogger-dev
                , libghc-hslogger-prof
                , libghc-hsp-dev (>= 0.4.4)
-               , libghc-hsp-prof (>= 0.4.4)
+               , libghc-hsp-prof
                , libghc-hsx-dev
                , libghc-hsx-prof
                , libghc-html-dev
@@ -80,7 +80,7 @@ Build-Depends: debhelper (>= 7.0)
                , libghc-ixset-dev
                , libghc-ixset-prof
                , libghc-jmacro-dev (>= 0.6.2)
-               , libghc-jmacro-prof (>= 0.6.2)
+               , libghc-jmacro-prof
                , libghc-json-dev
                , libghc-json-prof
                , libghc-language-css-dev
@@ -90,13 +90,13 @@ Build-Depends: debhelper (>= 7.0)
                , libghc-mtl-dev
                , libghc-mtl-prof
                , libghc-network-dev (>= 2.4)
-               , libghc-network-prof (>= 2.4)
+               , libghc-network-prof
                , libghc-pandoc-dev
                , libghc-pandoc-prof
                , libghc-parsec3-dev (>= 3) | libghc-parsec2-dev (<< 3)
                , libghc-parsec3-prof (>= 3) | libghc-parsec2-prof (<< 3)
                , libghc-process-extras-dev (>= 0.5)
-               , libghc-process-extras-prof (>= 0.5)
+               , libghc-process-extras-prof
                , libghc-puremd5-dev
                , libghc-puremd5-prof
                , libghc-random-dev
@@ -108,7 +108,7 @@ Build-Depends: debhelper (>= 7.0)
                , libghc-safe-dev
                , libghc-safe-prof
                , libghc-safecopy-dev (>= 0.5.1)
-               , libghc-safecopy-prof (>= 0.5.1)
+               , libghc-safecopy-prof
                , libghc-syb-dev
                , libghc-syb-prof
                , libghc-syb-with-class-dev
@@ -130,28 +130,27 @@ Build-Depends: debhelper (>= 7.0)
                , libghc-web-routes-th-dev
                , libghc-web-routes-th-prof
                , libghc-extra-dev
-               , libghc-extra-prof
 Build-Depends-Indep: ghc-doc
                      , libjs-jquery-ui (<< 1.10)
                      , libjs-jquery
                      , libjs-jcrop
-                     , libghc-extra-doc (>= 1.35)
+                     , libghc-extra-doc
                      , libghc-hjscript-doc
                      , libghc-hatex-doc
-                     , libghc-quickcheck2-doc (>= 2)
+                     , libghc-quickcheck2-doc (>= 2) | libghc-quickcheck1-doc (<< 2)
                      , libghc-rjson-doc
                      , libghc-unixutils-doc
-                     , libghc-acid-state-doc (>= 0.6)
-                     , libghc-applicative-extras-doc (>= 0.1.5)
-                     , libghc-archive-doc (>= 1.2.9)
-                     , libghc-artvaluereport-data-doc (>= 1.66)
+                     , libghc-acid-state-doc
+                     , libghc-applicative-extras-doc
+                     , libghc-archive-doc
+                     , libghc-artvaluereport-data-doc
                      , libghc-authenticate-doc
                      , libghc-blaze-html-doc
                      , libghc-blaze-markup-doc
                      , libghc-cereal-doc
                      , libghc-data-accessor-doc
                      , libghc-debian-doc
-                     , libghc-debian-packaging-doc (>= 0.8)
+                     , libghc-debian-packaging-doc
                      , libghc-digestive-functors-doc
                      , libghc-digestive-functors-happstack-doc
                      , libghc-directory-tree-doc
@@ -161,31 +160,31 @@ Build-Depends-Indep: ghc-doc
                      , libghc-happstack-authenticate-doc
                      , libghc-happstack-extra-doc
                      , libghc-happstack-hsp-doc
-                     , libghc-happstack-scaffolding-doc (>= 0.23)
+                     , libghc-happstack-scaffolding-doc
                      , libghc-happstack-server-doc
                      , libghc-happstack-util-doc
                      , libghc-harp-doc
                      , libghc-hslogger-doc
-                     , libghc-hsp-doc (>= 0.4.4)
+                     , libghc-hsp-doc
                      , libghc-hsx-doc
                      , libghc-html-doc
                      , libghc-html-entities-doc
                      , libghc-ixset-doc
-                     , libghc-jmacro-doc (>= 0.6.2)
+                     , libghc-jmacro-doc
                      , libghc-json-doc
 		     , libghc-language-css-doc
                      , libghc-lifted-base-doc
                      , libghc-mtl-doc
-                     , libghc-network-doc (>= 2.4)
+                     , libghc-network-doc
                      , libghc-pandoc-doc
                      , libghc-parsec3-doc (>= 3) | libghc-parsec2-doc (<< 3)
-                     , libghc-process-extras-doc (>= 0.5)
+                     , libghc-process-extras-doc
                      , libghc-puremd5-doc
                      , libghc-random-doc
                      , libghc-regex-compat-doc
                      , libghc-revision-doc
                      , libghc-safe-doc
-                     , libghc-safecopy-doc (>= 0.5.1)
+                     , libghc-safecopy-doc
                      , libghc-syb-doc
                      , libghc-syb-with-class-doc
                      , libghc-tagged-doc
@@ -204,7 +203,7 @@ X-Description: Haskell modules for fine art appraisal applications
 Package: artvaluereport2-backups
 Architecture: any
 Section: misc
-Depends: ${haskell:Depends}, ${misc:Depends}, anacron
+Depends: ${haskell:Depends}, ${misc:Depends}, ${shlibs:Depends}, anacron
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}
@@ -216,7 +215,7 @@ Description: backup program for the appraisalreportonline.com site
 Package: artvaluereport2-production
 Architecture: all
 Section: misc
-Depends: ${haskell:Depends}, ${misc:Depends}, apache2, libjpeg-progs, libjs-jcrop, libjs-jquery, libjs-jquery-ui, netpbm, texlive-fonts-extra, texlive-fonts-recommended, texlive-latex-extra, texlive-latex-recommended
+Depends: ${haskell:Depends}, ${misc:Depends}, ${shlibs:Depends}, apache2, libjpeg-progs, libjs-jcrop, libjs-jquery, libjs-jquery-ui, netpbm, texlive-fonts-extra, texlive-fonts-recommended, texlive-latex-extra, texlive-latex-recommended
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}
@@ -229,7 +228,7 @@ Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
 Package: artvaluereport2-development
 Architecture: all
 Section: misc
-Depends: ${haskell:Depends}, ${misc:Depends}, libjpeg-progs, libjs-jcrop, libjs-jquery, libjs-jquery-ui, netpbm, texlive-fonts-extra, texlive-fonts-recommended, texlive-latex-extra, texlive-latex-recommended
+Depends: ${haskell:Depends}, ${misc:Depends}, ${shlibs:Depends}, libjpeg-progs, libjs-jcrop, libjs-jquery, libjs-jquery-ui, netpbm, texlive-fonts-extra, texlive-fonts-recommended, texlive-latex-extra, texlive-latex-recommended
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}
@@ -242,7 +241,7 @@ Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
 Package: artvaluereport2-staging
 Architecture: all
 Section: misc
-Depends: ${haskell:Depends}, ${misc:Depends}, libjpeg-progs, libjs-jcrop, libjs-jquery, libjs-jquery-ui, netpbm, texlive-fonts-extra, texlive-fonts-recommended, texlive-latex-extra, texlive-latex-recommended
+Depends: ${haskell:Depends}, ${misc:Depends}, ${shlibs:Depends}, libjpeg-progs, libjs-jcrop, libjs-jquery, libjs-jquery-ui, netpbm, texlive-fonts-extra, texlive-fonts-recommended, texlive-latex-extra, texlive-latex-recommended
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}
@@ -255,7 +254,7 @@ Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
 Package: appraisalscope
 Architecture: any
 Section: misc
-Depends: ${haskell:Depends}, ${misc:Depends}
+Depends: ${haskell:Depends}, ${misc:Depends}, ${shlibs:Depends}
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}

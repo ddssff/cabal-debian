@@ -16,49 +16,45 @@ Build-Depends: debhelper (>= 7.0)
                , libghc-quickcheck2-dev (>= 2) | libghc-quickcheck1-dev (<< 2)
                , libghc-quickcheck2-prof (>= 2) | libghc-quickcheck1-prof (<< 2)
                , libghc-unixutils-dev (>= 1.29)
-               , libghc-unixutils-prof (>= 1.29)
+               , libghc-unixutils-prof
                , libghc-unixutils-shadow-dev
                , libghc-unixutils-shadow-prof
                , libghc-acid-state-dev (>= 0.6.0)
-               , libghc-acid-state-prof (>= 0.6.0)
+               , libghc-acid-state-prof
                , libghc-archive-dev (>= 1.2.9)
-               , libghc-archive-prof (>= 1.2.9)
+               , libghc-archive-prof
                , libghc-authenticate-dev (>= 0.8.0)
-               , libghc-authenticate-prof (>= 0.8.0)
+               , libghc-authenticate-prof
                , libghc-blaze-html-dev (>= 0.5)
-               , libghc-blaze-html-prof (>= 0.5)
+               , libghc-blaze-html-prof
                , libghc-blaze-markup-dev
                , libghc-blaze-markup-prof
                , libghc-debian-packaging-dev (>= 0.8)
-               , libghc-debian-packaging-prof (>= 0.8)
+               , libghc-debian-packaging-prof
                , libghc-digestive-functors-dev (>= 0.2)
-               , libghc-digestive-functors-prof (>= 0.2)
+               , libghc-digestive-functors-prof
                , libghc-digestive-functors-happstack-dev (>= 0.1)
-               , libghc-digestive-functors-happstack-prof (>= 0.1)
+               , libghc-digestive-functors-happstack-prof
                , libghc-digestive-functors-hsp-dev (>= 0.3.1)
-               , libghc-digestive-functors-hsp-prof (>= 0.3.1)
+               , libghc-digestive-functors-hsp-prof
                , libghc-extensible-exceptions-dev
                , libghc-extensible-exceptions-prof
                , libghc-happstack-authenticate-dev (>= 0.6)
-               , libghc-happstack-authenticate-prof (>= 0.6)
+               , libghc-happstack-authenticate-prof
                , libghc-happstack-hsp-dev (>= 7.1)
                , libghc-happstack-hsp-dev (<< 7.2)
-               , libghc-happstack-hsp-prof (>= 7.1)
-               , libghc-happstack-hsp-prof (<< 7.2)
+               , libghc-happstack-hsp-prof
                , libghc-happstack-server-dev (>= 7.0)
                , libghc-happstack-server-dev (<< 7.1)
-               , libghc-happstack-server-prof (>= 7.0)
-               , libghc-happstack-server-prof (<< 7.1)
+               , libghc-happstack-server-prof
                , libghc-hslogger-dev
                , libghc-hslogger-prof
                , libghc-hsp-dev (>= 0.7.1)
                , libghc-hsp-dev (<< 0.8)
-               , libghc-hsp-prof (>= 0.7.1)
-               , libghc-hsp-prof (<< 0.8)
+               , libghc-hsp-prof
                , libghc-hsx-dev (>= 0.10.2)
                , libghc-hsx-dev (<< 0.11)
-               , libghc-hsx-prof (>= 0.10.2)
-               , libghc-hsx-prof (<< 0.11)
+               , libghc-hsx-prof
                , libghc-ixset-dev
                , libghc-ixset-prof
                , libghc-jmacro-dev
@@ -74,15 +70,15 @@ Build-Depends: debhelper (>= 7.0)
                , libghc-random-dev
                , libghc-random-prof
                , libghc-safecopy-dev (>= 0.6.0)
-               , libghc-safecopy-prof (>= 0.6.0)
+               , libghc-safecopy-prof
                , libghc-syb-dev
                , libghc-syb-prof
                , libghc-text-dev (>= 0.11)
-               , libghc-text-prof (>= 0.11)
+               , libghc-text-prof
                , libghc-utf8-string-dev
                , libghc-utf8-string-prof
                , libghc-web-routes-dev (>= 0.26.2)
-               , libghc-web-routes-prof (>= 0.26.2)
+               , libghc-web-routes-prof
                , libghc-web-routes-happstack-dev
                , libghc-web-routes-happstack-prof
                , libghc-web-routes-hsp-dev
@@ -90,35 +86,31 @@ Build-Depends: debhelper (>= 7.0)
                , libghc-web-routes-th-dev
                , libghc-web-routes-th-prof
                , libghc-xss-sanitize-dev (>= 0.3.0.1)
-               , libghc-xss-sanitize-prof (>= 0.3.0.1)
+               , libghc-xss-sanitize-prof
                , haskell-hsx-utils
 Build-Depends-Indep: ghc-doc
                      , libghc-extra-doc
                      , libghc-hjscript-doc
                      , libghc-http-doc
                      , libghc-quickcheck2-doc (>= 2) | libghc-quickcheck1-doc (<< 2)
-                     , libghc-unixutils-doc (>= 1.29)
+                     , libghc-unixutils-doc
                      , libghc-unixutils-shadow-doc
-                     , libghc-acid-state-doc (>= 0.6.0)
-                     , libghc-archive-doc (>= 1.2.9)
-                     , libghc-authenticate-doc (>= 0.8.0)
-                     , libghc-blaze-html-doc (>= 0.5)
+                     , libghc-acid-state-doc
+                     , libghc-archive-doc
+                     , libghc-authenticate-doc
+                     , libghc-blaze-html-doc
                      , libghc-blaze-markup-doc
-                     , libghc-debian-packaging-doc (>= 0.8)
-                     , libghc-digestive-functors-doc (>= 0.2)
-                     , libghc-digestive-functors-happstack-doc (>= 0.1)
-                     , libghc-digestive-functors-hsp-doc (>= 0.3.1)
+                     , libghc-debian-packaging-doc
+                     , libghc-digestive-functors-doc
+                     , libghc-digestive-functors-happstack-doc
+                     , libghc-digestive-functors-hsp-doc
                      , libghc-extensible-exceptions-doc
-                     , libghc-happstack-authenticate-doc (>= 0.6)
-                     , libghc-happstack-hsp-doc (>= 7.1)
-                     , libghc-happstack-hsp-doc (<< 7.2)
-                     , libghc-happstack-server-doc (>= 7.0)
-                     , libghc-happstack-server-doc (<< 7.1)
+                     , libghc-happstack-authenticate-doc
+                     , libghc-happstack-hsp-doc
+                     , libghc-happstack-server-doc
                      , libghc-hslogger-doc
-                     , libghc-hsp-doc (>= 0.7.1)
-                     , libghc-hsp-doc (<< 0.8)
-                     , libghc-hsx-doc (>= 0.10.2)
-                     , libghc-hsx-doc (<< 0.11)
+                     , libghc-hsp-doc
+                     , libghc-hsx-doc
                      , libghc-ixset-doc
                      , libghc-jmacro-doc
                      , libghc-json-doc
@@ -126,15 +118,15 @@ Build-Depends-Indep: ghc-doc
                      , libghc-network-doc
                      , libghc-parsec3-doc (>= 3) | libghc-parsec2-doc (<< 3)
                      , libghc-random-doc
-                     , libghc-safecopy-doc (>= 0.6.0)
+                     , libghc-safecopy-doc
                      , libghc-syb-doc
-                     , libghc-text-doc (>= 0.11)
+                     , libghc-text-doc
                      , libghc-utf8-string-doc
-                     , libghc-web-routes-doc (>= 0.26.2)
+                     , libghc-web-routes-doc
                      , libghc-web-routes-happstack-doc
                      , libghc-web-routes-hsp-doc
                      , libghc-web-routes-th-doc
-                     , libghc-xss-sanitize-doc (>= 0.3.0.1)
+                     , libghc-xss-sanitize-doc
 Standards-Version: 3.8.1
 X-Description: creativeprompts.com
  A social site for sharing story ideas.
@@ -142,8 +134,9 @@ X-Description: creativeprompts.com
 Package: creativeprompts-data
 Architecture: all
 Section: misc
-Depends: ${haskell:Depends}
-         , ${misc:Depends}
+Depends: ${haskell:Depends},
+ ${misc:Depends},
+ ${shlibs:Depends},
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}
@@ -154,9 +147,10 @@ Description:  creativeprompts.com data files
 Package: creativeprompts-production
 Architecture: all
 Section: misc
-Depends: ${haskell:Depends}
-         , ${misc:Depends}
-         , markdown
+Depends: ${haskell:Depends},
+ ${misc:Depends},
+ ${shlibs:Depends},
+ markdown,
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}
@@ -169,8 +163,9 @@ Package: creativeprompts-development
 Architecture: all
 Section: misc
 Depends: ${haskell:Depends}
-         , ${misc:Depends}
-         , markdown
+ ${misc:Depends},
+ ${shlibs:Depends},
+ markdown,
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}
@@ -182,9 +177,10 @@ Description:  Configuration for running the creativeprompts.com server
 Package: creativeprompts-backups
 Architecture: any
 Section: misc
-Depends: ${haskell:Depends}
-         , ${misc:Depends}
-         , anacron
+Depends: ${haskell:Depends},
+ ${misc:Depends},
+ ${shlibs:Depends},
+ anacron
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}

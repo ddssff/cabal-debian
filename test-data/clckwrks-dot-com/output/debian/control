@@ -9,57 +9,40 @@ Build-Depends: debhelper (>= 7.0)
                , ghc-prof
                , libghc-clckwrks-dev (>= 0.13)
                , libghc-clckwrks-dev (<< 0.15)
-               , libghc-clckwrks-prof (>= 0.13)
-               , libghc-clckwrks-prof (<< 0.15)
+               , libghc-clckwrks-prof
                , libghc-clckwrks-plugin-bugs-dev (>= 0.3)
                , libghc-clckwrks-plugin-bugs-dev (<< 0.4)
-               , libghc-clckwrks-plugin-bugs-prof (>= 0.3)
-               , libghc-clckwrks-plugin-bugs-prof (<< 0.4)
+               , libghc-clckwrks-plugin-bugs-prof
                , libghc-clckwrks-plugin-media-dev (>= 0.3)
                , libghc-clckwrks-plugin-media-dev (<< 0.4)
-               , libghc-clckwrks-plugin-media-prof (>= 0.3)
-               , libghc-clckwrks-plugin-media-prof (<< 0.4)
+               , libghc-clckwrks-plugin-media-prof
                , libghc-clckwrks-theme-clckwrks-dev (>= 0.2)
                , libghc-clckwrks-theme-clckwrks-dev (<< 0.3)
-               , libghc-clckwrks-theme-clckwrks-prof (>= 0.2)
-               , libghc-clckwrks-theme-clckwrks-prof (<< 0.3)
+               , libghc-clckwrks-theme-clckwrks-prof
                , libghc-happstack-server-dev (>= 7.0)
                , libghc-happstack-server-dev (<< 7.2)
-               , libghc-happstack-server-prof (>= 7.0)
-               , libghc-happstack-server-prof (<< 7.2)
+               , libghc-happstack-server-prof
                , libghc-hsp-dev (>= 0.7)
                , libghc-hsp-dev (<< 0.8)
-               , libghc-hsp-prof (>= 0.7)
-               , libghc-hsp-prof (<< 0.8)
+               , libghc-hsp-prof
                , libghc-mtl-dev (>= 2.0)
                , libghc-mtl-dev (<< 2.2)
-               , libghc-mtl-prof (>= 2.0)
-               , libghc-mtl-prof (<< 2.2)
+               , libghc-mtl-prof
                , libghc-text-dev (>= 0.11)
                , libghc-text-dev (<< 0.12)
-               , libghc-text-prof (>= 0.11)
-               , libghc-text-prof (<< 0.12)
+               , libghc-text-prof
                , libghc-web-plugins-dev (>= 0.1)
                , libghc-web-plugins-dev (<< 0.2)
-               , libghc-web-plugins-prof (>= 0.1)
-               , libghc-web-plugins-prof (<< 0.2)
+               , libghc-web-plugins-prof
 Build-Depends-Indep: ghc-doc
-                     , libghc-clckwrks-doc (>= 0.13)
-                     , libghc-clckwrks-doc (<< 0.15)
-                     , libghc-clckwrks-plugin-bugs-doc (>= 0.3)
-                     , libghc-clckwrks-plugin-bugs-doc (<< 0.4)
-                     , libghc-clckwrks-plugin-media-doc (>= 0.3)
-                     , libghc-clckwrks-plugin-media-doc (<< 0.4)
-                     , libghc-happstack-server-doc (>= 7.0)
-                     , libghc-happstack-server-doc (<< 7.2)
-                     , libghc-hsp-doc (>= 0.7)
-                     , libghc-hsp-doc (<< 0.8)
-                     , libghc-mtl-doc (>= 2.0)
-                     , libghc-mtl-doc (<< 2.2)
-                     , libghc-text-doc (>= 0.11)
-                     , libghc-text-doc (<< 0.12)
-                     , libghc-web-plugins-doc (>= 0.1)
-                     , libghc-web-plugins-doc (<< 0.2)
+                     , libghc-clckwrks-doc
+                     , libghc-clckwrks-plugin-bugs-doc
+                     , libghc-clckwrks-plugin-media-doc
+                     , libghc-happstack-server-doc
+                     , libghc-hsp-doc
+                     , libghc-mtl-doc
+                     , libghc-text-doc
+                     , libghc-web-plugins-doc
 Standards-Version: 3.9.4
 Homepage: http://www.clckwrks.com/
 X-Description: clckwrks.com
@@ -67,8 +50,9 @@ X-Description: clckwrks.com
 Package: clckwrks-dot-com-production
 Architecture: any
 Section: misc
-Depends: ${haskell:Depends}
-         , ${misc:Depends}
+Depends: ${haskell:Depends},
+ ${misc:Depends},
+ ${shlibs:Depends},
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}
@@ -81,9 +65,10 @@ Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
 Package: clckwrks-dot-com-backups
 Architecture: any
 Section: misc
-Depends: ${haskell:Depends}
-         , ${misc:Depends}
-         , anacron
+Depends: ${haskell:Depends},
+ ${misc:Depends},
+ ${shlibs:Depends},
+ anacron
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}

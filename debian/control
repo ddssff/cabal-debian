@@ -9,7 +9,6 @@ Build-Depends: debhelper (>= 7.0),
  ghc-prof,
  libghc-cabal-ghcjs-dev (>= 1.21) | ghc | libghc-cabal-dev (>= 1.9),
  libghc-cabal-ghcjs-dev (>= 1.21) | ghc | libghc-cabal-dev (<< 1.21),
- libghc-cabal-ghcjs-prof (>= 1.21) | ghc-prof | libghc-cabal-prof (>= 1.9),
  libghc-cabal-ghcjs-prof (>= 1.21) | ghc-prof | libghc-cabal-prof (<< 1.21),
  libghc-diff-dev,
  libghc-diff-prof,
@@ -22,15 +21,17 @@ Build-Depends: debhelper (>= 7.0),
  libghc-data-lens-template-dev,
  libghc-data-lens-template-prof,
  libghc-debian-dev (>= 3.84),
- libghc-debian-prof (>= 3.84),
+ libghc-debian-prof
  libghc-hsemail-dev,
  libghc-hsemail-prof,
  libghc-memoize-dev,
  libghc-memoize-prof,
  libghc-mtl-dev,
  libghc-mtl-prof,
+ libghc-network-uri-dev,
+ libghc-network-uri-prof,
  libghc-parsec3-dev (>= 3),
- libghc-parsec3-prof (>= 3),
+ libghc-parsec3-prof (>= 3) | libghc-parsec2-prof (<< 3),
  libghc-prettyclass-dev,
  libghc-prettyclass-prof,
  libghc-puremd5-dev,
@@ -52,11 +53,12 @@ Build-Depends-Indep: ghc-doc,
  libghc-unixutils-doc,
  libghc-data-lens-doc,
  libghc-data-lens-template-doc,
- libghc-debian-doc (>= 3.84),
+ libghc-debian-doc
  libghc-hsemail-doc,
  libghc-memoize-doc,
  libghc-mtl-doc,
- libghc-parsec3-doc (>= 3),
+ libghc-network-uri-doc,
+ libghc-parsec3-doc (>= 3) | libghc-parsec2-doc (<< 3),
  libghc-prettyclass-doc,
  libghc-puremd5-doc,
  libghc-regex-tdfa-doc,
@@ -73,6 +75,25 @@ X-Description: Create a Debianization for a Cabal package
  For documentation of the executable, run
  @cabal-debian --help@, for documentation of the library API follow
  the link to the @Debian.Debianize@ module below.
+
+Package: cabal-debian
+Architecture: any
+Section: misc
+Depends: ${haskell:Depends},
+ ${misc:Depends},
+ ${shlibs:Depends},
+ apt-file,
+ debian-policy,
+ debhelper,
+ haskell-devscripts (>= 0.8.19),
+Recommends: ${haskell:Recommends},
+Suggests: ${haskell:Suggests},
+Conflicts: ${haskell:Conflicts}, haskell-debian-utils (<< 3.59),
+Provides: ${haskell:Provides},
+Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
+  ${haskell:LongDescription}
+  .
+  ${haskell:Blurb}
 
 Package: libghc-cabal-debian-dev
 Architecture: any
@@ -110,25 +131,6 @@ Depends: ${haskell:Depends},
 Recommends: ${haskell:Recommends},
 Suggests: ${haskell:Suggests},
 Conflicts: ${haskell:Conflicts},
-Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
-  ${haskell:LongDescription}
-  .
-  ${haskell:Blurb}
-
-Package: cabal-debian
-Architecture: any
-Section: misc
-Depends: ${haskell:Depends},
- ${misc:Depends},
- ${shlibs:Depends},
- apt-file,
- debian-policy,
- debhelper,
- haskell-devscripts (>= 0.8.19),
-Recommends: ${haskell:Recommends},
-Suggests: ${haskell:Suggests},
-Conflicts: ${haskell:Conflicts}, haskell-debian-utils (<< 3.59),
-Provides: ${haskell:Provides},
 Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
   ${haskell:LongDescription}
   .

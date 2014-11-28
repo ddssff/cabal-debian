@@ -1,3 +1,9 @@
+haskell-cabal-debian (4.18) unstable; urgency=low
+
+  * Add types to support machine readable copyright files.
+
+ -- David Fox <dsf@seereason.com>  Thu, 27 Nov 2014 07:11:35 -0800
+
 haskell-cabal-debian (4.17.5) unstable; urgency=low
 
   * Use the prettyclass package and the PP wrappers in the latest

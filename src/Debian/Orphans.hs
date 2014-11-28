@@ -19,7 +19,8 @@ import Distribution.License (License(..))
 import Distribution.PackageDescription (PackageDescription(package), Executable(..))
 import Distribution.Simple.Compiler (Compiler(..))
 import Distribution.Version (VersionRange(..), foldVersionRange')
-import Language.Haskell.Extension (Extension(..), KnownExtension(..), Language(..))
+import Language.Haskell.Extension (Language(..))
+import Network.URI (URI)
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr(..))
 import Text.PrettyPrint.HughesPJClass (Pretty(pPrint), text, hcat)
 
@@ -128,3 +129,6 @@ instance Pretty (PP VersionRange) where
 
 instance Pretty (PP Version) where
     pPrint = text . showVersion . unPP
+
+instance Pretty (PP URI) where
+    pPrint = text . show . unPP

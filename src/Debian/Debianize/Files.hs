@@ -166,7 +166,8 @@ copyright =
        licenseFile <- lift $ access T.licenseFile
        return [("debian/copyright", case (licenseFile, copyrt, license) of
                                       (Just x, _, _) -> x <> "\n"
-                                      (_, Just x, y) -> x <> "\n" <> maybe mempty (\ z -> pack ("License: " <> (show  (ppPrint z)) <> "\n")) y
+                                      (_, Just (Right x), y) -> x <> "\n" <> maybe mempty (\ z -> pack ("License: " <> (show  (ppPrint z)) <> "\n")) y
+                                      (_, Just (Left x), y) -> ppDisplay' x <> "\n"
                                       (_, _, Just x) -> pack ("License: " <> show (ppPrint x) <> "\n")
                                       _ -> pack ("License: " <> show (ppPrint AllRightsReserved)))]
 

@@ -10,12 +10,12 @@ Build-Depends: debhelper (>= 7.0)
                , libghc-extra-dev
                , libghc-extra-prof
                , libghc-archive-dev (>= 1.7)
-               , libghc-archive-prof (>= 1.7)
+               , libghc-archive-prof
                , libghc-network-dev
                , libghc-network-prof
 Build-Depends-Indep: ghc-doc
                      , libghc-extra-doc
-                     , libghc-archive-doc (>= 1.7)
+                     , libghc-archive-doc
                      , libghc-network-doc
 Standards-Version: 3.8.1
 X-Description: Backups of the seereason darcs repositories
@@ -25,7 +25,7 @@ X-Description: Backups of the seereason darcs repositories
 Package: seereason-darcs-backups
 Architecture: any
 Section: misc
-Depends: ${haskell:Depends}, ${misc:Depends}, anacron
+Depends: ${haskell:Depends}, ${misc:Depends}, ${shlibs:Depends}, anacron
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}

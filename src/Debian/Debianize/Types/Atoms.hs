@@ -26,6 +26,7 @@ import Data.Monoid (Monoid(..))
 import Data.Set as Set (Set, singleton, insert)
 import Data.Text (Text)
 import Debian.Changes (ChangeLog)
+import Debian.Debianize.Types.CopyrightDescription
 import qualified Debian.Debianize.Types.SourceDebDescription as S
 import Debian.Debianize.VersionSplits (VersionSplits)
 import Debian.Orphans ()
@@ -158,7 +159,7 @@ data Atoms
       -- ^ Supply some info about a cabal package.
       , compat_ :: Maybe Int
       -- ^ The debhelper compatibility level, from debian/compat.
-      , copyright_ :: Maybe Text
+      , copyright_ :: Maybe (Either CopyrightDescription Text)
       -- ^ Copyright information
       , license_ :: Maybe License
       -- ^ License information Cabal License value
@@ -554,7 +555,7 @@ official :: Lens Atoms Bool
 official = lens official_ (\ b a -> a {official_ = b})
 
 -- | The copyright information from the cabal file
-copyright :: Lens Atoms (Maybe Text)
+copyright :: Lens Atoms (Maybe (Either CopyrightDescription Text))
 copyright = lens copyright_ (\ a b -> b {copyright_ = a})
 
 -- | The license information from the cabal file

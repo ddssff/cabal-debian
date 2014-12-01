@@ -20,23 +20,23 @@ module Debian.Debianize.Types.CopyrightDescription
     , license
     , comment
     , newCopyrightDescription
-    , inputCopyrightDescription
+    , readCopyrightDescription
     , parseCopyrightDescription
     ) where
 
-import Control.Monad.Trans (MonadIO, liftIO)
+import Data.Char (isSpace)
 import Data.Generics (Data, Typeable)
 import Data.Lens.Template (makeLenses)
+import Data.List (dropWhileEnd)
 import Data.Maybe (isJust, catMaybes, fromJust)
 import Data.Monoid ((<>))
 import Data.Text (Text, pack, unpack)
-import Data.Text.IO (readFile)
 import Debian.Control (Field'(Field), lookupP, Paragraph'(Paragraph), Control'(Control, unControl), parseControl)
 import Debian.Orphans ()
-import Debian.Pretty (PP(unPP), ppDisplay', ppPrint)
+import Debian.Pretty (PP(PP, unPP), ppDisplay', ppPrint)
 import Network.URI (URI, parseURI)
 import Prelude hiding (init, init, log, log, unlines, readFile)
-import Text.PrettyPrint.HughesPJClass (Pretty(pPrint))
+import Text.PrettyPrint.HughesPJClass (Pretty(pPrint), text)
 
 data CopyrightDescription
     = CopyrightDescription
@@ -66,7 +66,9 @@ data LicenseDescription
       } deriving (Eq, Ord, Show, Data, Typeable)
 
 instance Pretty (PP CopyrightDescription) where
-    pPrint = ppPrint . toControlFile . unPP
+    -- Special case encodes free format debian/copyright file
+    pPrint (PP x@(CopyrightDescription {_summaryComment = Just t})) | x {_summaryComment = Nothing} == newCopyrightDescription = text (dropWhileEnd isSpace (unpack t) <> "\n")
+    pPrint x = ppPrint . toControlFile . unPP $ x
 
 newCopyrightDescription :: CopyrightDescription
 newCopyrightDescription =
@@ -81,10 +83,14 @@ newCopyrightDescription =
     , _summaryCopyright = Nothing
     , _filesAndLicenses = [] }
 
-inputCopyrightDescription :: MonadIO m => FilePath -> m (Either CopyrightDescription Text)
-inputCopyrightDescription path =
-    do t <- liftIO $ readFile path
-       return $ either (\ _e -> Right t) (maybe (Right t) Left . parseCopyrightDescription . unControl) (parseControl "debian/copyright" t)
+-- | Try to read a CopyrightDescription from a file
+readCopyrightDescription :: Text -> CopyrightDescription
+readCopyrightDescription t =
+    case parseControl "debian/copyright" t of
+      Left _e -> newCopyrightDescription { _summaryComment = Just t }
+      Right ctl -> case parseCopyrightDescription (unControl ctl) of
+                     Just cpy -> cpy
+                     Nothing -> newCopyrightDescription { _summaryComment = Just t }
 
 parseCopyrightDescription :: [Paragraph' Text] -> Maybe CopyrightDescription
 parseCopyrightDescription (hd : tl) =
@@ -99,7 +105,7 @@ parseCopyrightDescription (hd : tl) =
                    , _disclaimer = fmap (\ (Field (_, x)) -> x) $ lookupP "Disclaimer" hd
                    , _summaryComment = fmap (\ (Field (_, x)) -> x) $ lookupP "Comment" hd
                    , _summaryLicense = fmap (\ (Field (_, x)) -> x) $ lookupP "License" hd
-                   , _summaryCopyright = fmap (\ (Field (_, x)) -> x) $ lookupP "Copyright" hd
+                   , _summaryCopyright = Nothing -- fmap (\ (Field (_, x)) -> x) $ lookupP "Copyright" hd
                    , _filesAndLicenses = catMaybes fnls
                    }
       _ -> Nothing
@@ -129,23 +135,25 @@ toControlFile d =
     Control
     ( Paragraph
       ( [ Field ("Format", (" " <> ppDisplay' (_format d))) ] ++
-        concat [ maybe [] ((: []) . Field . ("Upstream-Name",) . (" " <>) . ppDisplay') (_upstreamName d)
-               , maybe [] ((: []) . Field . ("Upstream-Contact",) . (" " <>) . ppDisplay') (_upstreamContact d)
-               , maybe [] ((: []) . Field . ("Source",) . (" " <>) . ppDisplay') (_source d)
-               , maybe [] ((: []) . Field . ("Disclaimer",) . (" " <>) . ppDisplay') (_disclaimer d)
-               , maybe [] ((: []) . Field . ("Comment",) . (" " <>) . ppDisplay') (_summaryComment d)
-               , maybe [] ((: []) . Field . ("License",) . (" " <>) . ppDisplay') (_summaryLicense d)
-               , maybe [] ((: []) . Field . ("Copyright",) . (" " <>) . ppDisplay') (_summaryCopyright d) ]) :
+        maybe [] (\x -> [Field ("Upstream-Name", " " <> x)]) (_upstreamName d) ++
+        maybe [] (\x -> [Field ("Upstream-Contact", " " <> x)]) (_upstreamContact d) ++
+        maybe [] (\x -> [Field ("Source", " " <> x)]) (_source d) ++
+        maybe [] (\x -> [Field ("Disclaimer", " " <> x)]) (_disclaimer d) ++
+        maybe [] (\x -> [Field ("License", " " <> x)]) (_summaryLicense d) ++
+        maybe [] (\x -> [Field ("Copyright", " " <> x)]) (_summaryCopyright d) ++
+        maybe [] (\x -> [Field ("Comment", " " <> x)]) (_summaryComment d)) :
       map toParagraph (_filesAndLicenses d) )
 
 toParagraph :: Either FilesDescription LicenseDescription -> Paragraph' Text
 toParagraph (Left fd) =
     Paragraph $
-      [ Field ("Files", pack (_filesPattern fd))
-      , Field ("Copyright", _filesCopyright fd)
-      , Field ("License", _filesLicense fd)
-      ] ++
-      maybe [] ((: []) . Field . ("Comment",) . ppDisplay') (_filesComment fd)
-toParagraph (Right ld) = undefined
+      [ Field ("Files", " " <> pack (_filesPattern fd))
+      , Field ("Copyright", " " <> _filesCopyright fd)
+      , Field ("License", " " <> _filesLicense fd) ] ++
+      maybe [] (\ t -> [Field ("Comment", " " <> t)]) (_filesComment fd)
+toParagraph (Right ld) =
+    Paragraph $
+      [ Field ("License", " " <> _license ld) ] ++
+      maybe [] (\ t -> [Field ("Comment", " " <> t)]) (_comment ld)
 
 $(makeLenses [''CopyrightDescription, ''FilesDescription, ''LicenseDescription])

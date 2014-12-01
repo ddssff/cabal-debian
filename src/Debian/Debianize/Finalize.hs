@@ -31,7 +31,7 @@ import Debian.Debianize.Input (dataDir, inputCabalization, inputChangeLog, input
 import Debian.Debianize.Monad as Monad (DebT)
 import Debian.Debianize.Options (compileCommandlineArgs, compileEnvironmentArgs)
 import Debian.Debianize.Prelude ((%=), (+=), foldEmpty, fromEmpty, fromSingleton, (~=), (~?=))
-import qualified Debian.Debianize.Types as T (apacheSite, backups, binaryArchitectures, binaryPackages, binarySection, breaks, buildDepends, buildDependsIndep, buildDir, builtUsing, changelog, comments, compat, conflicts, debianDescription, debVersion, depends, epochMap, executable, extraDevDeps, extraLibMap, file, install, installCabalExec, installData, installDir, installTo, intermediateFiles, license, link, maintainer, noDocumentationLibrary, noProfilingLibrary, packageDescription, packageType, preDepends, provides, recommends, replaces, revision, rulesFragments, serverInfo, standardsVersion, source, sourceFormat, sourcePackageName, sourcePriority, sourceSection, suggests, utilsPackageNameBase, verbosity, watch, website, control, homepage, official, vcsFields)
+import qualified Debian.Debianize.Types as T (apacheSite, backups, binaryArchitectures, binaryPackages, binarySection, breaks, buildDepends, buildDependsIndep, buildDir, builtUsing, changelog, comments, compat, conflicts, debianDescription, debVersion, depends, epochMap, executable, extraDevDeps, extraLibMap, file, install, installCabalExec, installData, installDir, installTo, intermediateFiles, link, maintainer, noDocumentationLibrary, noProfilingLibrary, packageDescription, packageType, preDepends, provides, recommends, replaces, revision, rulesFragments, serverInfo, standardsVersion, source, sourceFormat, sourcePackageName, sourcePriority, sourceSection, suggests, utilsPackageNameBase, verbosity, watch, website, control, homepage, official, vcsFields)
 import qualified Debian.Debianize.Types.Atoms as A (InstallFile(execName, sourceDir), showAtoms, compilerFlavors, Atom(..), atomSet)
 import qualified Debian.Debianize.Types.BinaryDebDescription as B (BinaryDebDescription, package, PackageType(Development, Documentation, Exec, Profiling, Source, HaskellSource, Utilities), PackageType)
 import qualified Debian.Debianize.Types.SourceDebDescription as S (xDescription, VersionControlSpec(..))
@@ -103,7 +103,7 @@ finalizeDebianization date debhelperCompat =
        T.compat ~?= debhelperCompat
        finalizeChangelog date
        finalizeControl
-       T.license ~?= Just (Cabal.license pkgDesc)
+       -- T.license ~?= Just (Cabal.license pkgDesc)
        expandAtoms
        -- Create the binary packages for the web sites, servers, backup packges, and other executables
        access T.executable >>= List.mapM_ (cabalExecBinaryPackage . fst) . Map.toList
@@ -388,7 +388,7 @@ makeUtilsPackage pkgDesc hc =
        when (not (Set.null utilsData && Set.null utilsExec)) $ do
          T.debianDescription b ~?= Just desc
          -- This is really for all binary debs except the libraries - I'm not sure why
-         T.rulesFragments += (pack ("build" </> ppDisplay b ++ ":: build-ghc-stamp"))
+         T.rulesFragments += (pack ("build" </> ppDisplay b ++ ":: build-ghc-stamp\n"))
          T.binaryArchitectures b ~?= Just (if Set.null utilsExec then All else Any)
          T.binarySection b ~?= Just (MainSection "misc")
          binaryPackageRelations b B.Utilities
@@ -447,7 +447,7 @@ expandAtoms =
                      (Text.unlines
                         [ pack ("binary-fixup" </> ppDisplay b) <> "::"
                         , pack ("\t(cd " <> builddir </> name <> " && find " <> name <.> "jsexe" <> " -type f) |\\\n" <>
-                                       "\t  while read i; do install -Dp " <> builddir </> name </> "$$i debian" </> ppDisplay b </> makeRelative "/" dest </> "$$i; done") ])
+                                       "\t  while read i; do install -Dp " <> builddir </> name </> "$$i debian" </> ppDisplay b </> makeRelative "/" dest </> "$$i; done\n") ])
 #endif
             doAtom _ _ = return ()
 

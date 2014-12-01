@@ -22,7 +22,7 @@ import Control.Monad.State (get, put)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Char (isSpace, toLower)
 import Data.Lens.Lazy (getL, setL, modL, access)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set as Set (Set, toList, fromList, insert, singleton)
 import Data.Text (Text, unpack, pack, lines, words, break, strip, null)
 import Data.Text.IO (readFile)
@@ -33,17 +33,18 @@ import qualified Debian.Debianize.Types as T (maintainer, official)
 import qualified Debian.Debianize.Types.Atoms as T (changelog, makeAtoms, compilerFlavors)
 import Debian.Debianize.Types.BinaryDebDescription (BinaryDebDescription, newBinaryDebDescription)
 import qualified Debian.Debianize.Types.BinaryDebDescription as B
-import Debian.Debianize.Types.CopyrightDescription (inputCopyrightDescription, newCopyrightDescription, CopyrightDescription(_summaryCopyright, _summaryLicense))
+import Debian.Debianize.Types.CopyrightDescription (readCopyrightDescription, CopyrightDescription(..), FilesDescription(..))
 import qualified Debian.Debianize.Types.SourceDebDescription as S
 import Debian.Debianize.Types.Atoms
     (control, warning, sourceFormat, watch, rulesHead, compat, packageDescription,
-     license, licenseFile, copyright, changelog, installInit, postInst, postRm, preInst, preRm,
+     copyright, changelog, installInit, postInst, postRm, preInst, preRm,
      logrotateStanza, link, install, installDir, intermediateFiles, cabalFlagAssignments, verbosity, buildEnv)
 import Debian.Debianize.Monad (DebT)
 import Debian.Debianize.Prelude (getDirectoryContents', readFileMaybe, read', intToVerbosity', (~=), (~?=), (+=), (++=), (+++=), (%=))
 import Debian.Debianize.Types.Atoms (EnvSet(dependOS))
 import Debian.GHC (newestAvailableCompilerId)
 import Debian.Orphans ()
+import Debian.Pretty (ppDisplay')
 import Debian.Policy (Section(..), parseStandardsVersion, readPriority, readSection, parsePackageArchitectures, parseMaintainer,
                       parseUploaders, readSourceFormat, getDebianMaintainer, haskellMaintainer)
 import Debian.Relation (Relations, BinPkgName(..), SrcPkgName(..), parseRelations)
@@ -230,7 +231,7 @@ inputAtoms debian name@"source/format" = liftIO (readFile (debian </> name)) >>=
 inputAtoms debian name@"watch" = liftIO (readFile (debian </> name)) >>= \ text -> watch ~= Just text
 inputAtoms debian name@"rules" = liftIO (readFile (debian </> name)) >>= \ text -> rulesHead ~= (Just text)
 inputAtoms debian name@"compat" = liftIO (readFile (debian </> name)) >>= \ text -> compat ~= Just (read' (\ s -> error $ "compat: " ++ show s) (unpack text))
-inputAtoms debian name@"copyright" = liftIO (inputCopyrightDescription (debian </> name)) >>= \ x -> copyright ~= Just x
+inputAtoms debian name@"copyright" = liftIO (readFile (debian </> name)) >>= \ text -> copyright ~= readCopyrightDescription text
 inputAtoms debian name@"changelog" =
     liftIO (readFile (debian </> name)) >>= return . parseChangeLog . unpack >>= \ log -> changelog ~= Just log
 inputAtoms debian name =
@@ -272,6 +273,9 @@ readInstall p line =
 readDir :: Monad m => BinPkgName -> Text -> DebT m ()
 readDir p line = installDir p (unpack line)
 
+nothingIf :: (a -> Bool) -> a -> Maybe a
+nothingIf p x = if p x then Nothing else Just x
+
 inputCabalization :: (MonadIO m, Functor m) => DebT m ()
 inputCabalization =
     do vb <- access verbosity >>= return . intToVerbosity'
@@ -287,38 +291,35 @@ inputCabalization =
                         -- This will contain either the contents of the file given in
                         -- the license-file: field or the contents of the license:
                         -- field.
-                        license ~?= (Just (Cabal.license pkgDesc))
+                        licenseFiles <- mapM (\ path -> liftIO (readFileMaybe path) >>= \ text -> return (path, text))
 #if MIN_VERSION_Cabal(1,19,0)
-                        licenseFileText <- liftIO $ case Cabal.licenseFiles pkgDesc of
-                                                      [] -> return Nothing
-                                                      (path : _) -> readFileMaybe path -- better than nothing
+                                             (Cabal.licenseFiles pkgDesc)
 #else
-                        licenseFileText <- liftIO $ case Cabal.licenseFile pkgDesc of
-                                                      "" -> return Nothing
-                                                      path -> readFileMaybe path
+                                             (case Cabal.licenseFile pkgDesc of
+                                                "" -> []
+                                                path -> [path])
 #endif
-                        licenseFile ~?= licenseFileText
-                        -- Create a machine readable copyright file from the information
-                        -- available in the cabal file - specifically, the copyright field,
-                        -- the license field and/or the contents of the file specified by
-                        -- the license file field.
-                        copyright %= (\ x ->
-                                          let newCopyright = newCopyrightDescription { _summaryCopyright = case Cabal.copyright pkgDesc of
-                                                                                                             "" -> Just "Copyright missing"
-                                                                                                             s -> Just (pack s)
-                                                                                     , _summaryLicense = licenseFileText } in
-                                          case x of
-                                            Nothing -> Just $ Left $ newCopyright
-                                            Just (Right _) -> Just $ Left $ newCopyright
-                                            Just (Left t) -> Just (Left t))
-{-
-                        copyright ~?= (Just $ Left $ newCopyrightDescription { _summaryCopyright = case Cabal.copyright pkgDesc of
-                                                                                                     "" -> Just "Copyright missing"
-                                                                                                     s -> Just (pack s)
-                                                                             , _summaryLicense = licenseFileText })
--}
+                        -- It is possible we might interpret the license file path
+                        -- as a license name, so I hang on to it here.
+                        let licenseFiles' = mapMaybe (\ (path, text) -> maybe Nothing (\ t -> Just (path, t)) text) licenseFiles
+                        copyright %= cabalToCopyrightDescription pkgDesc licenseFiles'
                       ))
              ePkgDescs
+
+cabalToCopyrightDescription :: PackageDescription -> [(FilePath, Text)] -> CopyrightDescription -> CopyrightDescription
+cabalToCopyrightDescription pkgDesc licenseFiles cdesc =
+    let triples = zip3 (repeat (nothingIf (null . strip) (pack (Cabal.copyright pkgDesc))))
+                       (repeat (Cabal.license pkgDesc))
+                       (case licenseFiles of
+                          [] -> [Nothing]
+                          xs -> map (Just. snd) xs)
+        fnls = map (\ (copyrt, license, comment) ->
+                         Left (FilesDescription
+                                {_filesPattern = "*"
+                                , _filesCopyright = fromMaybe (pack "(No copyright field in cabal file)") copyrt
+                                , _filesLicense = ppDisplay' license
+                                , _filesComment = comment })) triples in
+     cdesc { _filesAndLicenses = fnls }
 
 inputCabalization' :: Verbosity -> Set (FlagName, Bool) -> [CompilerId] -> IO [Either [Dependency] PackageDescription]
 inputCabalization' vb flags cids = do

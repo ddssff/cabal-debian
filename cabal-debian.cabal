@@ -212,7 +212,7 @@ Library
    Hs-Source-Dirs: ../debian-haskell
    Build-Depends: bytestring, exceptions, ListLike, network, network-uri, old-locale, process-extras, regex-compat, template-haskell, time
  else
-   Build-depends: debian >= 3.84
+   Build-depends: debian >= 3.85
 
 Executable cabal-debian
  Hs-Source-Dirs: .
@@ -223,7 +223,7 @@ Executable cabal-debian
    Hs-Source-Dirs: src, ../debian-haskell
    Build-depends: bytestring, containers, data-lens-template, deepseq, Diff, directory, exceptions, filepath, hsemail, ListLike, memoize, network, network-uri, old-locale, parsec, prettyclass, process, process-extras, pureMD5, regex-compat, regex-tdfa, set-extra, syb, template-haskell, text, time, unix, Unixutils, utf8-string
  else
-   Build-depends: debian >= 3.84, cabal-debian
+   Build-depends: debian >= 3.85, cabal-debian
 
 Executable cabal-debian-tests
  Hs-Source-Dirs: .
@@ -234,4 +234,4 @@ Executable cabal-debian-tests
    Hs-Source-Dirs: src, ../debian-haskell
    Build-depends: bytestring, containers, data-lens-template, deepseq, Diff, directory, exceptions, filepath, hsemail, ListLike, memoize, mtl, network, network-uri, old-locale, parsec, pretty, prettyclass, process, process-extras, pureMD5, regex-compat, regex-tdfa, set-extra, syb, template-haskell, text, time, unix, Unixutils, utf8-string
  else
-   Build-depends: debian >= 3.84, cabal-debian
+   Build-depends: debian >= 3.85, cabal-debian

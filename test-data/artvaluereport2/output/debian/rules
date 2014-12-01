@@ -7,10 +7,15 @@ include /usr/share/cdbs/1/rules/debhelper.mk
 include /usr/share/cdbs/1/class/hlibrary.mk
 
 build/artvaluereport2-staging:: build-ghc-stamp
+
 build/artvaluereport2-production:: build-ghc-stamp
+
 build/artvaluereport2-development:: build-ghc-stamp
+
 build/artvaluereport2-backups:: build-ghc-stamp
+
 build/appraisalscope:: build-ghc-stamp
+
 binary-fixup/artvaluereport2-staging::
 	install -Dps dist-ghc/build/artvaluereport2-server/artvaluereport2-server debian/artvaluereport2-staging/usr/bin/artvaluereport2-staging
 

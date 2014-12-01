@@ -4,6 +4,7 @@ synopsis:            clckwrks.com
 homepage:            http://www.clckwrks.com/
 license:             BSD3
 license-file:        LICENSE
+copyright:           Copyright (c) 2012, Jeremy Shaw
 author:              Jeremy Shaw
 maintainer:          Jeremy Shaw <jeremy@n-heptane.com>
 category:            Clckwrks

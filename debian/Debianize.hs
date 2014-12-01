@@ -7,12 +7,13 @@
 --
 -- Be sure to run it with the local-debian flag turned off!
 
+import Control.Exception (throw)
 import Control.Monad.State (get)
 import Data.Lens.Lazy (getL, access)
 import Data.List (intercalate)
 import Data.Monoid (mempty)
 import Data.Set (singleton)
-import Data.Text as Text (pack)
+import Data.Text as Text (Text, pack)
 import Debian.Changes (ChangeLog(ChangeLog))
 import Debian.Debianize (inputChangeLog, inputDebianization)
 import Debian.Debianize.Details (debianDefaultAtoms)
@@ -24,9 +25,10 @@ import Debian.Debianize.Types.Atoms as T (Atoms, newAtoms, EnvSet(EnvSet))
 import Debian.Debianize.Monad (Atoms, DebT, execDebT, evalDebT, execDebM)
 import Debian.Debianize.Output (compareDebianization)
 import Debian.Debianize.Prelude ((~=), (~?=), (%=), (+=), (++=))
+import Debian.Debianize.Types.CopyrightDescription (CopyrightDescription(..), FilesDescription(..), newCopyrightDescription)
 import Debian.Debianize.Types.SourceDebDescription (SourceDebDescription)
 import Debian.Policy (SourceFormat(Native3), StandardsVersion(StandardsVersion))
-import Debian.Relation (BinPkgName(BinPkgName), Relation(Rel), VersionReq(SLT, GRE))
+import Debian.Relation (BinPkgName(BinPkgName), Relation(Rel), VersionReq(SLT, GRE), Relations, parseRelations)
 import Debian.Version (parseDebianVersion)
 import Distribution.Compiler(CompilerFlavor(GHC))
 import Prelude hiding (log)
@@ -56,21 +58,63 @@ main =
           do sourceFormat ~= Just Native3
              standardsVersion ~= Just (StandardsVersion 3 9 3 Nothing)
              compat ~= Just 9
-             copyright ~= Just (Right (pack (unlines [ "This package is not part of the Debian GNU/Linux distribution."
-                                                     , ""
-                                                     , "Copyright: (c) 2010-2011, SeeReason Partners LLC"
-                                                     , "License: All Rights Reserved"])))
-             conflicts (BinPkgName "cabal-debian") %= (++ [[Rel (BinPkgName "haskell-debian-utils") (Just (SLT (parseDebianVersion ("3.59" :: String)))) Nothing]])
-             depends (BinPkgName "cabal-debian") %= (++ [[Rel (BinPkgName "apt-file") Nothing Nothing]])
-             depends (BinPkgName "cabal-debian") %= (++ [[Rel (BinPkgName "debian-policy") Nothing Nothing]])
-             depends (BinPkgName "libghc-cabal-debian-dev") %= (++ [[Rel (BinPkgName "debian-policy") Nothing Nothing]])
-             depends (BinPkgName "cabal-debian") %= (++ [[Rel (BinPkgName "debhelper") Nothing Nothing]])
-             depends (BinPkgName "cabal-debian") %= (++ [[Rel (BinPkgName "haskell-devscripts") (Just (GRE (parseDebianVersion ("0.8.19" :: String)))) Nothing]])
+             utilsPackageNameBase ~= Just "cabal-debian"
+             copyright %= copyrightFn
+             conflicts (BinPkgName "cabal-debian") %= (++ (rels "haskell-debian-utils (<< 3.59)"))
+             depends (BinPkgName "cabal-debian") %= (++ (rels "apt-file, debian-policy, debhelper, haskell-devscripts (>= 0.8.19)"))
+             depends (BinPkgName "libghc-cabal-debian-dev") %= (++ (rels "debian-policy"))
              installCabalExec (BinPkgName "cabal-debian-tests") "cabal-debian-tests" "/usr/bin"
              installCabalExec (BinPkgName "cabal-debian") "cabal-debian" "/usr/bin"
              utilsPackageNameBase ~= Just "cabal-debian"
              -- extraDevDeps (BinPkgName "debian-policy")
              homepage ~= Just (pack "http://src.seereason.com/cabal-debian")
+
+rels :: String -> Relations
+rels = either (throw . userError . show) id . parseRelations
+
+-- | Demonstrates the structure of the new copyright type.
+copyrightFn :: CopyrightDescription -> CopyrightDescription
+copyrightFn =
+    const $ newCopyrightDescription
+                    { _filesAndLicenses = [Left (FilesDescription { _filesPattern = "*"
+                                                                  , _filesCopyright = pack (unlines [ "Copyright (c) 2007, David Fox"
+                                                                                                    , "Copyright (c) 2007, Jeremy Shaw" ])
+                                                                  , _filesLicense = pack "AllRightsReserved"
+                                                                  , _filesComment = Just $ pack $ unlines
+                                                                                    [ "All rights reserved."
+                                                                                    , ""
+                                                                                    , "The packageing was adjusted to Debian conventions by Joachim Breitner"
+                                                                                    , "<nomeata@debian.org> on Sat, 01 May 2010 21:16:18 +0200, and is licenced under"
+                                                                                    , "the same terms as the package itself.."
+                                                                                    , ""
+                                                                                    , "Redistribution and use in source and binary forms, with or without"
+                                                                                    , "modification, are permitted provided that the following conditions are"
+                                                                                    , "met:"
+                                                                                    , ""
+                                                                                    , "    * Redistributions of source code must retain the above copyright"
+                                                                                    , "      notice, this list of conditions and the following disclaimer."
+                                                                                    , ""
+                                                                                    , "    * Redistributions in binary form must reproduce the above"
+                                                                                    , "      copyright notice, this list of conditions and the following"
+                                                                                    , "      disclaimer in the documentation and/or other materials provided"
+                                                                                    , "      with the distribution."
+                                                                                    , ""
+                                                                                    , "    * The names of contributors may not be used to endorse or promote"
+                                                                                    , "      products derived from this software without specific prior"
+                                                                                    , "      written permission."
+                                                                                    , ""
+                                                                                    , "THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS"
+                                                                                    , "\"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT"
+                                                                                    , "LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR"
+                                                                                    , "A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT"
+                                                                                    , "OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,"
+                                                                                    , "SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT"
+                                                                                    , "LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,"
+                                                                                    , "DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY"
+                                                                                    , "THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT"
+                                                                                    , "(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE"
+                                                                                    , "OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE." ] })]
+                    , _summaryComment = Just $ pack "This package is not part of the Debian GNU/Linux distribution." }
 
 -- | This copies the first log entry of deb1 into deb2.  Because the
 -- debianization process updates that log entry, we need to undo that

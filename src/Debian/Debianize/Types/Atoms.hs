@@ -34,7 +34,6 @@ import Debian.Policy (PackageArchitectures, PackagePriority, Section, SourceForm
 import Debian.Relation (BinPkgName, Relations, SrcPkgName)
 import Debian.Version (DebianVersion)
 import Distribution.Compiler (CompilerFlavor(GHC))
-import Distribution.License (License)
 import Distribution.Package (PackageName)
 import Distribution.PackageDescription as Cabal (FlagName, PackageDescription)
 import Prelude hiding (init, init, log, log, unlines, (.))
@@ -159,12 +158,9 @@ data Atoms
       -- ^ Supply some info about a cabal package.
       , compat_ :: Maybe Int
       -- ^ The debhelper compatibility level, from debian/compat.
-      , copyright_ :: Maybe (Either CopyrightDescription Text)
-      -- ^ Copyright information
-      , license_ :: Maybe License
-      -- ^ License information Cabal License value
-      , licenseFile_ :: Maybe Text
-      -- ^ The contents of the file specified in the cabal license-file: field
+      -- , copyright_ :: Maybe (Either CopyrightDescription Text)
+      , copyright_ :: CopyrightDescription
+      -- ^ Copyright and license information
       , apacheSite_ :: Map BinPkgName (String, FilePath, Text)
       -- ^ Have Apache configure a site using PACKAGE, DOMAIN, LOGDIR, and APACHECONFIGFILE
       , logrotateStanza_ :: Map BinPkgName (Set Text)
@@ -300,9 +296,7 @@ makeAtoms envset =
       , epochMap_ = mempty
       , packageInfo_ = mempty
       , compat_ = Nothing
-      , copyright_ = Nothing
-      , license_ = Nothing
-      , licenseFile_ = mempty
+      , copyright_ = newCopyrightDescription
       , apacheSite_ = mempty
       , logrotateStanza_ = mempty
       , postInst_ = mempty
@@ -555,9 +549,10 @@ official :: Lens Atoms Bool
 official = lens official_ (\ b a -> a {official_ = b})
 
 -- | The copyright information from the cabal file
-copyright :: Lens Atoms (Maybe (Either CopyrightDescription Text))
+copyright :: Lens Atoms CopyrightDescription
 copyright = lens copyright_ (\ a b -> b {copyright_ = a})
 
+{-
 -- | The license information from the cabal file
 license :: Lens Atoms (Maybe License)
 license = lens license_ (\ a b -> b {license_ = a})
@@ -565,6 +560,7 @@ license = lens license_ (\ a b -> b {license_ = a})
 -- | The value in the cabal file's license-file field
 licenseFile :: Lens Atoms (Maybe Text)
 licenseFile = lens licenseFile_ (\ a b -> b {licenseFile_ = a})
+-}
 
 -- | The architectures supported by this source package - @Any@,
 -- @All@, or some list of specific architectures.

@@ -23,8 +23,6 @@ module Debian.Debianize.Types
     , debVersion
     , maintainer
     , copyright
-    , license
-    , licenseFile
     , sourceArchitectures
     , sourcePriority
     , sourceSection

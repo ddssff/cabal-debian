@@ -1,6 +1,6 @@
 -- | Convert a Debianization into a list of files that can then be
 -- written out.
-{-# LANGUAGE FlexibleInstances, OverloadedStrings, ScopedTypeVariables, TupleSections #-}
+{-# LANGUAGE CPP, FlexibleInstances, OverloadedStrings, ScopedTypeVariables, TupleSections #-}
 module Debian.Debianize.Files
     ( debianizationFileMap
     ) where
@@ -162,14 +162,7 @@ compat =
 copyright :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
 copyright =
     do copyrt <- lift $ access T.copyright
-       license <- lift $ access T.license
-       licenseFile <- lift $ access T.licenseFile
-       return [("debian/copyright", case (licenseFile, copyrt, license) of
-                                      (Just x, _, _) -> x <> "\n"
-                                      (_, Just (Right x), y) -> x <> "\n" <> maybe mempty (\ z -> pack ("License: " <> (show  (ppPrint z)) <> "\n")) y
-                                      (_, Just (Left x), y) -> ppDisplay' x <> "\n"
-                                      (_, _, Just x) -> pack ("License: " <> show (ppPrint x) <> "\n")
-                                      _ -> pack ("License: " <> show (ppPrint AllRightsReserved)))]
+       return [("debian/copyright", ppDisplay' copyrt)]
 
 controlFile :: S.SourceDebDescription -> Control' String
 controlFile src =

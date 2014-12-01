@@ -117,7 +117,7 @@ test1 label =
                           (do -- let top = Top "."
                               defaultAtoms
                               newDebianization (ChangeLog [testEntry]) level standards
-                              copyright %= (\ c -> c { _summaryLicense = Just BSD_Clause_3 })
+                              copyright %= (\ c -> c { _summaryLicense = Just BSD_3_Clause })
                               -- inputCabalization top
                               finalizeDebianization')
                           atoms
@@ -135,7 +135,7 @@ test1 label =
                                                 , "include /usr/share/cdbs/1/rules/debhelper.mk"
                                                 , "include /usr/share/cdbs/1/class/hlibrary.mk" ])))
                 compat ~= Just 9 -- This will change as new version of debhelper are released
-                copyright %= (\ c -> c { _summaryLicense = Just BSD_Clause_3 })
+                copyright %= (\ c -> c { _summaryLicense = Just BSD_3_Clause })
                 T.source ~= Just (SrcPkgName {unSrcPkgName = "haskell-cabal-debian"})
                 T.maintainer ~= Just (NameAddr (Just "David Fox") "dsf@seereason.com")
                 T.standardsVersion ~= Just (StandardsVersion 3 9 3 (Just 1)) -- This will change as new versions of debian-policy are released
@@ -164,7 +164,7 @@ test2 label =
                           (do -- let top = Top "."
                               defaultAtoms
                               newDebianization (ChangeLog [testEntry]) level standards
-                              copyright %= (\ c -> c { _summaryLicense = Just BSD_Clause_3 })
+                              copyright %= (\ c -> c { _summaryLicense = Just BSD_3_Clause })
                               -- inputCabalization top
                               finalizeDebianization')
                           atoms
@@ -181,7 +181,7 @@ test2 label =
                                                  "include /usr/share/cdbs/1/rules/debhelper.mk",
                                                  "include /usr/share/cdbs/1/class/hlibrary.mk"])))
                 compat ~= Just 9
-                copyright %= (\ c -> c { _summaryLicense = Just BSD_Clause_3 })
+                copyright %= (\ c -> c { _summaryLicense = Just BSD_3_Clause })
                 T.source ~= Just (SrcPkgName {unSrcPkgName = "haskell-cabal-debian"})
                 T.maintainer ~= Just (NameAddr {nameAddr_name = Just "David Fox", nameAddr_addr = "dsf@seereason.com"})
                 T.standardsVersion ~= Just (StandardsVersion 3 9 3 (Just 1))

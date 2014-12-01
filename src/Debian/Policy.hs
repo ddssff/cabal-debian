@@ -280,20 +280,76 @@ parseMaintainer x =
       Right [] -> Left $ "Missing maintainer: " ++ show x
       Right ys -> Left $ "Too many maintainers: " ++ show ys
 
--- | Official Debian license types (Need to finish this when i'm not
--- on a plane)
+-- | Official Debian license types as described in
+-- <https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/#license-specification>.
 data License
-    = BSD_Clause_2
-    | BSD_Clause_3
-    | BSD_Clause_4
-    | All_Rights_Reserved
-    | Invalid_License Text
-    -- ^ Some string appeared in a License field that is not allowed
-    -- according to Debian policy.
+    = Public_Domain	-- ^ No license required for any purpose; the work is not subject to copyright in any jurisdiction.
+    | Apache		-- ^ Apache license 1.0, 2.0.
+    | Artistic		-- ^ Artistic license 1.0, 2.0.
+    | BSD_2_Clause	-- ^ Berkeley software distribution license, 2-clause version.
+    | BSD_3_Clause	-- ^ Berkeley software distribution license, 3-clause version.
+    | BSD_4_Clause	-- ^ Berkeley software distribution license, 4-clause version.
+    | ISC		-- ^ Internet Software Consortium, sometimes also known as the OpenBSD License.
+    | CC_BY		-- ^ Creative Commons Attribution license 1.0, 2.0, 2.5, 3.0.
+    | CC_BY_SA		-- ^ Creative Commons Attribution Share Alike license 1.0, 2.0, 2.5, 3.0.
+    | CC_BY_ND		-- ^ Creative Commons Attribution No Derivatives license 1.0, 2.0, 2.5, 3.0.
+    | CC_BY_NC		-- ^ Creative Commons Attribution Non-Commercial license 1.0, 2.0, 2.5, 3.0.
+    | CC_BY_NC_SA	-- ^ Creative Commons Attribution Non-Commercial Share Alike license 1.0, 2.0, 2.5, 3.0.
+    | CC_BY_NC_ND	-- ^ Creative Commons Attribution Non-Commercial No Derivatives license 1.0, 2.0, 2.5, 3.0.
+    | CC0		-- ^ Creative Commons Zero 1.0 Universal. Omit "Universal" from the license version when forming the short name.
+    | CDDL		-- ^ Common Development and Distribution License 1.0.
+    | CPL		-- ^ IBM Common Public License.
+    | EFL		-- ^ The Eiffel Forum License 1.0, 2.0.
+    | Expat		-- ^ The Expat license.
+    | GPL		-- ^ GNU General Public License 1.0, 2.0, 3.0.
+    | LGPL		-- ^ GNU Lesser General Public License 2.1, 3.0, or GNU Library General Public License 2.0.
+    | GFDL		-- ^ GNU Free Documentation License 1.0, 1.1, 1.2, or 1.3. Use GFDL-NIV instead if there are no Front-Cover or Back-Cover Texts or Invariant Sections.
+    | GFDL_NIV		-- ^ GNU Free Documentation License, with no Front-Cover or Back-Cover Texts or Invariant Sections. Use the same version numbers as GFDL.
+    | LPPL		-- ^ LaTeX Project Public License 1.0, 1.1, 1.2, 1.3c.
+    | MPL		-- ^ Mozilla Public License 1.1.
+    | Perl		-- ^ erl license (use "GPL-1+ or Artistic-1" instead)
+    | Python		-- ^ Python license 2.0.
+    | QPL		-- ^ Q Public License 1.0.
+    | W3C		-- ^ W3C Software License For more information, consult the W3C Intellectual Rights FAQ.
+    | Zlib		-- ^ zlib/libpng license.
+    | Zope		-- ^ Zope Public License 1.0, 1.1, 2.0, 2.1.
+    | OtherLicense String
+			-- ^ A license name associated with the subsequent text of the License: field or in
+			-- a Files paragraph of the same debian/copyright file, or in a License: paragraph.
     deriving (Read, Show, Eq, Ord, Data, Typeable)
 
-instance Pretty (PP License) where
-    pPrint = text . show . unPP
+instance Pretty License where
+    pPrint Public_Domain = text "public-domain"
+    pPrint Apache = text "Apache"
+    pPrint Artistic = text "Artistic"
+    pPrint BSD_2_Clause = text "BSD-2-clause"
+    pPrint BSD_3_Clause = text "BSD-3-clause"
+    pPrint BSD_4_Clause = text "BSD-4-clause"
+    pPrint ISC = text "ISC"
+    pPrint CC_BY = text "CC-BY"
+    pPrint CC_BY_SA = text "CC-BY-SA"
+    pPrint CC_BY_ND = text "CC-BY-ND"
+    pPrint CC_BY_NC = text "CC-BY-NC"
+    pPrint CC_BY_NC_SA = text "CC-BY-NC-SA"
+    pPrint CC_BY_NC_ND = text "CC-BY-NC-ND"
+    pPrint CC0 = text "CC0"
+    pPrint CDDL = text "CDDL"
+    pPrint CPL = text "CPL"
+    pPrint EFL = text "EFL"
+    pPrint Expat = text "Expat"
+    pPrint GPL = text "GPL"
+    pPrint LGPL = text "LGPL"
+    pPrint GFDL = text "GFDL"
+    pPrint GFDL_NIV = text "GFDL-NIV"
+    pPrint LPPL = text "LPPL"
+    pPrint MPL = text "MPL"
+    pPrint Perl = text "Perl"
+    pPrint Python = text "Python"
+    pPrint QPL = text "QPL"
+    pPrint W3C = text "W3C"
+    pPrint Zlib = text "Zlib"
+    pPrint Zope = text "Zope"
+    pPrint (OtherLicense s) = text s
 
 fromCabalLicense :: Cabal.License -> License
 fromCabalLicense x =
@@ -301,14 +357,14 @@ fromCabalLicense x =
       Cabal.GPL mver -> undefined
       Cabal.AGPL mver -> undefined
       Cabal.LGPL mver -> undefined
-      Cabal.BSD2 -> BSD_Clause_2
-      Cabal.BSD3 -> BSD_Clause_3
-      Cabal.BSD4 -> BSD_Clause_4
+      Cabal.BSD2 -> BSD_2_Clause
+      Cabal.BSD3 -> BSD_3_Clause
+      Cabal.BSD4 -> BSD_4_Clause
       Cabal.MIT -> undefined
       Cabal.MPL ver -> undefined
       Cabal.Apache mver -> undefined
       Cabal.PublicDomain -> undefined
-      Cabal.AllRightsReserved -> All_Rights_Reserved
+      Cabal.AllRightsReserved -> OtherLicense "AllRightsReserved"
       Cabal.UnspecifiedLicense -> undefined
       Cabal.OtherLicense -> undefined
       Cabal.UnknownLicense s -> undefined
@@ -316,14 +372,14 @@ fromCabalLicense x =
 toCabalLicense :: License -> Cabal.License
 toCabalLicense x =
     case x of
-      BSD_Clause_2 -> Cabal.BSD2
-      BSD_Clause_3 -> Cabal.BSD3
-      BSD_Clause_4 -> Cabal.BSD4
-      All_Rights_Reserved -> Cabal.AllRightsReserved
-      Invalid_License x -> error $ "toCabalLicense " ++ show x
+      BSD_2_Clause -> Cabal.BSD2
+      BSD_3_Clause -> Cabal.BSD3
+      BSD_4_Clause -> Cabal.BSD4
+      OtherLicense s -> Cabal.UnknownLicense s
 
 invalidLicense :: Text -> License
-invalidLicense = Invalid_License
+invalidLicense = OtherLicense . unpack
 
+-- | I think we need an actual parser for license names.
 readLicense :: Text -> License
 readLicense t = let s = unpack (strip t) in fromMaybe (invalidLicense t) (readMaybe s)

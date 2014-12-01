@@ -33,7 +33,7 @@ import Data.Text (Text, pack, unpack)
 import Debian.Control (Field'(Field), lookupP, Paragraph'(Paragraph), Control'(Control, unControl), parseControl)
 import Debian.Orphans ()
 import Debian.Policy (License(..), readLicense)
-import Debian.Pretty (PP(PP, unPP), ppDisplay', ppPrint)
+import Debian.Pretty (PP(PP, unPP), display', ppDisplay', ppPrint)
 import Network.URI (URI, parseURI)
 import Prelude hiding (init, init, log, log, unlines, readFile)
 import Text.PrettyPrint.HughesPJClass (Pretty(pPrint), text)
@@ -142,7 +142,7 @@ toControlFile d =
         maybe [] (\x -> [Field ("Upstream-Contact", " " <> x)]) (_upstreamContact d) ++
         maybe [] (\x -> [Field ("Source", " " <> x)]) (_source d) ++
         maybe [] (\x -> [Field ("Disclaimer", " " <> x)]) (_disclaimer d) ++
-        maybe [] (\x -> [Field ("License", " " <> ppDisplay' x)]) (_summaryLicense d) ++
+        maybe [] (\x -> [Field ("License", " " <> display' x)]) (_summaryLicense d) ++
         maybe [] (\x -> [Field ("Copyright", " " <> x)]) (_summaryCopyright d) ++
         maybe [] (\x -> [Field ("Comment", " " <> x)]) (_summaryComment d)) :
       map toParagraph (_filesAndLicenses d) )
@@ -152,11 +152,11 @@ toParagraph fd@FilesDescription {} =
     Paragraph $
       [ Field ("Files", " " <> pack (_filesPattern fd))
       , Field ("Copyright", " " <> _filesCopyright fd)
-      , Field ("License", " " <> ppDisplay' (_filesLicense fd)) ] ++
+      , Field ("License", " " <> display' (_filesLicense fd)) ] ++
       maybe [] (\ t -> [Field ("Comment", " " <> t)]) (_filesComment fd)
 toParagraph ld@LicenseDescription {} =
     Paragraph $
-      [ Field ("License", " " <> ppDisplay' (_license ld)) ] ++
+      [ Field ("License", " " <> display' (_license ld)) ] ++
       maybe [] (\ t -> [Field ("Comment", " " <> t)]) (_comment ld)
 
 $(makeLenses [''CopyrightDescription, ''FilesOrLicenseDescription])

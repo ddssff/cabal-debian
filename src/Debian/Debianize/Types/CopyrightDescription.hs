@@ -33,6 +33,7 @@ import Data.Monoid ((<>))
 import Data.Text (Text, pack, unpack)
 import Debian.Control (Field'(Field), lookupP, Paragraph'(Paragraph), Control'(Control, unControl), parseControl)
 import Debian.Orphans ()
+import Debian.Policy (License(..), readLicense)
 import Debian.Pretty (PP(PP, unPP), ppDisplay', ppPrint)
 import Network.URI (URI, parseURI)
 import Prelude hiding (init, init, log, log, unlines, readFile)
@@ -46,7 +47,7 @@ data CopyrightDescription
       , _source :: Maybe Text
       , _disclaimer :: Maybe Text
       , _summaryComment :: Maybe Text
-      , _summaryLicense :: Maybe Text
+      , _summaryLicense :: Maybe License
       , _summaryCopyright :: Maybe Text
       , _filesAndLicenses :: [Either FilesDescription LicenseDescription]
       } deriving (Eq, Ord, Show, Data, Typeable)
@@ -55,13 +56,13 @@ data FilesDescription
     = FilesDescription
       { _filesPattern :: FilePath
       , _filesCopyright :: Text
-      , _filesLicense :: Text
+      , _filesLicense :: License
       , _filesComment :: Maybe Text
       } deriving (Eq, Ord, Show, Data, Typeable)
 
 data LicenseDescription
     = LicenseDescription
-      { _license :: Text
+      { _license :: License
       , _comment :: Maybe Text
       } deriving (Eq, Ord, Show, Data, Typeable)
 
@@ -104,7 +105,7 @@ parseCopyrightDescription (hd : tl) =
                    , _source = fmap (\ (Field (_, x)) -> x) $ lookupP "Source" hd
                    , _disclaimer = fmap (\ (Field (_, x)) -> x) $ lookupP "Disclaimer" hd
                    , _summaryComment = fmap (\ (Field (_, x)) -> x) $ lookupP "Comment" hd
-                   , _summaryLicense = fmap (\ (Field (_, x)) -> x) $ lookupP "License" hd
+                   , _summaryLicense = fmap (\ (Field (_, x)) -> readLicense x) $ lookupP "License" hd
                    , _summaryCopyright = Nothing -- fmap (\ (Field (_, x)) -> x) $ lookupP "Copyright" hd
                    , _filesAndLicenses = catMaybes fnls
                    }
@@ -120,13 +121,13 @@ parseFilesOrLicense p =
           Just $ Left $ FilesDescription
                  { _filesPattern = unpack files
                  , _filesCopyright = copyright
-                 , _filesLicense = license
+                 , _filesLicense = readLicense license
                  , _filesComment = maybe Nothing (\ (Field (_, comment)) -> Just comment) (lookupP "Comment" p) }
       (Nothing,
        Nothing,
        Just (Field (_, license))) ->
           Just $ Right $ LicenseDescription
-                 { _license = license
+                 { _license = readLicense license
                  , _comment = maybe Nothing (\ (Field (_, comment)) -> Just comment) (lookupP "Comment" p) }
       _ -> Nothing
 
@@ -139,7 +140,7 @@ toControlFile d =
         maybe [] (\x -> [Field ("Upstream-Contact", " " <> x)]) (_upstreamContact d) ++
         maybe [] (\x -> [Field ("Source", " " <> x)]) (_source d) ++
         maybe [] (\x -> [Field ("Disclaimer", " " <> x)]) (_disclaimer d) ++
-        maybe [] (\x -> [Field ("License", " " <> x)]) (_summaryLicense d) ++
+        maybe [] (\x -> [Field ("License", " " <> ppDisplay' x)]) (_summaryLicense d) ++
         maybe [] (\x -> [Field ("Copyright", " " <> x)]) (_summaryCopyright d) ++
         maybe [] (\x -> [Field ("Comment", " " <> x)]) (_summaryComment d)) :
       map toParagraph (_filesAndLicenses d) )
@@ -149,11 +150,11 @@ toParagraph (Left fd) =
     Paragraph $
       [ Field ("Files", " " <> pack (_filesPattern fd))
       , Field ("Copyright", " " <> _filesCopyright fd)
-      , Field ("License", " " <> _filesLicense fd) ] ++
+      , Field ("License", " " <> ppDisplay' (_filesLicense fd)) ] ++
       maybe [] (\ t -> [Field ("Comment", " " <> t)]) (_filesComment fd)
 toParagraph (Right ld) =
     Paragraph $
-      [ Field ("License", " " <> _license ld) ] ++
+      [ Field ("License", " " <> ppDisplay' (_license ld)) ] ++
       maybe [] (\ t -> [Field ("Comment", " " <> t)]) (_comment ld)
 
 $(makeLenses [''CopyrightDescription, ''FilesDescription, ''LicenseDescription])

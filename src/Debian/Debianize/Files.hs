@@ -26,7 +26,6 @@ import qualified Debian.Debianize.Types.BinaryDebDescription as B
 import qualified Debian.Debianize.Types.SourceDebDescription as S
 import Debian.Pretty (PP(..), ppDisplay, ppPrint, ppDisplay')
 import Debian.Relation (Relations, BinPkgName(BinPkgName))
-import Distribution.License (License(AllRightsReserved))
 import Prelude hiding (init, unlines, writeFile, log, dropWhile)
 --import System.Directory (getCurrentDirectory)
 import System.FilePath ((</>))

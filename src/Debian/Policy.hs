@@ -33,6 +33,10 @@ module Debian.Policy
     , parseMaintainer
     , getDebianMaintainer
     , haskellMaintainer
+    , License(..)
+    , fromCabalLicense
+    , toCabalLicense
+    , readLicense
     ) where
 
 import Codec.Binary.UTF8.String (decodeString)
@@ -41,19 +45,21 @@ import Control.Monad (mplus)
 import Data.Char (toLower, isSpace)
 import Data.List (groupBy, intercalate)
 import Data.Generics (Data, Typeable)
-import Data.Maybe (mapMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Monoid ((<>))
 import Data.Text (Text, pack, unpack, strip)
 import Debian.Debianize.Prelude (read')
 import Debian.Pretty (PP(..))
 import Debian.Relation (BinPkgName)
 import Debian.Version (DebianVersion, parseDebianVersion, version)
+import qualified Distribution.License as Cabal
 import System.Environment (getEnvironment)
 import System.FilePath ((</>))
 import System.Process (readProcess)
 import Text.Parsec (parse)
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr(..), address)
 import Text.PrettyPrint.HughesPJClass (Pretty(pPrint), text)
+import Text.Read (readMaybe)
 
 databaseDirectory :: BinPkgName -> String
 databaseDirectory x = "/srv" </> show (pPrint . PP $ x)
@@ -273,3 +279,51 @@ parseMaintainer x =
       Right [y] -> Right y
       Right [] -> Left $ "Missing maintainer: " ++ show x
       Right ys -> Left $ "Too many maintainers: " ++ show ys
+
+-- | Official Debian license types (Need to finish this when i'm not
+-- on a plane)
+data License
+    = BSD_Clause_2
+    | BSD_Clause_3
+    | BSD_Clause_4
+    | All_Rights_Reserved
+    | Invalid_License Text
+    -- ^ Some string appeared in a License field that is not allowed
+    -- according to Debian policy.
+    deriving (Read, Show, Eq, Ord, Data, Typeable)
+
+instance Pretty (PP License) where
+    pPrint = text . show . unPP
+
+fromCabalLicense :: Cabal.License -> License
+fromCabalLicense x =
+    case x of
+      Cabal.GPL mver -> undefined
+      Cabal.AGPL mver -> undefined
+      Cabal.LGPL mver -> undefined
+      Cabal.BSD2 -> BSD_Clause_2
+      Cabal.BSD3 -> BSD_Clause_3
+      Cabal.BSD4 -> BSD_Clause_4
+      Cabal.MIT -> undefined
+      Cabal.MPL ver -> undefined
+      Cabal.Apache mver -> undefined
+      Cabal.PublicDomain -> undefined
+      Cabal.AllRightsReserved -> All_Rights_Reserved
+      Cabal.UnspecifiedLicense -> undefined
+      Cabal.OtherLicense -> undefined
+      Cabal.UnknownLicense s -> undefined
+
+toCabalLicense :: License -> Cabal.License
+toCabalLicense x =
+    case x of
+      BSD_Clause_2 -> Cabal.BSD2
+      BSD_Clause_3 -> Cabal.BSD3
+      BSD_Clause_4 -> Cabal.BSD4
+      All_Rights_Reserved -> Cabal.AllRightsReserved
+      Invalid_License x -> error $ "toCabalLicense " ++ show x
+
+invalidLicense :: Text -> License
+invalidLicense = Invalid_License
+
+readLicense :: Text -> License
+readLicense t = let s = unpack (strip t) in fromMaybe (invalidLicense t) (readMaybe s)

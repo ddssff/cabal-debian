@@ -27,7 +27,7 @@ import Debian.Debianize.Output (compareDebianization)
 import Debian.Debianize.Prelude ((~=), (~?=), (%=), (+=), (++=))
 import Debian.Debianize.Types.CopyrightDescription (CopyrightDescription(..), FilesDescription(..), newCopyrightDescription)
 import Debian.Debianize.Types.SourceDebDescription (SourceDebDescription)
-import Debian.Policy (SourceFormat(Native3), StandardsVersion(StandardsVersion))
+import Debian.Policy (SourceFormat(Native3), StandardsVersion(StandardsVersion), License(All_Rights_Reserved))
 import Debian.Relation (BinPkgName(BinPkgName), Relation(Rel), VersionReq(SLT, GRE), Relations, parseRelations)
 import Debian.Version (parseDebianVersion)
 import Distribution.Compiler(CompilerFlavor(GHC))
@@ -79,7 +79,7 @@ copyrightFn =
                     { _filesAndLicenses = [Left (FilesDescription { _filesPattern = "*"
                                                                   , _filesCopyright = pack (unlines [ "Copyright (c) 2007, David Fox"
                                                                                                     , "Copyright (c) 2007, Jeremy Shaw" ])
-                                                                  , _filesLicense = pack "AllRightsReserved"
+                                                                  , _filesLicense = All_Rights_Reserved
                                                                   , _filesComment = Just $ pack $ unlines
                                                                                     [ "All rights reserved."
                                                                                     , ""

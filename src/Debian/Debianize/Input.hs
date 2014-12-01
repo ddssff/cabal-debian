@@ -44,9 +44,8 @@ import Debian.Debianize.Prelude (getDirectoryContents', readFileMaybe, read', in
 import Debian.Debianize.Types.Atoms (EnvSet(dependOS))
 import Debian.GHC (newestAvailableCompilerId)
 import Debian.Orphans ()
-import Debian.Pretty (ppDisplay')
 import Debian.Policy (Section(..), parseStandardsVersion, readPriority, readSection, parsePackageArchitectures, parseMaintainer,
-                      parseUploaders, readSourceFormat, getDebianMaintainer, haskellMaintainer)
+                      parseUploaders, readSourceFormat, getDebianMaintainer, haskellMaintainer, fromCabalLicense)
 import Debian.Relation (Relations, BinPkgName(..), SrcPkgName(..), parseRelations)
 --import Debian.Version (DebianVersion, parseDebianVersion)
 import Distribution.Compiler (CompilerId)
@@ -317,7 +316,7 @@ cabalToCopyrightDescription pkgDesc licenseFiles cdesc =
                          Left (FilesDescription
                                 {_filesPattern = "*"
                                 , _filesCopyright = fromMaybe (pack "(No copyright field in cabal file)") copyrt
-                                , _filesLicense = ppDisplay' license
+                                , _filesLicense = fromCabalLicense license
                                 , _filesComment = comment })) triples in
      cdesc { _filesAndLicenses = fnls }
 

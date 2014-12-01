@@ -33,7 +33,7 @@ import qualified Debian.Debianize.Types as T (maintainer, official)
 import qualified Debian.Debianize.Types.Atoms as T (changelog, makeAtoms, compilerFlavors)
 import Debian.Debianize.Types.BinaryDebDescription (BinaryDebDescription, newBinaryDebDescription)
 import qualified Debian.Debianize.Types.BinaryDebDescription as B
-import Debian.Debianize.Types.CopyrightDescription (readCopyrightDescription, CopyrightDescription(..), FilesDescription(..))
+import Debian.Debianize.Types.CopyrightDescription (readCopyrightDescription, CopyrightDescription(..), FilesOrLicenseDescription(..))
 import qualified Debian.Debianize.Types.SourceDebDescription as S
 import Debian.Debianize.Types.Atoms
     (control, warning, sourceFormat, watch, rulesHead, compat, packageDescription,
@@ -313,11 +313,11 @@ cabalToCopyrightDescription pkgDesc licenseFiles cdesc =
                           [] -> [Nothing]
                           xs -> map (Just. snd) xs)
         fnls = map (\ (copyrt, license, comment) ->
-                         Left (FilesDescription
+                         FilesDescription
                                 {_filesPattern = "*"
                                 , _filesCopyright = fromMaybe (pack "(No copyright field in cabal file)") copyrt
                                 , _filesLicense = fromCabalLicense license
-                                , _filesComment = comment })) triples in
+                                , _filesComment = comment }) triples in
      cdesc { _filesAndLicenses = fnls }
 
 inputCabalization' :: Verbosity -> Set (FlagName, Bool) -> [CompilerId] -> IO [Either [Dependency] PackageDescription]

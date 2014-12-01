@@ -2,8 +2,7 @@
 {-# LANGUAGE DeriveDataTypeable, FlexibleInstances, OverloadedStrings, ScopedTypeVariables, TemplateHaskell, TupleSections #-}
 module Debian.Debianize.Types.CopyrightDescription
     ( CopyrightDescription(..)
-    , FilesDescription(..)
-    , LicenseDescription(..)
+    , FilesOrLicenseDescription(..)
     , format
     , upstreamName
     , upstreamContact
@@ -39,6 +38,11 @@ import Network.URI (URI, parseURI)
 import Prelude hiding (init, init, log, log, unlines, readFile)
 import Text.PrettyPrint.HughesPJClass (Pretty(pPrint), text)
 
+-- | Description of the machine readable debian/copyright file.  A
+-- special case is used to represeent the old style free format file -
+-- if the value is equal to newCopyrightDescription except for the
+-- field _summaryComment, the text in _summaryComment is the copyright
+-- file.
 data CopyrightDescription
     = CopyrightDescription
       { _format :: URI
@@ -49,19 +53,17 @@ data CopyrightDescription
       , _summaryComment :: Maybe Text
       , _summaryLicense :: Maybe License
       , _summaryCopyright :: Maybe Text
-      , _filesAndLicenses :: [Either FilesDescription LicenseDescription]
+      , _filesAndLicenses :: [FilesOrLicenseDescription]
       } deriving (Eq, Ord, Show, Data, Typeable)
 
-data FilesDescription
+data FilesOrLicenseDescription
     = FilesDescription
       { _filesPattern :: FilePath
       , _filesCopyright :: Text
       , _filesLicense :: License
       , _filesComment :: Maybe Text
-      } deriving (Eq, Ord, Show, Data, Typeable)
-
-data LicenseDescription
-    = LicenseDescription
+      }
+    | LicenseDescription
       { _license :: License
       , _comment :: Maybe Text
       } deriving (Eq, Ord, Show, Data, Typeable)
@@ -112,13 +114,13 @@ parseCopyrightDescription (hd : tl) =
       _ -> Nothing
 parseCopyrightDescription [] = Nothing
 
-parseFilesOrLicense :: Paragraph' Text -> Maybe (Either FilesDescription LicenseDescription)
+parseFilesOrLicense :: Paragraph' Text -> Maybe (FilesOrLicenseDescription)
 parseFilesOrLicense p =
     case (lookupP "Files" p, lookupP "Copyright" p, lookupP "License" p) of
       (Just (Field (_, files)),
        Just (Field (_, copyright)),
        Just (Field (_, license))) ->
-          Just $ Left $ FilesDescription
+          Just $ FilesDescription
                  { _filesPattern = unpack files
                  , _filesCopyright = copyright
                  , _filesLicense = readLicense license
@@ -126,7 +128,7 @@ parseFilesOrLicense p =
       (Nothing,
        Nothing,
        Just (Field (_, license))) ->
-          Just $ Right $ LicenseDescription
+          Just $ LicenseDescription
                  { _license = readLicense license
                  , _comment = maybe Nothing (\ (Field (_, comment)) -> Just comment) (lookupP "Comment" p) }
       _ -> Nothing
@@ -145,16 +147,16 @@ toControlFile d =
         maybe [] (\x -> [Field ("Comment", " " <> x)]) (_summaryComment d)) :
       map toParagraph (_filesAndLicenses d) )
 
-toParagraph :: Either FilesDescription LicenseDescription -> Paragraph' Text
-toParagraph (Left fd) =
+toParagraph :: FilesOrLicenseDescription -> Paragraph' Text
+toParagraph fd@FilesDescription {} =
     Paragraph $
       [ Field ("Files", " " <> pack (_filesPattern fd))
       , Field ("Copyright", " " <> _filesCopyright fd)
       , Field ("License", " " <> ppDisplay' (_filesLicense fd)) ] ++
       maybe [] (\ t -> [Field ("Comment", " " <> t)]) (_filesComment fd)
-toParagraph (Right ld) =
+toParagraph ld@LicenseDescription {} =
     Paragraph $
       [ Field ("License", " " <> ppDisplay' (_license ld)) ] ++
       maybe [] (\ t -> [Field ("Comment", " " <> t)]) (_comment ld)
 
-$(makeLenses [''CopyrightDescription, ''FilesDescription, ''LicenseDescription])
+$(makeLenses [''CopyrightDescription, ''FilesOrLicenseDescription])

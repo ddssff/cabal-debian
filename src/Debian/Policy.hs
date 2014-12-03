@@ -377,7 +377,7 @@ toCabalLicense x =
       BSD_3_Clause -> Cabal.BSD3
       BSD_4_Clause -> Cabal.BSD4
       OtherLicense s -> Cabal.UnknownLicense s
-      _ -> Cabal.OtherLicense (show x)
+      _ -> Cabal.UnknownLicense (show x)
 
 invalidLicense :: Text -> License
 invalidLicense = OtherLicense . unpack

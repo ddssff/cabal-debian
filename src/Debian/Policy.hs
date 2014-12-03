@@ -354,28 +354,30 @@ instance Pretty License where
 fromCabalLicense :: Cabal.License -> License
 fromCabalLicense x =
     case x of
-      Cabal.GPL mver -> undefined
-      Cabal.AGPL mver -> undefined
-      Cabal.LGPL mver -> undefined
+      Cabal.GPL mver -> GPL -- FIXME - what about the version number?  same below
+      Cabal.AGPL mver -> OtherLicense (show x)
+      Cabal.LGPL mver -> LGPL
       Cabal.BSD2 -> BSD_2_Clause
       Cabal.BSD3 -> BSD_3_Clause
       Cabal.BSD4 -> BSD_4_Clause
-      Cabal.MIT -> undefined
-      Cabal.MPL ver -> undefined
-      Cabal.Apache mver -> undefined
-      Cabal.PublicDomain -> undefined
+      Cabal.MIT -> OtherLicense (show x)
+      Cabal.MPL ver -> MPL
+      Cabal.Apache mver -> Apache
+      Cabal.PublicDomain -> Public_Domain
       Cabal.AllRightsReserved -> OtherLicense "AllRightsReserved"
-      Cabal.UnspecifiedLicense -> undefined
-      Cabal.OtherLicense -> undefined
-      Cabal.UnknownLicense s -> undefined
+      Cabal.UnspecifiedLicense -> OtherLicense (show x)
+      Cabal.OtherLicense -> OtherLicense (show x)
+      Cabal.UnknownLicense s -> OtherLicense (show x)
 
 toCabalLicense :: License -> Cabal.License
 toCabalLicense x =
+    -- This needs to be finished
     case x of
       BSD_2_Clause -> Cabal.BSD2
       BSD_3_Clause -> Cabal.BSD3
       BSD_4_Clause -> Cabal.BSD4
       OtherLicense s -> Cabal.UnknownLicense s
+      _ -> Cabal.OtherLicense (show x)
 
 invalidLicense :: Text -> License
 invalidLicense = OtherLicense . unpack

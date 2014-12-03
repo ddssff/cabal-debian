@@ -318,13 +318,15 @@ data License
 			-- a Files paragraph of the same debian/copyright file, or in a License: paragraph.
     deriving (Read, Show, Eq, Ord, Data, Typeable)
 
+-- We need a license parse function that converts these strings back
+-- into License values.
 instance Pretty License where
     pPrint Public_Domain = text "public-domain"
     pPrint Apache = text "Apache"
     pPrint Artistic = text "Artistic"
-    pPrint BSD_2_Clause = text "BSD-2-clause"
-    pPrint BSD_3_Clause = text "BSD-3-clause"
-    pPrint BSD_4_Clause = text "BSD-4-clause"
+    pPrint BSD_2_Clause = text "BSD2"
+    pPrint BSD_3_Clause = text "BSD3"
+    pPrint BSD_4_Clause = text "BSD4"
     pPrint ISC = text "ISC"
     pPrint CC_BY = text "CC-BY"
     pPrint CC_BY_SA = text "CC-BY-SA"

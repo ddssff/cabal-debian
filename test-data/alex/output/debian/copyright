@@ -2,7 +2,7 @@ Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 
 Files: *
 Copyright: (c) Chis Dornan, Simon Marlow
-License: BSD
+License: BSD3
 Comment: Copyright (c) 1995-2011, Chris Dornan and Simon Marlow
  All rights reserved.
 

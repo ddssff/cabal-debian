@@ -25,9 +25,9 @@ import Debian.Debianize.Types.Atoms as T (Atoms, newAtoms, EnvSet(EnvSet))
 import Debian.Debianize.Monad (Atoms, DebT, execDebT, evalDebT, execDebM)
 import Debian.Debianize.Output (compareDebianization)
 import Debian.Debianize.Prelude ((~=), (~?=), (%=), (+=), (++=))
-import Debian.Debianize.Types.CopyrightDescription (CopyrightDescription(..), FilesDescription(..), newCopyrightDescription)
+import Debian.Debianize.Types.CopyrightDescription (CopyrightDescription(..), FilesOrLicenseDescription(..), newCopyrightDescription)
 import Debian.Debianize.Types.SourceDebDescription (SourceDebDescription)
-import Debian.Policy (SourceFormat(Native3), StandardsVersion(StandardsVersion), License(All_Rights_Reserved))
+import Debian.Policy (SourceFormat(Native3), StandardsVersion(StandardsVersion), License(OtherLicense))
 import Debian.Relation (BinPkgName(BinPkgName), Relation(Rel), VersionReq(SLT, GRE), Relations, parseRelations)
 import Debian.Version (parseDebianVersion)
 import Distribution.Compiler(CompilerFlavor(GHC))
@@ -79,7 +79,7 @@ copyrightFn =
                     { _filesAndLicenses = [Left (FilesDescription { _filesPattern = "*"
                                                                   , _filesCopyright = pack (unlines [ "Copyright (c) 2007, David Fox"
                                                                                                     , "Copyright (c) 2007, Jeremy Shaw" ])
-                                                                  , _filesLicense = All_Rights_Reserved
+                                                                  , _filesLicense = OtherLicense "Proprietary"
                                                                   , _filesComment = Just $ pack $ unlines
                                                                                     [ "All rights reserved."
                                                                                     , ""

@@ -2,7 +2,7 @@ Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 
 Files: *
 Copyright: Copyright (c) 2012, Jeremy Shaw
-License: BSD
+License: BSD3
 Comment: Copyright (c) 2012, Jeremy Shaw
 
  All rights reserved.

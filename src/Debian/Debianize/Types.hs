@@ -19,6 +19,7 @@ module Debian.Debianize.Types
 
     -- * Source Package Info
     , sourcePackageName
+    , overrideDebianNameBase
     , revision
     , debVersion
     , maintainer

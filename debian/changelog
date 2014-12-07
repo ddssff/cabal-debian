@@ -1,6 +1,7 @@
 haskell-cabal-debian (4.18) unstable; urgency=low
 
   * Add types to support machine readable copyright files.
+  * Add --debian-base-name option and overrideDebianBaseName lens.
 
  -- David Fox <dsf@seereason.com>  Thu, 27 Nov 2014 07:11:35 -0800
 

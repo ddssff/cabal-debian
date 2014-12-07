@@ -28,7 +28,7 @@ import Data.Text (Text)
 import Debian.Changes (ChangeLog)
 import Debian.Debianize.Types.CopyrightDescription
 import qualified Debian.Debianize.Types.SourceDebDescription as S
-import Debian.Debianize.VersionSplits (VersionSplits)
+import Debian.Debianize.VersionSplits (VersionSplits, DebBase)
 import Debian.Orphans ()
 import Debian.Policy (PackageArchitectures, PackagePriority, Section, SourceFormat)
 import Debian.Relation (BinPkgName, Relations, SrcPkgName)
@@ -92,6 +92,10 @@ data Atoms
       -- the name is constructed from the cabal package name.  Note that
       -- DebianNameMap could encode this information if we already knew
       -- the cabal package name, but we can't assume that.
+      , overrideDebianNameBase_ :: Maybe DebBase
+      -- ^ If given, use this name for the base of the debian binary
+      -- packages - the string between 'libghc-' and '-dev'.  Normally
+      -- this is derived from the hackage package name.
       , revision_ :: Maybe String
       -- ^ Specify the revision string to use when converting the
       -- cabal version to debian.
@@ -276,6 +280,7 @@ makeAtoms envset =
       , debianNameMap_ = mempty
       , control_ = S.newSourceDebDescription
       , sourcePackageName_ = Nothing
+      , overrideDebianNameBase_ = Nothing
       , revision_ = Nothing
       , debVersion_ = Nothing
       , maintainerOld_ = Nothing
@@ -518,6 +523,10 @@ utilsPackageNameBase = lens utilsPackageNameBase_ (\ a b -> b {utilsPackageNameB
 -- | Override the debian source package name constructed from the cabal name
 sourcePackageName :: Lens Atoms (Maybe SrcPkgName)
 sourcePackageName = lens sourcePackageName_ (\ a b -> b {sourcePackageName_ = a})
+
+-- | Override the default base of the debian binary package names.
+overrideDebianNameBase :: Lens Atoms (Maybe DebBase)
+overrideDebianNameBase = lens overrideDebianNameBase_ (\ a b -> b {overrideDebianNameBase_ = a})
 
 -- | Revision string used in constructing the debian verison number from the cabal version
 revision :: Lens Atoms (Maybe String)

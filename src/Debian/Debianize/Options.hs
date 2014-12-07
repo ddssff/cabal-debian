@@ -18,11 +18,12 @@ import Debian.Debianize.Monad (DebT)
 import Debian.Debianize.Prelude (read', maybeRead, (+=), (~=), (%=), (++=), (+++=))
 import Debian.Debianize.Types
     (verbosity, dryRun, debAction, noDocumentationLibrary, noProfilingLibrary,
-     missingDependencies, sourcePackageName, cabalFlagAssignments, maintainer, buildDir, omitLTDeps,
+     missingDependencies, sourcePackageName, overrideDebianNameBase, cabalFlagAssignments, maintainer, buildDir, omitLTDeps,
      sourceFormat, buildDepends, buildDependsIndep, extraDevDeps, depends, conflicts, replaces, provides,
      recommends, suggests, extraLibMap, debVersion, revision, epochMap, execMap, utilsPackageNameBase,
      standardsVersion, official)
 import Debian.Debianize.Types.Atoms (Atoms, EnvSet(..), InstallFile(..), DebAction(..), setBuildEnv, compilerFlavors)
+import Debian.Debianize.VersionSplits (DebBase(DebBase))
 import Debian.Orphans ()
 import Debian.Policy (SourceFormat(Quilt3, Native3), parseMaintainer, parseStandardsVersion)
 import Debian.Relation (BinPkgName(..), SrcPkgName(..), Relations, Relation(..))
@@ -91,6 +92,9 @@ options =
                       , "when a dependency package was built with the --disable-haddock option, because"
                       , "normally cabal-debian assumes that the -doc package exists and adds it as a"
                       , "build dependency."]),
+      Option "" ["debian-name-base"] (ReqArg (\ name -> overrideDebianNameBase ~= (Just (DebBase name))) "NAME")
+             (unlines [ "Use this name for the base of the debian binary packages - the string between 'libghc-'"
+                      , " and '-dev'.  Normally this is derived from the hackage package name."]),
       Option "" ["source-package-name"] (ReqArg (\ name -> sourcePackageName ~= (Just (SrcPkgName name))) "NAME")
              (unlines [ "Use this name for the debian source package, the name in the Source field at the top of the"
                       , "debian control file, and also at the very beginning of the debian/changelog file.  By default"

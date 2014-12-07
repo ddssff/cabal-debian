@@ -15,7 +15,7 @@ import Data.Lens.Lazy (access)
 import Data.Map as Map (lookup, alter)
 import Data.Version (Version, showVersion)
 import Debian.Debianize.Types.BinaryDebDescription as Debian (PackageType(..))
-import Debian.Debianize.Types.Atoms as T (debianNameMap, packageDescription, utilsPackageNameBase)
+import Debian.Debianize.Types.Atoms as T (debianNameMap, packageDescription, utilsPackageNameBase, overrideDebianNameBase)
 import Debian.Debianize.Monad (DebT)
 import Debian.Debianize.Prelude ((%=))
 import Debian.Debianize.VersionSplits (DebBase(DebBase, unDebBase), insertSplit, doSplits, VersionSplits, makePackage)
@@ -51,14 +51,16 @@ debianName typ cfl =
 -- is >= v.
 debianNameBase :: Monad m => DebT m DebBase
 debianNameBase =
-    do Just pkgDesc <- access packageDescription
+    do nameBase <- access T.overrideDebianNameBase
+       Just pkgDesc <- access packageDescription
        let pkgId = Cabal.package pkgDesc
        nameMap <- access T.debianNameMap
        let pname@(PackageName _) = pkgName pkgId
            version = (Just (D.EEQ (parseDebianVersion (showVersion (pkgVersion pkgId)))))
-       case Map.lookup (pkgName pkgId) nameMap of
-         Nothing -> return $ debianBaseName pname
-         Just splits -> return $ doSplits splits version
+       case (nameBase, Map.lookup (pkgName pkgId) nameMap) of
+         (Just base, _) -> return base
+         (Nothing, Nothing) -> return $ debianBaseName pname
+         (Nothing, Just splits) -> return $ doSplits splits version
 
 -- | Build a debian package name from a cabal package name and a
 -- debian package type.  Unfortunately, this does not enforce the

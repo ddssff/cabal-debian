@@ -303,18 +303,26 @@ doBundled typ name hc rels =
         let pver = maybe Nothing (Just . debianVersion'' atoms name) (builtIn splits hc root name)
         -- The name this library would have if it was in the compiler conflicts list.
         let naiveDebianName = mkPkgName hc name typ
-        return $ -- The compiler should appear in the build dependency
-                 -- if it provides a suitable version of the library,
-                 -- or if it conflicts with all versions of the
-                 -- library (which, if pver is Nothing, will certainly
-                 -- result in an error which needs to be corrected in
-                 -- the packaging.)
-                 (if isJust pver && (checkVersionReq req pver || (dname == naiveDebianName && conflictsWithHC naiveDebianName)) then [comp] else []) ++
-                 -- The library package can satisfy the dependency if
-                 -- the compiler doesn't provide a version, or if the
-                 -- compiler doesn't conflict with the package's
-                 -- debian name.
-                 (if isNothing pver || dname /= naiveDebianName || not (conflictsWithHC naiveDebianName) then [rel] else [])
+        -- The compiler should appear in the build dependency
+        -- if it provides a suitable version of the library,
+        -- or if it conflicts with all versions of the
+        -- library (which, if pver is Nothing, will certainly
+        -- result in an error which needs to be corrected in
+        -- the packaging.)
+        let compilerDependency = if isJust pver && (checkVersionReq req pver || (dname == naiveDebianName && conflictsWithHC naiveDebianName)) then [comp] else []
+        -- The library package can satisfy the dependency if
+        -- the compiler doesn't provide a version, or if the
+        -- compiler doesn't conflict with the package's
+        -- debian name.
+        let libraryDependency = if isNothing pver || dname /= naiveDebianName || not (conflictsWithHC naiveDebianName) then [rel] else []
+        -- Is the version number in the library dependency newer than
+        -- the compiler version?  If so it should appear to its left,
+        -- otherwise to its right.
+        return $ case req of
+                   Just (D.SLT lver) | Just lver < pver -> compilerDependency ++ libraryDependency
+                   Just (D.LTE lver) | Just lver < pver -> compilerDependency ++ libraryDependency
+                   Just (D.EEQ lver) | Just lver < pver -> compilerDependency ++ libraryDependency
+                   _ -> libraryDependency ++ compilerDependency
       compilerPackageName GHC B.Documentation = D.BinPkgName "ghc-doc"
       compilerPackageName GHC B.Profiling = D.BinPkgName "ghc-prof"
       compilerPackageName GHC B.Development = D.BinPkgName "ghc"

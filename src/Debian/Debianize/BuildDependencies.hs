@@ -19,7 +19,7 @@ import Data.Version (showVersion, Version)
 import Debian.Debianize.Bundled (builtIn)
 import Debian.Debianize.DebianName (mkPkgName, mkPkgName')
 import Debian.Debianize.Monad as Monad (Atoms, DebT)
-import qualified Debian.Debianize.Types as T (buildDepends, buildDependsIndep, debianNameMap, epochMap, execMap, extraLibMap, missingDependencies, noDocumentationLibrary, noProfilingLibrary)
+import qualified Debian.Debianize.Types as T (buildDepends, buildDependsIndep, debianNameMap, epochMap, execMap, extraLibMap, missingDependencies, noDocumentationLibrary, noProfilingLibrary, omitProfVersionDeps)
 import Debian.Debianize.Types.Atoms (EnvSet(dependOS), buildEnv, compilerFlavors)
 import qualified Debian.Debianize.Types.BinaryDebDescription as B (PackageType(Development, Documentation, Profiling))
 import Debian.Debianize.VersionSplits (packageRangesFromVersionSplits)
@@ -154,7 +154,8 @@ debianBuildDepsIndep pkgDesc =
 docDependencies :: (MonadIO m, Functor m) => Dependency_ -> DebT m D.Relations
 docDependencies (BuildDepends (Dependency name ranges)) =
     do hcs <- access compilerFlavors
-       concat <$> mapM (\ hc -> dependencies hc B.Documentation name ranges) (toList hcs)
+       omitProfDeps <- access T.omitProfVersionDeps
+       concat <$> mapM (\ hc -> dependencies hc B.Documentation name ranges omitProfDeps) (toList hcs)
 docDependencies _ = return []
 
 -- | The Debian build dependencies for a package include the profiling
@@ -162,7 +163,8 @@ docDependencies _ = return []
 -- references.  Also the packages associated with extra libraries.
 buildDependencies :: (MonadIO m, Functor m) => Set (CompilerFlavor, B.PackageType) -> Dependency_ -> DebT m D.Relations
 buildDependencies hcTypePairs (BuildDepends (Dependency name ranges)) =
-    concat <$> mapM (\ (hc, typ) -> dependencies hc typ name ranges) (toList hcTypePairs)
+    access T.omitProfVersionDeps >>= \ omitProfDeps ->
+    concat <$> mapM (\ (hc, typ) -> dependencies hc typ name ranges omitProfDeps) (toList hcTypePairs)
 buildDependencies _ dep@(ExtraLibs _) =
     do mp <- access T.execMap
        return $ concat $ adapt mp dep
@@ -211,15 +213,15 @@ anyrel' x = [D.Rel x Nothing Nothing]
 -- | Turn a cabal dependency into debian dependencies.  The result
 -- needs to correspond to a single debian package to be installed,
 -- so we will return just an OrRelation.
-dependencies :: MonadIO m => CompilerFlavor -> B.PackageType -> PackageName -> VersionRange -> DebT m Relations
-dependencies hc typ name cabalRange =
-    do atoms <- get
+dependencies :: MonadIO m => CompilerFlavor -> B.PackageType -> PackageName -> VersionRange -> Bool -> DebT m Relations
+dependencies hc typ name cabalRange omitProfVersionDeps =
+    do nameMap <- access T.debianNameMap
        -- Compute a list of alternative debian dependencies for
        -- satisfying a cabal dependency.  The only caveat is that
        -- we may need to distribute any "and" dependencies implied
        -- by a version range over these "or" dependences.
        let alts :: [(BinPkgName, VersionRange)]
-           alts = case Map.lookup name (getL T.debianNameMap atoms) of
+           alts = case Map.lookup name nameMap of
                     -- If there are no splits for this package just
                     -- return the single dependency for the package.
                     Nothing -> [(mkPkgName hc name typ, cabalRange')]
@@ -227,7 +229,6 @@ dependencies hc typ name cabalRange =
                     Just splits' -> List.map (\ (n, r) -> (mkPkgName' hc typ n, r)) (packageRangesFromVersionSplits splits')
        mapM convert alts >>= mapM (doBundled typ name hc) . convert' . canonical . Or . catMaybes
     where
-      noVersionPackageType = [B.Profiling, B.Documentation]
       convert (dname, range) =
           case isNoVersion range''' of
             True -> return Nothing
@@ -270,6 +271,7 @@ dependencies hc typ name cabalRange =
             intersectVersionRanges
             id
             cabalRange
+      noVersionPackageType = (if omitProfVersionDeps then [B.Profiling] else []) ++ [B.Documentation]
       simpler v1 v2 = minimumBy (compare `on` (length . asVersionIntervals)) [v1, v2]
       -- Simplify a VersionRange
       canon = fromVersionIntervals . toVersionIntervals

@@ -62,6 +62,8 @@ data Atoms
       -- ^ Do not produce a libghc-foo-doc package.
       , noProfilingLibrary_ :: Bool
       -- ^ Do not produce a libghc-foo-prof package.
+      , omitProfVersionDeps_ :: Bool
+      -- ^ If present, Do not put the version dependencies on the prof packages that we put on the dev packages.
       , omitLTDeps_ :: Bool
       -- ^ If present, don't generate the << dependency when we see a cabal
       -- equals dependency.  (The implementation of this was somehow lost.)
@@ -273,6 +275,7 @@ makeAtoms envset =
     Atoms
       { noDocumentationLibrary_ = False
       , noProfilingLibrary_ = False
+      , omitProfVersionDeps_ = False
       , omitLTDeps_ = False
       , buildDir_ = mempty
       , buildEnv_ = envset
@@ -539,6 +542,10 @@ debVersion = lens debVersion_ (\ b a -> a {debVersion_ = b})
 -- | No longer sure what the purpose of this lens is.
 packageInfo :: Lens Atoms (Map PackageName PackageInfo)
 packageInfo = lens packageInfo_ (\ a b -> b {packageInfo_ = a})
+
+-- | Do not put the version dependencies on the prof packages that we put on the dev packages.
+omitProfVersionDeps :: Lens Atoms Bool
+omitProfVersionDeps = lens omitProfVersionDeps_ (\ b a -> a {omitProfVersionDeps_ = b})
 
 -- | Set this to filter any less-than dependencies out of the generated debian
 -- dependencies.  (Not sure if this is implemented.)

@@ -43,6 +43,7 @@ module Debian.Debianize.Types
     , xDescription
 
     -- * Source Package Build Dependencies
+    , omitProfVersionDeps
     , omitLTDeps
     -- , compilerVersion
 

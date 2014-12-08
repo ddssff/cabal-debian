@@ -18,7 +18,7 @@ import Debian.Debianize.Monad (DebT)
 import Debian.Debianize.Prelude (read', maybeRead, (+=), (~=), (%=), (++=), (+++=))
 import Debian.Debianize.Types
     (verbosity, dryRun, debAction, noDocumentationLibrary, noProfilingLibrary,
-     missingDependencies, sourcePackageName, overrideDebianNameBase, cabalFlagAssignments, maintainer, buildDir, omitLTDeps,
+     missingDependencies, sourcePackageName, overrideDebianNameBase, cabalFlagAssignments, maintainer, buildDir, omitProfVersionDeps, omitLTDeps,
      sourceFormat, buildDepends, buildDependsIndep, extraDevDeps, depends, conflicts, replaces, provides,
      recommends, suggests, extraLibMap, debVersion, revision, epochMap, execMap, utilsPackageNameBase,
      standardsVersion, official)
@@ -166,6 +166,8 @@ options =
                                                (cab, (_ : deb)) -> execMap ++= (cab, rels deb)
                                                _ -> error "usage: --exec-map EXECNAME=RELATIONS") "EXECNAME=RELATIONS")
              "Specify a mapping from the name appearing in the Build-Tool field of the cabal file to a debian binary package name, e.g. --exec-map trhsx=haskell-hsx-utils",
+      Option "" ["omit-prof-version-deps"] (NoArg (omitProfVersionDeps ~= True))
+             "Do not put the version dependencies on the prof packages that we put on the dev packages.",
       Option "" ["omit-lt-deps"] (NoArg (omitLTDeps ~= True))
              (unlines [ "Remove all less-than dependencies from the generated control file.  Less-than"
                       , "dependencies are less useful and more troublesome for debian packages than cabal,"

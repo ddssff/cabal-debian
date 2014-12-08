@@ -7,6 +7,7 @@ module Debian.Debianize.DebianName
     , mkPkgName'
     , mapCabal
     , splitCabal
+    , remapCabal
     ) where
 
 import Control.Applicative ((<$>))
@@ -114,3 +115,11 @@ splitCabal pname ltname ver =
       f :: Maybe VersionSplits -> Maybe VersionSplits
       f Nothing = error $ "splitCabal - not mapped: " ++ show pname
       f (Just sp) = Just (insertSplit ver ltname sp)
+
+-- | Replace any existing mapping of the cabal name 'pname' with the
+-- debian name 'dname'.  (Use case: to change the debian package name
+-- so it differs from the package provided by ghc.)
+remapCabal :: Monad m => PackageName -> DebBase -> DebT m ()
+remapCabal pname dname = do
+  debianNameMap %= Map.alter (const Nothing) pname
+  mapCabal pname dname

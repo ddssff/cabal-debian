@@ -1,6 +1,6 @@
 -- | Code pulled out of cabal-debian that straightforwardly implements
 -- parts of the Debian policy manual, or other bits of Linux standards.
-{-# LANGUAGE DeriveDataTypeable, FlexibleInstances, OverloadedStrings #-}
+{-# LANGUAGE CPP, DeriveDataTypeable, FlexibleInstances, OverloadedStrings #-}
 module Debian.Policy
     ( -- * Paths
       databaseDirectory
@@ -367,7 +367,9 @@ fromCabalLicense x =
       Cabal.Apache mver -> Apache
       Cabal.PublicDomain -> Public_Domain
       Cabal.AllRightsReserved -> OtherLicense "AllRightsReserved"
+#if MIN_VERSION_Cabal(1,21,1)
       Cabal.UnspecifiedLicense -> OtherLicense (show x)
+#endif
       Cabal.OtherLicense -> OtherLicense (show x)
       Cabal.UnknownLicense s -> OtherLicense (show x)
 

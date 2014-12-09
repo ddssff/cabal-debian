@@ -20,6 +20,9 @@ import Distribution.PackageDescription (PackageDescription(package), Executable(
 import Distribution.Simple.Compiler (Compiler(..))
 import Distribution.Version (VersionRange(..), foldVersionRange')
 import Language.Haskell.Extension (Language(..))
+#if !MIN_VERSION_Cabal(1,21,1)
+import Language.Haskell.Extension (Extension(..), KnownExtension(..))
+#endif
 import Network.URI (URI)
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr(..))
 import Text.PrettyPrint.HughesPJClass (Pretty(pPrint), text, hcat)

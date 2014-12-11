@@ -38,6 +38,6 @@ debianDefaultAtoms =
        -- Something was required for this package at one time - it
        -- looks like a no-op now
        mapCabal (PackageName "gtk2hs-buildtools") (DebBase "gtk2hs-buildtools")
-       -- Upgrade transformers to 0.4
-       remapCabal (PackageName "transformers") (DebBase "transformers4")
-       remapCabal (PackageName "haskeline") (DebBase "haskeline0713")
+       -- Upgrade transformers to 0.4 - no don't!
+       -- remapCabal (PackageName "transformers") (DebBase "transformers4")
+       -- remapCabal (PackageName "haskeline") (DebBase "haskeline0713")

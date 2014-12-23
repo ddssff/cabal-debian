@@ -35,6 +35,7 @@ import qualified Distribution.PackageDescription as Cabal (PackageDescription(bu
 import Distribution.Version (anyVersion, asVersionIntervals, earlierVersion, foldVersionRange', fromVersionIntervals, intersectVersionRanges, isNoVersion, laterVersion, orEarlierVersion, orLaterVersion, toVersionIntervals, unionVersionRanges, VersionRange, withinVersion)
 import Distribution.Version.Invert (invertVersionRange)
 import Prelude hiding (init, log, map, unlines, unlines, writeFile)
+import System.Directory (findExecutable)
 import System.Exit (ExitCode(ExitSuccess))
 import System.IO.Unsafe (unsafePerformIO)
 import System.Process (readProcessWithExitCode)
@@ -184,18 +185,21 @@ adapt mp (BuildTools (Dependency (PackageName pkg) _)) =
 adapt _flags (ExtraLibs x) = [x]
 adapt _flags (BuildDepends (Dependency (PackageName pkg) _)) = [[[D.Rel (D.BinPkgName pkg) Nothing Nothing]]]
 
--- There are two reasons this may not work, or may work
+-- There are three reasons this may not work, or may work
 -- incorrectly: (1) the build environment may be a different
 -- distribution than the parent environment (the environment the
 -- autobuilder was run from), so the packages in that
--- environment might have different names, and (2) the package
+-- environment might have different names, (2) the package
 -- we are looking for may not be installed in the parent
--- environment.
+-- environment, and (3) the apt-file executable is not installed.
 aptFile :: String -> [Relations] -- Maybe would probably be more correct
-aptFile pkg =
-    unsafePerformIO $
-    do ret <- readProcessWithExitCode "apt-file" ["-l", "search", pkg ++ ".pc"] ""
-       return $ case ret of
+aptFile pkg = unsafePerformIO $
+    findExecutable "apt-file" >>= aptFile'
+  where
+    aptFile' Nothing = error "The apt-file executable could not be found."
+    aptFile' (Just aptfile) = do
+        ret <- readProcessWithExitCode aptfile ["-l", "search", pkg ++ ".pc"] ""
+        return $ case ret of
                   (ExitSuccess, out, _) ->
                       case takeWhile (not . isSpace) out of
                         "" -> error $ "Unable to locate a debian package containing the build tool " ++ pkg ++

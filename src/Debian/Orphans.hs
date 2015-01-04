@@ -15,6 +15,9 @@ import Distribution.Compiler (CompilerId(..))
 #if !MIN_VERSION_Cabal(1,18,0)
 import Distribution.Compiler (CompilerFlavor(..))
 #endif
+#if MIN_VERSION_Cabal(1,22,0)
+import Distribution.Compiler (AbiTag(..))
+#endif
 import Distribution.License (License(..))
 import Distribution.PackageDescription (PackageDescription(package), Executable(..))
 import Distribution.Simple.Compiler (Compiler(..))
@@ -35,6 +38,13 @@ deriving instance Typeable CompilerFlavor
 deriving instance Typeable Language
 deriving instance Typeable Extension
 deriving instance Typeable KnownExtension
+#endif
+
+#if MIN_VERSION_Cabal(1,22,0)
+deriving instance Typeable AbiTag
+deriving instance Data AbiTag
+deriving instance Eq AbiTag
+deriving instance Ord AbiTag
 #endif
 
 deriving instance Data Compiler

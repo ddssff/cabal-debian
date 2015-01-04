@@ -49,6 +49,9 @@ import Debian.Policy (Section(..), parseStandardsVersion, readPriority, readSect
 import Debian.Relation (Relations, BinPkgName(..), SrcPkgName(..), parseRelations)
 --import Debian.Version (DebianVersion, parseDebianVersion)
 import Distribution.Compiler (CompilerId)
+#if MIN_VERSION_Cabal(1,22,0)
+import Distribution.Compiler (unknownCompilerInfo, AbiTag(NoAbiTag))
+#endif
 import Distribution.Package (Package(packageId), PackageIdentifier(..), PackageName(PackageName), Dependency)
 import qualified Distribution.PackageDescription as Cabal (PackageDescription(maintainer, package, license, copyright {-, synopsis, description-}))
 #if MIN_VERSION_Cabal(1,19,0)
@@ -324,7 +327,11 @@ inputCabalization' :: Verbosity -> Set (FlagName, Bool) -> [CompilerId] -> IO [E
 inputCabalization' vb flags cids = do
          descPath <- defaultPackageDesc vb
          genPkgDesc <- readPackageDescription vb descPath
-         let finalized = map (\ cid -> finalizePackageDescription (toList flags) (const True) (Platform buildArch buildOS) cid [] genPkgDesc) cids
+         let finalized = map (\ cid -> finalizePackageDescription (toList flags) (const True) (Platform buildArch buildOS) cid [] genPkgDesc) $
+#if MIN_VERSION_Cabal(1,22,0)
+                             map (\ i -> unknownCompilerInfo i NoAbiTag)
+#endif
+                                                     cids
          mapM (either (return . Left)
                       (\ (pkgDesc, _) -> do bracket (setFileCreationMask 0o022) setFileCreationMask $ \ _ -> autoreconf vb pkgDesc
                                             return (Right pkgDesc)))

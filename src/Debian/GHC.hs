@@ -107,9 +107,6 @@ compilerIdFromDebianVersion :: CompilerFlavor -> DebianVersion -> CompilerId
 compilerIdFromDebianVersion hc debVersion =
     let (Version ds ts) = greatestLowerBound debVersion (map (\ d -> Version [d] []) [0..]) in
     CompilerId hc (greatestLowerBound debVersion (map (\ d -> Version (ds ++ [d]) ts) [0..]))
-#if MIN_VERSION_Cabal(1,21,0)
-               Nothing
-#endif
     where
       greatestLowerBound :: DebianVersion -> [Version] -> Version
       greatestLowerBound b xs = last $ takeWhile (\ v -> parseDebianVersion (showVersion v) < b) xs

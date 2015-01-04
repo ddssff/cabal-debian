@@ -76,7 +76,7 @@ rels = either (throw . userError . show) id . parseRelations
 copyrightFn :: CopyrightDescription -> CopyrightDescription
 copyrightFn =
     const $ newCopyrightDescription
-                    { _filesAndLicenses = [Left (FilesDescription { _filesPattern = "*"
+                    { _filesAndLicenses =       [FilesDescription { _filesPattern = "*"
                                                                   , _filesCopyright = pack (unlines [ "Copyright (c) 2007, David Fox"
                                                                                                     , "Copyright (c) 2007, Jeremy Shaw" ])
                                                                   , _filesLicense = OtherLicense "Proprietary"
@@ -113,7 +113,7 @@ copyrightFn =
                                                                                     , "DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY"
                                                                                     , "THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT"
                                                                                     , "(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE"
-                                                                                    , "OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE." ] })]
+                                                                                    , "OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE." ] }]
                     , _summaryComment = Just $ pack "This package is not part of the Debian GNU/Linux distribution." }
 
 -- | This copies the first log entry of deb1 into deb2.  Because the

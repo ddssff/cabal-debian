@@ -4,7 +4,7 @@ Comment: This package is not part of the Debian GNU/Linux distribution.
 Files: *
 Copyright: Copyright (c) 2007, David Fox
  Copyright (c) 2007, Jeremy Shaw
-License: AllRightsReserved
+License: Proprietary
 Comment: All rights reserved.
 
  The packageing was adjusted to Debian conventions by Joachim Breitner

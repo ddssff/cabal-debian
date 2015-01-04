@@ -23,7 +23,7 @@ import Debian.Debianize.DebianName (mapCabal, splitCabal)
 import Debian.Debianize.Files (debianizationFileMap)
 import Debian.Debianize.Finalize (debianization, finalizeDebianization')
 import Debian.Debianize.Goodies (doBackups, doExecutable, doServer, doWebsite, makeRulesHead, tightDependencyFixup)
-import Debian.Debianize.Input (inputChangeLog, inputDebianization)
+import Debian.Debianize.Input (inputChangeLog, inputDebianization, inputCabalization)
 import Debian.Debianize.Monad (DebT, evalDebT, execDebM, execDebT)
 import Debian.Debianize.Prelude ((%=), (++=), (+=), (~=), withCurrentDirectory)
 import Debian.Debianize.Types as T
@@ -65,15 +65,6 @@ testAtoms = ghc763 <$> T.newAtoms
     where
       ghc763 :: Atoms -> Atoms
       ghc763 atoms = setL T.compilerFlavors (singleton GHC) atoms
-{-
-#if MIN_VERSION_Cabal(1,21,0)
-          let CompilerId flavor version _ = getL ghcVersion_ atoms in
-          atoms {ghcVersion_ = CompilerId flavor (version {versionBranch = [7, 6, 3]}) Nothing}
-#else
-          let CompilerId flavor version = ghcVersion_ atoms in
-          atoms {ghcVersion_ = CompilerId flavor (version {versionBranch = [7, 6, 3]})}
-#endif
--}
 
 -- | Create a Debianization based on a changelog entry and a license
 -- value.  Uses the currently installed versions of debhelper and
@@ -105,7 +96,22 @@ tests = TestLabel "Debianization Tests" (TestList [-- 1 and 2 do not input a cab
                                                    test7 "test7 - debian/Debianize.hs",
                                                    test8 "test8 - test-data/artvaluereport-data",
                                                    test9 "test9 - test-data/alex",
-                                                   test10 "test10 - test-data/archive"])
+                                                   test10 "test10 - test-data/archive" {- ,
+                                                   issue23 "issue23" -}])
+
+issue23 :: String -> Test
+issue23 label =
+    TestLabel label $
+    TestCase (do atoms <- testAtoms
+                 actual <- withCurrentDirectory "test-data/alex/input" $
+                           evalDebT (do inputCabalization
+                                        T.changelog ~= Just (ChangeLog [testEntry])
+                                        T.compat ~= Just 9
+                                        T.official ~= True
+                                        Map.toList <$> debianizationFileMap) atoms
+                 assertEqual label
+                   []
+                   actual)
 
 test1 :: String -> Test
 test1 label =

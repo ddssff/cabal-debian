@@ -10,7 +10,7 @@ Build-Depends: debhelper (>= 7.0)
                , libghc-extra-dev
                , libghc-extra-prof
                , libghc-archive-dev (>= 1.7)
-               , libghc-archive-prof
+               , libghc-archive-prof (>= 1.7)
                , libghc-network-dev
                , libghc-network-prof
 Build-Depends-Indep: ghc-doc

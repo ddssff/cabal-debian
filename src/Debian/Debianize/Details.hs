@@ -8,7 +8,7 @@ module Debian.Debianize.Details
 
 import Data.Version (Version(Version))
 import Debian.Relation (Relation(Rel), BinPkgName(BinPkgName))
-import Debian.Debianize.DebianName (mapCabal, remapCabal, splitCabal)
+import Debian.Debianize.DebianName (mapCabal, {-remapCabal,-} splitCabal)
 import Debian.Debianize.Types.Atoms as T (epochMap, execMap)
 import Debian.Debianize.Monad (DebT)
 import Debian.Debianize.Prelude ((++=))

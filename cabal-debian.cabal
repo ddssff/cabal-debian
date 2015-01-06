@@ -89,7 +89,6 @@ Extra-Source-Files:
   test-data/artvaluereport-data/output/debian/watch
   test-data/artvaluereport-data/output/debian/extra-depends
   test-data/artvaluereport-data/output/debian/changelog
-  test-data/artvaluereport-data/output/debian/libghc-artvaluereport-data-doc.links
   test-data/artvaluereport-data/output/debian/Debianize.hs
   test-data/artvaluereport-data/output/debian/rules
   test-data/artvaluereport-data/output/debian/compat

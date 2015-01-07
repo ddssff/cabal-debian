@@ -67,7 +67,7 @@ main =
              installCabalExec (BinPkgName "cabal-debian") "cabal-debian" "/usr/bin"
              utilsPackageNameBase ~= Just "cabal-debian"
              -- extraDevDeps (BinPkgName "debian-policy")
-             homepage ~= Just (pack "http://src.seereason.com/cabal-debian")
+             homepage ~= Just (pack "https://github.com/ddssff/cabal-debian")
 
 rels :: String -> Relations
 rels = either (throw . userError . show) id . parseRelations

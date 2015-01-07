@@ -68,7 +68,7 @@ Build-Depends-Indep: ghc-doc,
  libghc-text-doc,
  libghc-utf8-string-doc,
 Standards-Version: 3.9.3
-Homepage: http://src.seereason.com/cabal-debian
+Homepage: https://github.com/ddssff/cabal-debian
 X-Description: Create a Debianization for a Cabal package
  This package supports the generation of a package Debianization (i.e.
  the files in the @debian@ subdirectory) for a cabal package,

@@ -1,3 +1,14 @@
+haskell-cabal-debian (4.19.2) unstable; urgency=low
+
+  * Use canonical to put the debianization in a standard form before
+    trying to compare existing and generated.
+  * Fix bug where cabal-debian program processed the command line options
+    twice.
+  * Avoid using paths that point to ../ in the cabal file (even if
+    disabled by a flag), it causes the package to be rejected by hackage.
+
+ -- David Fox <dsf@seereason.com>  Wed, 07 Jan 2015 13:26:33 -0800
+
 haskell-cabal-debian (4.19.1) unstable; urgency=low
 
   * Support Cabal-1.22

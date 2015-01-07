@@ -1,3 +1,11 @@
+haskell-cabal-debian (4.19.1) unstable; urgency=low
+
+  * Support Cabal-1.22
+  * Test whether apt-file is installed (from creichert)
+  * Conditional compilation for new symbols MPL and BSD2 (from creichert)
+
+ -- David Fox <dsf@seereason.com>  Wed, 07 Jan 2015 12:56:00 -0800
+
 haskell-cabal-debian (4.19) unstable; urgency=low
 
   * Add remapCabal function here from a private package

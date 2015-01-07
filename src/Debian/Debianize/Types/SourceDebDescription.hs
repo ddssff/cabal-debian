@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, TemplateHaskell #-}
+{-# LANGUAGE DeriveDataTypeable, FlexibleInstances, TemplateHaskell, TypeSynonymInstances #-}
 module Debian.Debianize.Types.SourceDebDescription
     ( SourceDebDescription
     , newSourceDebDescription
@@ -29,7 +29,7 @@ import Data.Generics (Data, Typeable)
 import Data.Lens.Template (makeLenses)
 import Data.Set as Set (empty, Set)
 import Data.Text (Text)
-import Debian.Debianize.Types.BinaryDebDescription (BinaryDebDescription)
+import Debian.Debianize.Types.BinaryDebDescription (Canonical(canonical), BinaryDebDescription)
 import Debian.Orphans ()
 import Debian.Policy (PackagePriority, Section, StandardsVersion)
 import Debian.Relation (Relations, SrcPkgName)
@@ -72,6 +72,14 @@ data SourceDebDescription
       , _binaryPackages :: [BinaryDebDescription]
       -- ^ The binary debs.  This should be a map, but we may need to preserve the order
       } deriving (Eq, Ord, Show, Data, Typeable)
+
+instance Canonical SourceDebDescription where
+    canonical x = x { _binaryPackages = canonical (_binaryPackages x)
+                    , _buildDepends = canonical (_buildDepends x)
+                    , _buildConflicts = canonical (_buildConflicts x)
+                    , _buildDependsIndep = canonical (_buildDependsIndep x)
+                    , _buildConflictsIndep = canonical (_buildConflictsIndep x)
+                    }
 
 newSourceDebDescription :: SourceDebDescription
 newSourceDebDescription =

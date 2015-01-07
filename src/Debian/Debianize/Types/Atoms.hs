@@ -27,6 +27,7 @@ import Data.Set as Set (Set, singleton, insert)
 import Data.Text (Text)
 import Debian.Changes (ChangeLog)
 import Debian.Debianize.Types.CopyrightDescription
+import Debian.Debianize.Types.BinaryDebDescription (Canonical(canonical))
 import qualified Debian.Debianize.Types.SourceDebDescription as S
 import Debian.Debianize.VersionSplits (VersionSplits, DebBase)
 import Debian.Orphans ()
@@ -231,6 +232,9 @@ data Atoms
       , official_ :: Bool
       -- ^ Whether this packaging is created by the Debian Haskell Group
       } deriving (Eq, Show, Data, Typeable)
+
+instance Canonical Atoms where
+    canonical x = x {control_ = canonical (control_ x)}
 
 data Atom
     = Link BinPkgName FilePath FilePath

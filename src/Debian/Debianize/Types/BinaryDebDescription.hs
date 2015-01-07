@@ -1,7 +1,8 @@
-{-# LANGUAGE DeriveDataTypeable, TemplateHaskell #-}
+{-# LANGUAGE DeriveDataTypeable, FlexibleInstances, TemplateHaskell #-}
 {-# OPTIONS -Wall #-}
 module Debian.Debianize.Types.BinaryDebDescription
-    ( BinaryDebDescription
+    ( Canonical(canonical)
+    , BinaryDebDescription
     , newBinaryDebDescription
     , package
     , description
@@ -27,13 +28,18 @@ module Debian.Debianize.Types.BinaryDebDescription
     , builtUsing
     ) where
 
+import Data.Function (on)
 import Data.Generics (Data, Typeable)
 import Data.Lens.Template (makeLenses)
+import Data.List (sort, sortBy)
 import Data.Monoid (Monoid(..))
 import Data.Text (Text)
 import Debian.Policy (PackageArchitectures, PackagePriority, Section)
 import Debian.Relation (BinPkgName, Relations)
 import Prelude hiding ((.))
+
+class Canonical a where
+    canonical :: a -> a
 
 -- | This type represents a section of the control file other than the
 -- first, which in turn represent one of the binary packages or debs
@@ -85,6 +91,26 @@ data PackageRelations
       , _replaces :: Relations
       , _builtUsing :: Relations
       } deriving (Eq, Ord, Read, Show, Data, Typeable)
+
+instance Canonical [BinaryDebDescription] where
+    canonical xs = sortBy (compare `on` _package) (map canonical xs)
+
+instance Canonical BinaryDebDescription where
+    canonical x = x {_relations = canonical (_relations x)}
+
+instance Canonical PackageRelations where
+    canonical x = x { _depends = canonical (_depends x)
+                    , _recommends = canonical (_recommends x)
+                    , _suggests = canonical (_suggests x)
+                    , _preDepends = canonical (_preDepends x)
+                    , _breaks = canonical (_breaks x)
+                    , _conflicts = canonical (_conflicts x)
+                    , _provides = canonical (_provides x)
+                    , _replaces = canonical (_replaces x)
+                    , _builtUsing = canonical (_builtUsing x) }
+
+instance Canonical Relations where
+    canonical xss = sort xss
 
 newBinaryDebDescription :: BinPkgName -> BinaryDebDescription
 newBinaryDebDescription name =

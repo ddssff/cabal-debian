@@ -32,7 +32,7 @@ import Debian.Debianize.Monad (DebT, Atoms, evalDebT)
 import Debian.Debianize.Options (putEnvironmentArgs)
 import Debian.Debianize.Prelude (indent, replaceFile, zipMaps)
 import qualified Debian.Debianize.Types as T
-import qualified Debian.Debianize.Types.BinaryDebDescription as B (package)
+import Debian.Debianize.Types.BinaryDebDescription as B (package, canonical)
 import qualified Debian.Debianize.Types.SourceDebDescription as S (source)
 import Debian.Pretty (ppPrint, ppDisplay)
 import Prelude hiding (unlines, writeFile, (.))
@@ -106,8 +106,8 @@ describeDebianization =
 -- describing the differences.
 compareDebianization :: Atoms -> Atoms -> IO String
 compareDebianization old new =
-    do oldFiles <- evalDebT debianizationFileMap old
-       newFiles <- evalDebT debianizationFileMap new
+    do oldFiles <- evalDebT debianizationFileMap (canonical old)
+       newFiles <- evalDebT debianizationFileMap (canonical new)
        return $ concat $ Map.elems $ zipMaps doFile oldFiles newFiles
     where
       doFile :: FilePath -> Maybe Text -> Maybe Text -> Maybe String

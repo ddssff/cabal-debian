@@ -12,7 +12,7 @@ import Data.List as List (unlines)
 import Debian.Debianize.Details (debianDefaultAtoms)
 import Debian.Debianize.Finalize (debianization)
 import Debian.Debianize.Monad (DebT, evalDebT)
-import Debian.Debianize.Options (compileCommandlineArgs, compileEnvironmentArgs, options)
+import Debian.Debianize.Options (options)
 import Debian.Debianize.Output (doDebianizeAction)
 import Debian.Debianize.SubstVars (substvars)
 import Debian.Debianize.Types.Atoms (DebAction(Debianize, SubstVar, Usage), EnvSet(EnvSet), debAction, newAtoms)
@@ -30,8 +30,6 @@ cabalDebianMain init =
     -- taking.  Much of this will be repeated in the call to debianize.
     do atoms <- newAtoms
        evalDebT (do init
-                    compileEnvironmentArgs
-                    compileCommandlineArgs
                     action <- access debAction
                     finish action) atoms
     where

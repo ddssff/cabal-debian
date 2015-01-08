@@ -11,12 +11,12 @@ import Control.Monad.Writer (WriterT, execWriterT, tell)
 import Debian.Control.Common ()
 import Data.Char (isSpace)
 import Data.Lens.Lazy (access, getL)
-import Data.List as List (map, dropWhileEnd, dropWhile)
+import Data.List as List (map, dropWhileEnd, dropWhile, intersperse)
 import Data.Map as Map (Map, map, toList, fromListWithKey, mapKeys, insertWith)
 import Data.Maybe
 import Data.Monoid ((<>), mempty)
 import Data.Set as Set (toList, member, fold)
-import Data.Text as Text (Text, pack, unpack, lines, unlines, null, intercalate, dropWhile, dropWhileEnd)
+import Data.Text as Text (Text, pack, unpack, lines, unlines, null, intercalate, dropWhile, dropWhileEnd, strip)
 import Debian.Control (Control'(Control, unControl), Paragraph'(Paragraph), Field'(Field))
 import Debian.Debianize.Goodies (makeRulesHead)
 import Debian.Debianize.Monad (DebT)
@@ -141,7 +141,7 @@ rules :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
 rules =
     do rh <- lift (access T.rulesHead) >>= maybe (lift makeRulesHead) return
        rl <- (reverse . Set.toList) <$> lift (access T.rulesFragments)
-       return [("debian/rules", Text.unlines (rh : rl))]
+       return [("debian/rules", Text.unlines (intersperse "\n" (List.map strip (rh : rl))))]
 
 changelog :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
 changelog =
@@ -180,9 +180,9 @@ controlFile src =
             depField "Build-Conflicts-Indep" (getL S.buildConflictsIndep src) ++
             mField "Standards-Version" (getL S.standardsVersion src) ++
             mField "Homepage" (getL S.homepage src) ++
-            mField "X-Description" (getL S.xDescription src) ++
             List.map vcsField (Set.toList (getL S.vcsFields src)) ++
-            List.map xField (Set.toList (getL S.xFields src))) :
+            List.map xField (Set.toList (getL S.xFields src)) ++
+            mField "X-Description" (getL S.xDescription src)) :
            List.map binary (getL S.binaryPackages src))
     }
     where

@@ -23,6 +23,7 @@ import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Char (isSpace, toLower)
 import Data.Lens.Lazy (getL, setL, modL, access)
 import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Monoid ((<>))
 import Data.Set as Set (Set, toList, fromList, insert, singleton)
 import Data.Text (Text, unpack, pack, lines, words, break, strip, null)
 import Data.Text.IO (readFile)
@@ -231,7 +232,7 @@ inputAtoms :: MonadIO m => FilePath -> FilePath -> DebT m ()
 inputAtoms _ path | elem path ["control"] = return ()
 inputAtoms debian name@"source/format" = liftIO (readFile (debian </> name)) >>= \ text -> either (warning +=) ((sourceFormat ~=) . Just) (readSourceFormat text)
 inputAtoms debian name@"watch" = liftIO (readFile (debian </> name)) >>= \ text -> watch ~= Just text
-inputAtoms debian name@"rules" = liftIO (readFile (debian </> name)) >>= \ text -> rulesHead ~= (Just text)
+inputAtoms debian name@"rules" = liftIO (readFile (debian </> name)) >>= \ text -> rulesHead ~= (Just $ strip text <> "\n")
 inputAtoms debian name@"compat" = liftIO (readFile (debian </> name)) >>= \ text -> compat ~= Just (read' (\ s -> error $ "compat: " ++ show s) (unpack text))
 inputAtoms debian name@"copyright" = liftIO (readFile (debian </> name)) >>= \ text -> copyright ~= readCopyrightDescription text
 inputAtoms debian name@"changelog" =

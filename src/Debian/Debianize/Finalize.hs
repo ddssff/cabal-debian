@@ -37,7 +37,7 @@ import qualified Debian.Debianize.Types.SourceDebDescription as S (xDescription,
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
 import Debian.Orphans ()
 import Debian.Pretty (ppDisplay, PP(..))
-import Debian.Policy (getDebhelperCompatLevel, haskellMaintainer, PackageArchitectures(Any, All), PackagePriority(Extra), Section(..), SourceFormat(Quilt3), parseStandardsVersion)
+import Debian.Policy (getDebhelperCompatLevel, haskellMaintainer, PackageArchitectures(Any, All), PackagePriority(Extra), Section(..), SourceFormat(Native3, Quilt3), parseStandardsVersion)
 import Debian.Relation (BinPkgName, BinPkgName(BinPkgName), SrcPkgName(SrcPkgName), Relation(Rel), Relations)
 import qualified Debian.Relation as D (BinPkgName(BinPkgName), Relation(..))
 import Debian.Release (parseReleaseName)
@@ -155,12 +155,19 @@ debianVersion =
          Nothing ->
              do let ver = ppDisplay (pkgVersion pkgId)
                 rev <- access T.revision
-                let revMB = case rev of Nothing -> Nothing
+                let rev'  = case rev of Nothing -> Nothing
                                         Just "" -> Nothing
                                         Just "-" -> Nothing
                                         Just ('-':r) -> Just r
                                         Just _ -> error "The Debian revision needs to start with a dash"
-                return $ buildDebianVersion epoch ver revMB
+                fmt <- access T.sourceFormat
+                -- If no revision number has been set and the format
+                -- is not Native3 we need to set it (see
+                -- https://github.com/ddssff/cabal-debian/issues/16)
+                let rev'' = maybe (case fmt of
+                                     Just Native3 -> Nothing
+                                     _ -> Just "1") Just rev'
+                return $ buildDebianVersion epoch ver rev''
 
 -- | Return the Debian epoch number assigned to the given cabal
 -- package - the 1 in version numbers like 1:3.5-2.

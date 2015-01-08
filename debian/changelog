@@ -2,6 +2,7 @@ haskell-cabal-debian (4.19.3) unstable; urgency=low
 
   * Fix issue #23, so that if you run 'cabal-debian' and then
     'cabal-debian --compare' it says there are no differences.
+  * Fix issue #16 - set revision if format is Quilt3.
 
  -- David Fox <dsf@seereason.com>  Thu, 08 Jan 2015 05:20:32 -0800
 

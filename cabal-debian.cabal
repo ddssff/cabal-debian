@@ -19,6 +19,7 @@ Description:
 Cabal-Version: >= 1.8
 Extra-Source-Files:
   changelog
+  debian/changelog
   debian/Debianize.hs
   test-data/creativeprompts/input/debian/changelog
   test-data/creativeprompts/input/debian/copyright

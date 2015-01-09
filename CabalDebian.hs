@@ -10,7 +10,7 @@ import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Lens.Lazy (access)
 import Data.List as List (unlines)
 import Debian.Debianize.Details (debianDefaultAtoms)
-import Debian.Debianize.Finalize (debianization)
+import Debian.Debianize.Finalize (debianize)
 import Debian.Debianize.Monad (DebT, evalDebT)
 import Debian.Debianize.Options (options)
 import Debian.Debianize.Output (doDebianizeAction)
@@ -36,7 +36,7 @@ cabalDebianMain init =
       envset = EnvSet "/" "/" "/"
       finish :: forall m. (MonadIO m, Functor m) => DebAction -> DebT m ()
       finish (SubstVar debType) = substvars debType
-      finish Debianize = debianization (return ()) (return ()) >> doDebianizeAction envset
+      finish Debianize = debianize (return ()) >> doDebianizeAction envset
       finish Usage = do
           progName <- liftIO getProgName
           let info = unlines [ "Typical usage is to cd to the top directory of the package's unpacked source and run: "

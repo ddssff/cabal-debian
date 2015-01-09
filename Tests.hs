@@ -22,7 +22,7 @@ import Data.Version (Version(Version))
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(..), parseEntry)
 import Debian.Debianize.DebianName (mapCabal, splitCabal)
 import Debian.Debianize.Files (debianizationFileMap)
-import Debian.Debianize.Finalize (debianization, finalizeDebianization)
+import Debian.Debianize.Finalize (debianize, finalizeDebianization)
 import Debian.Debianize.Goodies (doBackups, doExecutable, doServer, doWebsite, makeRulesHead, tightDependencyFixup)
 import Debian.Debianize.Input (inputChangeLog, inputDebianization, inputCabalization)
 import Debian.Debianize.Monad (DebT, evalDebT, execDebM, execDebT)
@@ -388,7 +388,7 @@ test4 label =
                  atoms <- testAtoms
                  old <- withCurrentDirectory outTop (execDebT (inputDebianization envset) atoms)
                  let log = getL T.changelog old
-                 new <- withCurrentDirectory inTop (execDebT (debianization defaultAtoms (customize log)) atoms)
+                 new <- withCurrentDirectory inTop (execDebT (debianize (defaultAtoms >> customize log)) atoms)
                  diff <- diffDebianizations old ({-copyFirstLogEntry old-} new)
                  assertEqual label [] diff)
     where
@@ -501,7 +501,7 @@ test5 label =
                  old <- withCurrentDirectory outTop (execDebT (inputDebianization envset) atoms)
                  let standards = getL T.standardsVersion old
                      level = getL T.compat old
-                 new <- withCurrentDirectory inTop (execDebT (debianization defaultAtoms (customize old level standards)) atoms)
+                 new <- withCurrentDirectory inTop (execDebT (debianize (defaultAtoms >> customize old level standards)) atoms)
                  diff <- diffDebianizations old new
                  assertEqual label [] diff)
     where
@@ -598,7 +598,7 @@ test8 label =
                   atoms <- testAtoms
                   old <- withCurrentDirectory outTop (execDebT (inputDebianization envset) atoms)
                   log <- withCurrentDirectory inTop (evalDebT (inputChangeLog >> access T.changelog) atoms)
-                  new <- withCurrentDirectory inTop (execDebT (debianization defaultAtoms (customize log)) atoms)
+                  new <- withCurrentDirectory inTop (execDebT (debianize (defaultAtoms >> customize log)) atoms)
                   diff <- diffDebianizations old new
                   assertEqual label [] diff
              )
@@ -620,7 +620,7 @@ test9 label =
                  atoms <- testAtoms
                  old <- withCurrentDirectory outTop (execDebT (inputDebianization envset) atoms)
                  let Just (ChangeLog (entry : _)) = getL T.changelog old
-                 new <- withCurrentDirectory inTop (execDebT (debianization defaultAtoms customize >> copyChangelogDate (logDate entry)) atoms)
+                 new <- withCurrentDirectory inTop (execDebT (debianize (defaultAtoms >> customize >> copyChangelogDate (logDate entry))) atoms)
                  diff <- diffDebianizations old new
                  assertEqual label [] diff)
     where
@@ -658,7 +658,7 @@ test10 label =
                  atoms <- testAtoms
                  old <- withCurrentDirectory outTop (execDebT (inputDebianization envset) atoms)
                  let Just (ChangeLog (entry : _)) = getL T.changelog old
-                 new <- withCurrentDirectory inTop (execDebT (debianization defaultAtoms customize >> copyChangelogDate (logDate entry)) atoms)
+                 new <- withCurrentDirectory inTop (execDebT (debianize (defaultAtoms >> customize >> copyChangelogDate (logDate entry))) atoms)
                  diff <- diffDebianizations old new
                  assertEqual label [] diff)
     where

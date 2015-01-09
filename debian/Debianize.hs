@@ -17,7 +17,7 @@ import Data.Text as Text (Text, pack)
 import Debian.Changes (ChangeLog(ChangeLog))
 import Debian.Debianize (inputChangeLog, inputDebianization)
 import Debian.Debianize.Details (debianDefaultAtoms)
-import Debian.Debianize.Finalize (debianization)
+import Debian.Debianize.Finalize (debianize)
 import Debian.Debianize.Types as T
     (changelog, compat, conflicts, control, depends, debianDescription, homepage,
      installCabalExec, sourceFormat, standardsVersion, utilsPackageNameBase, copyright, xDescription)
@@ -44,7 +44,10 @@ main =
        -- checked into version control.
        log <- newAtoms >>= evalDebT (inputChangeLog >> access changelog)
        old <- newAtoms >>= execDebT (inputDebianization (T.EnvSet "/" "/" "/"))
-       new <- newAtoms >>= execDebT (debianization debianDefaultAtoms (changelog ~?= log >> customize >> copyFirstLogEntry old))
+       new <- newAtoms >>= execDebT (debianize (do debianDefaultAtoms
+                                                   changelog ~?= log
+                                                   customize
+                                                   copyFirstLogEntry old))
        diff <- compareDebianization old new
        case diff of
          "" -> return ()

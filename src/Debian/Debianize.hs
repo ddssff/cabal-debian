@@ -101,7 +101,8 @@
    VersionSplits.hs
 -}
 module Debian.Debianize
-    ( Debian.Debianize.Finalize.debianization
+    ( Debian.Debianize.Finalize.debianize
+    , Debian.Debianize.Finalize.finalizeDebianization
 
     , Debian.Debianize.Output.doDebianizeAction
     , Debian.Debianize.Output.runDebianizeScript
@@ -148,24 +149,13 @@ module Debian.Debianize
     , module Debian.Debianize.Types
     , module Debian.Debianize.Types.Atoms
     , module Debian.Policy
-{-
-    , module Debian.Debianize.Bundled
-    , module Debian.Debianize.ControlFile
-    , module Debian.Debianize.Files
-    , module Debian.Debianize.Finalize
-    , module Debian.Debianize.Interspersed
-    , module Debian.Debianize.VersionSplits
--}
     ) where
 
--- import Debian.Debianize.Bundled
 import Debian.Debianize.DebianName
 import Debian.Debianize.Details
--- import Debian.Debianize.Files
 import Debian.Debianize.Finalize
 import Debian.Debianize.Goodies
 import Debian.Debianize.Input
--- import Debian.Debianize.Interspersed
 import Debian.Debianize.Monad
 import Debian.Debianize.Prelude
 import Debian.Debianize.Types
@@ -173,5 +163,4 @@ import Debian.Debianize.Types.Atoms
 import Debian.Debianize.Options
 import Debian.Debianize.Output
 import Debian.Debianize.SubstVars
--- import Debian.Debianize.VersionSplits
 import Debian.Policy

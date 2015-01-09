@@ -5,7 +5,7 @@ import Data.Monoid (mempty)
 import Data.Set (singleton)
 import Data.Text as Text (intercalate)
 import Debian.Changes (ChangeLog(..))
-import Debian.Debianize (debianization, doBackups, doExecutable, doServer, doWebsite, inputChangeLog, inputDebianization, debianDefaultAtoms)
+import Debian.Debianize (debianize, doBackups, doExecutable, doServer, doWebsite, inputChangeLog, inputDebianization, debianDefaultAtoms)
 import Debian.Debianize.Types as T
     (changelog, binaryArchitectures, buildDependsIndep, changelog, compat, control, depends, debianDescription,
      installCabalExec, installData, sourcePackageName, homepage, standardsVersion)
@@ -28,7 +28,7 @@ import Debian.Version (parseDebianVersion)
 main :: IO ()
 main =
     do log <- withCurrentDirectory "test-data/artvaluereport2/input" $ newAtoms >>= evalDebT (inputChangeLog >> access changelog)
-       new <- withCurrentDirectory "test-data/artvaluereport2/input" $ newAtoms >>= execDebT (debianization debianDefaultAtoms (customize log))
+       new <- withCurrentDirectory "test-data/artvaluereport2/input" $ newAtoms >>= execDebT (debianize (debianDefaultAtoms >> customize log))
        old <- withCurrentDirectory "test-data/artvaluereport2/output" $ newAtoms >>= execDebT (inputDebianization (T.EnvSet "/" "/" "/"))
        -- The newest log entry gets modified when the Debianization is
        -- generated, it won't match so drop it for the comparison.

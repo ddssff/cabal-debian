@@ -1,7 +1,7 @@
 -- | Compute the debianization of a cabal package.
 {-# LANGUAGE CPP, FlexibleInstances, OverloadedStrings, ScopedTypeVariables #-}
 module Debian.Debianize.Finalize
-    ( debianization
+    ( debianize
     , finalizeDebianization -- external use deprecated - used in test script
     ) where
 
@@ -60,13 +60,12 @@ import Text.PrettyPrint.HughesPJClass (Pretty(pPrint))
 -- description and possibly the debian/changelog file, then generate
 -- and return the new debianization (along with the data directory
 -- computed from the cabal package description.)
-debianization :: (MonadIO m, Functor m) => DebT m () -> DebT m () -> DebT m ()
-debianization init customize =
+debianize :: (MonadIO m, Functor m) => DebT m () -> DebT m ()
+debianize customize =
     do compileEnvironmentArgs
        compileCommandlineArgs
        inputCabalization
        inputChangeLog
-       init
        customize
        finalizeDebianization
 

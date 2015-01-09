@@ -2,7 +2,7 @@
 {-# LANGUAGE CPP, FlexibleInstances, OverloadedStrings, ScopedTypeVariables #-}
 module Debian.Debianize.Finalize
     ( debianization
-    , finalizeDebianization' -- external use deprecated - used in test script
+    , finalizeDebianization -- external use deprecated - used in test script
     ) where
 
 import Control.Applicative ((<$>))
@@ -68,14 +68,14 @@ debianization init customize =
        inputChangeLog
        init
        customize
-       finalizeDebianization'
+       finalizeDebianization
 
 -- | Do some light IO and call finalizeDebianization.
-finalizeDebianization' :: (MonadIO m, Functor m) => DebT m ()
-finalizeDebianization' =
+finalizeDebianization :: (MonadIO m, Functor m) => DebT m ()
+finalizeDebianization =
     do date <- liftIO getCurrentLocalRFC822Time
        debhelperCompat <- liftIO getDebhelperCompatLevel
-       finalizeDebianization date debhelperCompat
+       finalizeDebianization' date debhelperCompat
        access T.verbosity >>= \ vb -> when (vb >= 3) (get >>= liftIO . A.showAtoms)
 
 -- | Now that we know the build and data directories, we can expand
@@ -86,8 +86,8 @@ finalizeDebianization' =
 -- this function is not idempotent.  (Exported for use in unit tests.)
 -- FIXME: we should be able to run this without a PackageDescription, change
 --        paramter type to Maybe PackageDescription and propagate down thru code
-finalizeDebianization  :: (MonadIO m, Functor m) => String -> Maybe Int -> DebT m ()
-finalizeDebianization date debhelperCompat =
+finalizeDebianization'  :: (MonadIO m, Functor m) => String -> Maybe Int -> DebT m ()
+finalizeDebianization' date debhelperCompat =
     do -- In reality, hcs must be a singleton or many things won't work.  But some day...
        hcs <- Set.toList <$> access A.compilerFlavors
        finalizeSourceName B.HaskellSource

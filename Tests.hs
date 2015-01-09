@@ -17,12 +17,12 @@ import qualified Data.Map as Map (elems, Map, toList)
 import Data.Maybe (fromMaybe)
 import Data.Monoid ((<>), mconcat, mempty)
 import Data.Set as Set (fromList, singleton, union)
-import Data.Text as Text (intercalate, lines, split, Text, unlines, pack, unpack)
-import Data.Version (Version(Version, versionBranch))
+import Data.Text as Text (intercalate, lines, split, Text, unlines, unpack)
+import Data.Version (Version(Version))
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(..), parseEntry)
 import Debian.Debianize.DebianName (mapCabal, splitCabal)
 import Debian.Debianize.Files (debianizationFileMap)
-import Debian.Debianize.Finalize (debianization, finalizeDebianization')
+import Debian.Debianize.Finalize (debianization, finalizeDebianization)
 import Debian.Debianize.Goodies (doBackups, doExecutable, doServer, doWebsite, makeRulesHead, tightDependencyFixup)
 import Debian.Debianize.Input (inputChangeLog, inputDebianization, inputCabalization)
 import Debian.Debianize.Monad (DebT, evalDebT, execDebM, execDebT)
@@ -39,7 +39,6 @@ import Debian.Relation (BinPkgName(..), Relation(..), SrcPkgName(..), VersionReq
 import Debian.Release (ReleaseName(ReleaseName, relName))
 import Debian.Version (parseDebianVersion, buildDebianVersion)
 import Distribution.Compiler (CompilerFlavor(GHC))
-import Distribution.License (License(..))
 import Distribution.Package (PackageName(PackageName))
 import Prelude hiding (log, (.))
 import System.Exit (ExitCode(ExitSuccess))
@@ -126,7 +125,7 @@ test1 label =
                               newDebianization (ChangeLog [testEntry]) level standards
                               copyright %= (\ c -> c { _summaryLicense = Just BSD_3_Clause })
                               -- inputCabalization top
-                              finalizeDebianization')
+                              finalizeDebianization)
                           atoms
                  diff <- diffDebianizations (testDeb1 atoms) deb
                  assertEqual label [] diff)
@@ -173,7 +172,7 @@ test2 label =
                               newDebianization (ChangeLog [testEntry]) level standards
                               copyright %= (\ c -> c { _summaryLicense = Just BSD_3_Clause })
                               -- inputCabalization top
-                              finalizeDebianization')
+                              finalizeDebianization)
                           atoms
                  diff <- diffDebianizations (expect atoms) deb
                  assertEqual label [] diff)

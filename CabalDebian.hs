@@ -29,14 +29,14 @@ cabalDebianMain init =
     -- This picks up the options required to decide what action we are
     -- taking.  Much of this will be repeated in the call to debianize.
     do atoms <- newAtoms
-       evalDebT (do init
+       evalDebT (do debianize init
                     action <- access debAction
                     finish action) atoms
     where
       envset = EnvSet "/" "/" "/"
       finish :: forall m. (MonadIO m, Functor m) => DebAction -> DebT m ()
       finish (SubstVar debType) = substvars debType
-      finish Debianize = debianize (return ()) >> doDebianizeAction envset
+      finish Debianize = doDebianizeAction envset
       finish Usage = do
           progName <- liftIO getProgName
           let info = unlines [ "Typical usage is to cd to the top directory of the package's unpacked source and run: "

@@ -31,7 +31,7 @@ module Debian.Policy
     , Area(..)
     , parseUploaders
     , parseMaintainer
-    , getDebianMaintainer
+    , getCurrentDebianUser
     , haskellMaintainer
     , License(..)
     , fromCabalLicense
@@ -240,8 +240,8 @@ now. Here is what the man page for dch has to say:
  DEBEMAIL and DEBFULLNAME when using this script.
 
 -}
-getDebianMaintainer :: IO (Maybe NameAddr)
-getDebianMaintainer =
+getCurrentDebianUser :: IO (Maybe NameAddr)
+getCurrentDebianUser =
     do env <- map (second decodeString) `fmap` getEnvironment
        return $ do fullname <- lookup "DEBFULLNAME" env `mplus` lookup "NAME" env
                    email    <- lookup "DEBEMAIL" env `mplus` lookup "EMAIL" env

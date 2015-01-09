@@ -46,7 +46,7 @@ import Debian.Debianize.Types.Atoms (EnvSet(dependOS))
 import Debian.GHC (newestAvailableCompilerId)
 import Debian.Orphans ()
 import Debian.Policy (Section(..), parseStandardsVersion, readPriority, readSection, parsePackageArchitectures, parseMaintainer,
-                      parseUploaders, readSourceFormat, getDebianMaintainer, haskellMaintainer, fromCabalLicense)
+                      parseUploaders, readSourceFormat, getCurrentDebianUser, haskellMaintainer, fromCabalLicense)
 import Debian.Relation (Relations, BinPkgName(..), SrcPkgName(..), parseRelations)
 --import Debian.Version (DebianVersion, parseDebianVersion)
 import Distribution.Compiler (CompilerId)
@@ -360,7 +360,7 @@ autoreconf verbose pkgDesc = do
 --       if --official is set
 --    2. the maintainer explicitly specified using "Debian.Debianize.Monad.maintainer"
 --    3. the maintainer field of the cabal package, but only if --official is not set,
---    4. the value returned by getDebianMaintainer, which looks in several environment variables,
+--    4. the value returned by getCurrentDebianUser, which looks in several environment variables,
 --    5. the signature from the latest entry in debian/changelog,
 --    6. the Debian Haskell Group, @pkg-haskell-maintainers\@lists.alioth.debian.org@
 inputMaintainer :: MonadIO m => DebT m ()
@@ -373,8 +373,8 @@ inputMaintainer =
        when o $ T.maintainer ~?= Just haskellMaintainer
 
        T.maintainer ~?= cabalMaintainer
-       debianMaintainer <- liftIO getDebianMaintainer
-       T.maintainer ~?= debianMaintainer
+       debianUser <- liftIO getCurrentDebianUser
+       T.maintainer ~?= debianUser
        changelogMaintainer <-
            do log <- get >>= return . getL T.changelog
               case log of

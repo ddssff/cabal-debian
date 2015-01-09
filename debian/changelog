@@ -1,3 +1,13 @@
+haskell-cabal-debian (4.20) unstable; urgency=low
+
+  * Fix handling of debian maintainer and debian uploaders
+  * Improve formatting of debian/rules file
+  * Rename function debianization -> debianize
+  * Rename function finalizeDebianization' -> finalizeDebianization
+  * Rename function getDebianMaintainer -> getCurrentDebianUser
+
+ -- David Fox <dsf@seereason.com>  Fri, 09 Jan 2015 11:49:04 -0800
+
 haskell-cabal-debian (4.19.3) unstable; urgency=low
 
   * Fix issue #23, so that if you run 'cabal-debian' and then

@@ -6,6 +6,7 @@ module Main
     ) where
 
 import Control.Applicative ((<$>))
+import Control.Category ((.))
 import Data.Algorithm.Diff.Context (contextDiff)
 import Data.Algorithm.Diff.Pretty (prettyDiff)
 import Data.Function (on)
@@ -40,7 +41,7 @@ import Debian.Version (parseDebianVersion, buildDebianVersion)
 import Distribution.Compiler (CompilerFlavor(GHC))
 import Distribution.License (License(..))
 import Distribution.Package (PackageName(PackageName))
-import Prelude hiding (log)
+import Prelude hiding (log, (.))
 import System.Exit (ExitCode(ExitSuccess))
 import System.FilePath ((</>))
 import System.Process (readProcessWithExitCode)
@@ -75,7 +76,7 @@ newDebianization (log@(ChangeLog (entry : _))) level standards =
     do T.changelog ~= Just log
        T.compat ~= level
        T.source ~= Just (SrcPkgName (logPackage entry))
-       T.maintainer ~= either error Just (parseMaintainer (logWho entry))
+       (S.maintainer . T.control) ~= either error Just (parseMaintainer (logWho entry))
        T.standardsVersion ~= standards
 newDebianization _ _ _ = error "Invalid changelog"
 
@@ -143,7 +144,7 @@ test1 label =
                 compat ~= Just 9 -- This will change as new version of debhelper are released
                 copyright %= (\ c -> c { _summaryLicense = Just BSD_3_Clause })
                 T.source ~= Just (SrcPkgName {unSrcPkgName = "haskell-cabal-debian"})
-                T.maintainer ~= Just (NameAddr (Just "David Fox") "dsf@seereason.com")
+                (S.maintainer . T.control) ~= Just (NameAddr (Just "David Fox") "dsf@seereason.com")
                 T.standardsVersion ~= Just (StandardsVersion 3 9 3 (Just 1)) -- This will change as new versions of debian-policy are released
                 T.buildDepends %= (++ [[Rel (BinPkgName "debhelper") (Just (GRE (parseDebianVersion ("7.0" :: String)))) Nothing],
                                        [Rel (BinPkgName "haskell-devscripts") (Just (GRE (parseDebianVersion ("0.8" :: String)))) Nothing],
@@ -189,7 +190,7 @@ test2 label =
                 compat ~= Just 9
                 copyright %= (\ c -> c { _summaryLicense = Just BSD_3_Clause })
                 T.source ~= Just (SrcPkgName {unSrcPkgName = "haskell-cabal-debian"})
-                T.maintainer ~= Just (NameAddr {nameAddr_name = Just "David Fox", nameAddr_addr = "dsf@seereason.com"})
+                (S.maintainer . T.control) ~= Just (NameAddr {nameAddr_name = Just "David Fox", nameAddr_addr = "dsf@seereason.com"})
                 T.standardsVersion ~= Just (StandardsVersion 3 9 3 (Just 1))
                 T.buildDepends %= (++ [[Rel (BinPkgName "debhelper") (Just (GRE (parseDebianVersion ("7.0" :: String)))) Nothing],
                                        [Rel (BinPkgName "haskell-devscripts") (Just (GRE (parseDebianVersion ("0.8" :: String)))) Nothing],
@@ -281,8 +282,8 @@ test3 label =
                 T.compat ~= Just 7
                 T.copyright %= \ c -> c { _summaryComment = Just "This package was debianized by John Goerzen <jgoerzen@complete.org> on\nWed,  6 Oct 2004 09:46:14 -0500.\n\nCopyright information removed from this test data.\n" }
                 T.source ~= Just (SrcPkgName {unSrcPkgName = "haskell-devscripts"})
-                T.maintainer ~= Just (NameAddr {nameAddr_name = Just "Debian Haskell Group", nameAddr_addr = "pkg-haskell-maintainers@lists.alioth.debian.org"})
-                T.uploaders ~= [NameAddr {nameAddr_name = Just "Marco Silva", nameAddr_addr = "marcot@debian.org"},NameAddr {nameAddr_name = Just "Joachim Breitner", nameAddr_addr = "nomeata@debian.org"}]
+                (S.maintainer . T.control) ~= Just (NameAddr {nameAddr_name = Just "Debian Haskell Group", nameAddr_addr = "pkg-haskell-maintainers@lists.alioth.debian.org"})
+                (S.uploaders . T.control) ~= [NameAddr {nameAddr_name = Just "Marco Silva", nameAddr_addr = "marcot@debian.org"},NameAddr {nameAddr_name = Just "Joachim Breitner", nameAddr_addr = "nomeata@debian.org"}]
                 T.sourcePriority ~= Just Extra
                 T.sourceSection ~= Just (MainSection "haskell")
                 T.buildDepends %= (++ [[Rel (BinPkgName {unBinPkgName = "debhelper"}) (Just (GRE (Debian.Version.parseDebianVersion ("7" :: String)))) Nothing]])
@@ -667,7 +668,7 @@ test10 label =
           do T.sourcePackageName ~= Just (SrcPkgName "seereason-darcs-backups")
              T.compat ~= Just 5
              T.standardsVersion ~= Just (StandardsVersion 3 8 1 Nothing)
-             T.maintainer ~= either (const Nothing) Just (parseMaintainer "David Fox <dsf@seereason.com>")
+             (S.maintainer . T.control) ~= either (const Nothing) Just (parseMaintainer "David Fox <dsf@seereason.com>")
              T.depends (BinPkgName "seereason-darcs-backups") %= (++ [[Rel (BinPkgName "anacron") Nothing Nothing]])
              T.sourceSection ~= Just (MainSection "haskell")
              T.utilsPackageNameBase ~= Just "seereason-darcs-backups"

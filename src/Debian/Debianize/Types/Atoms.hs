@@ -111,7 +111,8 @@ data Atoms
       -- version 0.3.0.0-1build3, we need to specify
       -- debVersion="0.3.0.0-1build3" or the version we produce will
       -- look older than the one already available upstream.
-      , maintainerOld_ :: Maybe NameAddr
+      , maintainerOption_ :: Maybe NameAddr
+      , uploadersOption_ :: [NameAddr]
       -- ^ Value for the maintainer field in the control file.  Note that
       -- the cabal maintainer field can have multiple addresses, but debian
       -- only one.  If this is not explicitly set, it is obtained from the
@@ -290,7 +291,8 @@ makeAtoms envset =
       , overrideDebianNameBase_ = Nothing
       , revision_ = Nothing
       , debVersion_ = Nothing
-      , maintainerOld_ = Nothing
+      , maintainerOption_ = Nothing
+      , uploadersOption_ = []
       , cabalFlagAssignments_ = mempty
       , sourceFormat_ = Nothing
       , watch_ = Nothing
@@ -473,6 +475,12 @@ extraLibMap = lens extraLibMap_ (\ a b -> b {extraLibMap_ = a})
 -- | Map from cabal Build-Tool names to debian binary package names.
 execMap :: Lens Atoms (Map String Relations)
 execMap = lens execMap_ (\ a b -> b {execMap_ = a})
+
+maintainerOption :: Lens Atoms (Maybe NameAddr)
+maintainerOption = lens maintainerOption_ (\ a b -> b {maintainerOption_ = a})
+
+uploadersOption :: Lens Atoms [NameAddr]
+uploadersOption = lens uploadersOption_ (\ a b -> b {uploadersOption_ = a})
 
 -- | Cabal flag assignments to use when loading the cabal file.
 cabalFlagAssignments :: Lens Atoms (Set (FlagName, Bool))

@@ -22,7 +22,10 @@ module Debian.Debianize.Types
     , overrideDebianNameBase
     , revision
     , debVersion
-    , maintainer
+    , debianMaintainer
+    , debianUploaders
+    , maintainerOption
+    , uploadersOption
     , copyright
     , sourceArchitectures
     , sourcePriority
@@ -187,11 +190,11 @@ replaces b = B.replaces . B.relations . binaryDebDescription b
 builtUsing :: BinPkgName -> Lens Atoms Relations
 builtUsing b = B.builtUsing . B.relations . binaryDebDescription b
 
--- | Maintainer field.  Overrides any value found in the cabal file, or
--- in the DEBIANMAINTAINER environment variable.
--- <http://www.debian.org/doc/debian-policy/ch-controlfields.html#s-f-Maintainer>
-maintainer :: Lens Atoms (Maybe NameAddr)
-maintainer = S.maintainer . control
+debianMaintainer :: Lens Atoms (Maybe NameAddr)
+debianMaintainer = S.maintainer . control
+
+debianUploaders :: Lens Atoms [NameAddr]
+debianUploaders = S.uploaders . control
 
 -- | The architectures supported by a binary package
 binaryArchitectures :: BinPkgName -> Lens Atoms (Maybe PackageArchitectures)

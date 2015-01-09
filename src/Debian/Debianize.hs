@@ -121,7 +121,6 @@ module Debian.Debianize
     , Debian.Debianize.Input.inputDebianization
     , Debian.Debianize.Input.inputDebianizationFile
     , Debian.Debianize.Input.inputChangeLog
-    , Debian.Debianize.Input.inputMaintainer
 
     -- * Deb monad - 'Debian.Debianize.Monad'
     , DebT, runDebT, execDebT, evalDebT, DebM, runDebM, execDebM, evalDebM

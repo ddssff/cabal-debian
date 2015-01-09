@@ -26,18 +26,18 @@ import Debian.Debianize.BuildDependencies (debianBuildDeps, debianBuildDepsIndep
 import Debian.Debianize.Changelog (dropFutureEntries)
 import Debian.Debianize.DebianName (debianName, debianNameBase)
 import Debian.Debianize.Goodies (backupAtoms, describe, execAtoms, serverAtoms, siteAtoms, watchAtom)
-import Debian.Debianize.Input (dataDir, inputCabalization, inputChangeLog, inputMaintainer)
+import Debian.Debianize.Input (dataDir, inputCabalization, inputChangeLog)
 import Debian.Debianize.Monad as Monad (DebT)
 import Debian.Debianize.Options (compileCommandlineArgs, compileEnvironmentArgs)
 import Debian.Debianize.Prelude ((%=), (+=), fromEmpty, fromSingleton, (~=), (~?=))
-import qualified Debian.Debianize.Types as T (apacheSite, backups, binaryArchitectures, binaryPackages, binarySection, breaks, buildDepends, buildDependsIndep, buildDir, builtUsing, changelog, comments, compat, conflicts, debianDescription, debVersion, depends, epochMap, executable, extraDevDeps, extraLibMap, file, install, installCabalExec, installData, installDir, installTo, intermediateFiles, link, maintainer, noDocumentationLibrary, noProfilingLibrary, omitProfVersionDeps, packageDescription, packageType, preDepends, provides, recommends, replaces, revision, rulesFragments, serverInfo, standardsVersion, source, sourceFormat, sourcePackageName, sourcePriority, sourceSection, suggests, utilsPackageNameBase, verbosity, watch, website, control, homepage, official, vcsFields)
+import qualified Debian.Debianize.Types as T (apacheSite, backups, binaryArchitectures, binaryPackages, binarySection, breaks, buildDepends, buildDependsIndep, buildDir, builtUsing, changelog, comments, compat, conflicts, debianDescription, debVersion, depends, epochMap, executable, extraDevDeps, extraLibMap, file, install, installCabalExec, installData, installDir, installTo, intermediateFiles, link, maintainerOption, uploadersOption, noDocumentationLibrary, noProfilingLibrary, omitProfVersionDeps, packageDescription, packageType, preDepends, provides, recommends, replaces, revision, rulesFragments, serverInfo, standardsVersion, source, sourceFormat, sourcePackageName, sourcePriority, sourceSection, suggests, utilsPackageNameBase, verbosity, watch, website, control, homepage, official, vcsFields)
 import qualified Debian.Debianize.Types.Atoms as A (InstallFile(execName, sourceDir), showAtoms, compilerFlavors, Atom(..), atomSet)
 import qualified Debian.Debianize.Types.BinaryDebDescription as B (BinaryDebDescription, package, PackageType(Development, Documentation, Exec, Profiling, Source, HaskellSource, Utilities), PackageType)
-import qualified Debian.Debianize.Types.SourceDebDescription as S (xDescription, VersionControlSpec(..))
+import qualified Debian.Debianize.Types.SourceDebDescription as S (xDescription, VersionControlSpec(..), maintainer, uploaders)
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
 import Debian.Orphans ()
 import Debian.Pretty (ppDisplay, PP(..))
-import Debian.Policy (getDebhelperCompatLevel, haskellMaintainer, PackageArchitectures(Any, All), PackagePriority(Extra), Section(..), SourceFormat(Native3, Quilt3), parseStandardsVersion)
+import Debian.Policy (getDebhelperCompatLevel, getCurrentDebianUser, haskellMaintainer, PackageArchitectures(Any, All), PackagePriority(Extra), parseMaintainer, Section(..), SourceFormat(Native3, Quilt3), parseStandardsVersion)
 import Debian.Relation (BinPkgName, BinPkgName(BinPkgName), SrcPkgName(SrcPkgName), Relation(Rel), Relations)
 import qualified Debian.Relation as D (BinPkgName(BinPkgName), Relation(..))
 import Debian.Release (parseReleaseName)
@@ -49,7 +49,7 @@ import Distribution.Compiler (CompilerFlavor(GHCJS))
 #endif
 import Distribution.Package (Dependency(..), PackageIdentifier(..), PackageName(PackageName))
 import Distribution.PackageDescription (PackageDescription)
-import Distribution.PackageDescription as Cabal (allBuildInfo, BuildInfo(buildable, extraLibs), Executable(buildInfo, exeName))
+import Distribution.PackageDescription as Cabal (allBuildInfo, BuildInfo(buildable, extraLibs), Executable(buildInfo, exeName), maintainer)
 import qualified Distribution.PackageDescription as Cabal (PackageDescription(dataDir, dataFiles, executables, library, package))
 import Prelude hiding (init, log, map, unlines, unlines, writeFile, (.))
 import System.FilePath ((</>), (<.>), makeRelative, splitFileName, takeDirectory, takeFileName)
@@ -66,7 +66,6 @@ debianization init customize =
        compileCommandlineArgs
        inputCabalization
        inputChangeLog
-       inputMaintainer
        init
        customize
        finalizeDebianization'
@@ -185,17 +184,59 @@ finalizeSourceName typ =
                                                    B.Source -> debName
                                                    _ -> error $ "finalizeSourceName: " ++ show typ))
 
-finalizeMaintainer :: Monad m => DebT m ()
-finalizeMaintainer =
-    T.maintainer ~?= Just haskellMaintainer
+-- | Try to compute a string for the the debian "Maintainer:" and
+-- "Uploaders:" fields using, in this order
+--    1. the Debian Haskell Group, @pkg-haskell-maintainers\@lists.alioth.debian.org@,
+--       if --official is set
+--    2. the maintainer explicitly specified using "Debian.Debianize.Monad.maintainer"
+--    3. the maintainer field of the cabal package, but only if --official is not set,
+--    4. the value returned by getDebianMaintainer, which looks in several environment variables,
+--    5. the signature from the latest entry in debian/changelog,
+--    6. the Debian Haskell Group, @pkg-haskell-maintainers\@lists.alioth.debian.org@
+-- <http://www.debian.org/doc/debian-policy/ch-controlfields.html#s-f-Maintainer>
+-- <http://www.debian.org/doc/debian-policy/ch-controlfields.html#s-f-Uploaders>
+finalizeMaintainer :: MonadIO m => DebT m ()
+finalizeMaintainer = do
+  o <- access T.official
+  currentUser <- liftIO getCurrentDebianUser
+  Just pkgDesc <- access T.packageDescription
+  maintainerOption <- access T.maintainerOption
+  uploadersOption <- access T.uploadersOption
+  let cabalMaintainer = case Cabal.maintainer pkgDesc of
+                          "" -> Nothing
+                          x -> either (const Nothing) Just (parseMaintainer (takeWhile (\ c -> c /= ',' && c /= '\n') x))
+  changelogSignature <-
+      do log <- get >>= return . getL T.changelog
+         case log of
+           Just (ChangeLog (entry : _)) ->
+               case (parseMaintainer (logWho entry)) of
+                 Left _e -> return $ Nothing -- Just $ NameAddr (Just "Invalid signature in changelog") (show e)
+                 Right x -> return (Just x)
+           _ -> return Nothing
+  case o of
+    True -> do
+      (S.maintainer . T.control) ~= Just haskellMaintainer
+      (S.uploaders . T.control) %= whenEmpty (maybe [] (: []) currentUser)
+    False -> do
+      (S.maintainer . T.control) ~?= maintainerOption
+      (S.maintainer . T.control) ~?= cabalMaintainer
+      (S.maintainer . T.control) ~?= currentUser
+      (S.maintainer . T.control) ~?= changelogSignature
+      (S.uploaders . T.control) %= whenEmpty uploadersOption
+      -- (S.uploaders . T.control) %= whenEmpty (maybe [] (: []) cabalMaintainer)
+      -- (S.uploaders . T.control) %= whenEmpty (maybe [] (: []) currentUser)
+      -- (S.uploaders . T.control) %= whenEmpty (maybe [] (: []) changelogSignature)
 
-finalizeControl :: (Monad m, Functor m) => DebT m ()
+-- | If l is the empty list return d, otherwise return l.
+whenEmpty :: [a] -> [a] -> [a]
+whenEmpty d [] = d
+whenEmpty _ l = l
+
+finalizeControl :: (MonadIO m, Functor m) => DebT m ()
 finalizeControl =
     do finalizeMaintainer
        Just src <- access T.sourcePackageName
-       maint <- access T.maintainer >>= return . fromMaybe (error "No maintainer")
        T.source ~= Just src
-       T.maintainer ~= Just maint
        desc <- describe
        (S.xDescription . T.control) ~?= Just desc
        -- control %= (\ y -> y { D.source = Just src, D.maintainer = Just maint })
@@ -204,12 +245,12 @@ finalizeControl =
 -- source package name implied by the debianization.  This means
 -- either adding an entry or modifying the latest entry (if its
 -- version number is the exact one in our debianization.)
-finalizeChangelog :: (Monad m, Functor m) => String -> DebT m ()
+finalizeChangelog :: (MonadIO m, Functor m) => String -> DebT m ()
 finalizeChangelog date =
     do finalizeMaintainer
        ver <- debianVersion
        src <- access T.sourcePackageName
-       Just maint <- access T.maintainer
+       Just maint <- access (S.maintainer . T.control)
        cmts <- access T.comments
        T.changelog %= fmap (dropFutureEntries ver)
        T.changelog %= fixLog src ver cmts maint

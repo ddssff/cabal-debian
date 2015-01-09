@@ -7,7 +7,6 @@ module Debian.Debianize.Input
     , inputChangeLog
     , inputCabalization
     , inputCabalization'
-    , inputMaintainer
     , dataDir
     ) where
 
@@ -18,20 +17,19 @@ import Control.Category ((.))
 --import Control.DeepSeq (NFData, force)
 import Control.Exception (bracket)
 import Control.Monad (when, filterM)
-import Control.Monad.State (get, put)
+import Control.Monad.State (put)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Char (isSpace, toLower)
-import Data.Lens.Lazy (getL, setL, modL, access)
+import Data.Lens.Lazy (setL, modL, access)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Monoid ((<>))
 import Data.Set as Set (Set, toList, fromList, insert, singleton)
 import Data.Text (Text, unpack, pack, lines, words, break, strip, null)
 import Data.Text.IO (readFile)
 --import Data.Version (showVersion, Version(Version))
-import Debian.Changes (ChangeLog(..), ChangeLogEntry(logWho), parseChangeLog)
+import Debian.Changes (parseChangeLog)
 import Debian.Control (Control'(unControl), Paragraph'(..), stripWS, parseControlFromFile, Field, Field'(..), ControlFunctions)
-import qualified Debian.Debianize.Types as T (maintainer, official)
-import qualified Debian.Debianize.Types.Atoms as T (changelog, makeAtoms, compilerFlavors)
+import qualified Debian.Debianize.Types.Atoms as T (makeAtoms, compilerFlavors)
 import Debian.Debianize.Types.BinaryDebDescription (BinaryDebDescription, newBinaryDebDescription)
 import qualified Debian.Debianize.Types.BinaryDebDescription as B
 import Debian.Debianize.Types.CopyrightDescription (readCopyrightDescription, CopyrightDescription(..), FilesOrLicenseDescription(..))
@@ -46,7 +44,7 @@ import Debian.Debianize.Types.Atoms (EnvSet(dependOS))
 import Debian.GHC (newestAvailableCompilerId)
 import Debian.Orphans ()
 import Debian.Policy (Section(..), parseStandardsVersion, readPriority, readSection, parsePackageArchitectures, parseMaintainer,
-                      parseUploaders, readSourceFormat, getCurrentDebianUser, haskellMaintainer, fromCabalLicense)
+                      parseUploaders, readSourceFormat, fromCabalLicense)
 import Debian.Relation (Relations, BinPkgName(..), SrcPkgName(..), parseRelations)
 --import Debian.Version (DebianVersion, parseDebianVersion)
 import Distribution.Compiler (CompilerId)
@@ -54,7 +52,7 @@ import Distribution.Compiler (CompilerId)
 import Distribution.Compiler (unknownCompilerInfo, AbiTag(NoAbiTag))
 #endif
 import Distribution.Package (Package(packageId), PackageIdentifier(..), PackageName(PackageName), Dependency)
-import qualified Distribution.PackageDescription as Cabal (PackageDescription(maintainer, package, license, copyright {-, synopsis, description-}))
+import qualified Distribution.PackageDescription as Cabal (PackageDescription(package, license, copyright {-, synopsis, description-}))
 #if MIN_VERSION_Cabal(1,19,0)
 import qualified Distribution.PackageDescription as Cabal (PackageDescription(licenseFiles))
 #else
@@ -354,36 +352,6 @@ autoreconf verbose pkgDesc = do
 -- chroot :: NFData a => FilePath -> IO a -> IO a
 -- chroot "/" task = task
 -- chroot root task = useEnv root (return . force) task
-
--- | Try to compute a string for the the debian "Maintainer:" field using, in this order
---    1. the Debian Haskell Group, @pkg-haskell-maintainers\@lists.alioth.debian.org@,
---       if --official is set
---    2. the maintainer explicitly specified using "Debian.Debianize.Monad.maintainer"
---    3. the maintainer field of the cabal package, but only if --official is not set,
---    4. the value returned by getCurrentDebianUser, which looks in several environment variables,
---    5. the signature from the latest entry in debian/changelog,
---    6. the Debian Haskell Group, @pkg-haskell-maintainers\@lists.alioth.debian.org@
-inputMaintainer :: MonadIO m => DebT m ()
-inputMaintainer =
-    do Just pkgDesc <- access packageDescription
-       let cabalMaintainer = case Cabal.maintainer pkgDesc of
-                               "" -> Nothing
-                               x -> either (const Nothing) Just (parseMaintainer (takeWhile (\ c -> c /= ',' && c /= '\n') x))
-       o <- access T.official
-       when o $ T.maintainer ~?= Just haskellMaintainer
-
-       T.maintainer ~?= cabalMaintainer
-       debianUser <- liftIO getCurrentDebianUser
-       T.maintainer ~?= debianUser
-       changelogMaintainer <-
-           do log <- get >>= return . getL T.changelog
-              case log of
-                Just (ChangeLog (entry : _)) ->
-                    case (parseMaintainer (logWho entry)) of
-                      Left _e -> return $ Nothing -- Just $ NameAddr (Just "Invalid signature in changelog") (show e)
-                      Right x -> return (Just x)
-                _ -> return Nothing
-       T.maintainer ~?= changelogMaintainer
 
 -- | Compute the Cabal data directory for a Linux install from a Cabal
 -- package description.  This needs to match the path cabal assigns to

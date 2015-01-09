@@ -11,7 +11,7 @@ import Control.Monad.Writer (WriterT, execWriterT, tell)
 import Debian.Control.Common ()
 import Data.Char (isSpace)
 import Data.Lens.Lazy (access, getL)
-import Data.List as List (map, dropWhileEnd, dropWhile, intersperse)
+import Data.List as List (map, dropWhileEnd, dropWhile)
 import Data.Map as Map (Map, map, toList, fromListWithKey, mapKeys, insertWith)
 import Data.Maybe
 import Data.Monoid ((<>), mempty)
@@ -141,7 +141,7 @@ rules :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
 rules =
     do rh <- lift (access T.rulesHead) >>= maybe (lift makeRulesHead) return
        rl <- (reverse . Set.toList) <$> lift (access T.rulesFragments)
-       return [("debian/rules", Text.unlines (intersperse "\n" (List.map strip (rh : rl))))]
+       return [("debian/rules", intercalate "\n\n" (List.map strip (rh : rl)) <> "\n")]
 
 changelog :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
 changelog =

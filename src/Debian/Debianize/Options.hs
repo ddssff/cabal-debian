@@ -41,6 +41,7 @@ import System.Posix.Env (setEnv)
 import Text.Read (readMaybe)
 import Text.Regex.TDFA ((=~))
 
+-- | Apply a list of command line arguments to the monadic state.
 compileArgs :: MonadIO m => [String] -> DebT m ()
 compileArgs args =
     case getOpt' RequireOrder options args of
@@ -49,9 +50,13 @@ compileArgs args =
                                     ", Unrecognized: " ++ show unk ++
                                     ", Non-Options: " ++ show non)
 
+-- | Get a list of arguments from the CABALDEBIAN environment variable
+-- and apply them to the monadic state.
 compileEnvironmentArgs :: MonadIO m => DebT m ()
 compileEnvironmentArgs = withEnvironmentArgs compileArgs
 
+-- | Get the list of command line arguments and apply them to the
+-- monadic state.
 compileCommandlineArgs :: MonadIO m => DebT m ()
 compileCommandlineArgs = liftIO getArgs >>= compileArgs
 

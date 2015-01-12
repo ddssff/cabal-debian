@@ -1,5 +1,6 @@
 haskell-cabal-debian (4.20) unstable; urgency=low
 
+  * Add a --source-section option
   * Fix handling of debian maintainer and debian uploaders
   * Improve formatting of debian/rules file
   * Rename function debianization -> debianize

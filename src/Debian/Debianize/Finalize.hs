@@ -377,9 +377,9 @@ librarySpec arch typ hc =
 desc :: Text
 desc = Text.intercalate "\n "
          ["${haskell:ShortDescription}${haskell:ShortBlurb}",
-          " ${haskell:LongDescription}",
-          " .",
-          " ${haskell:Blurb}"]
+          "${haskell:LongDescription}",
+          ".",
+          "${haskell:Blurb}"]
 
 -- | Make sure all data and executable files are assigned to at least
 -- one binary package and make sure all binary packages are in the

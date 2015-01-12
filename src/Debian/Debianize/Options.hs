@@ -21,7 +21,7 @@ import Debian.Debianize.Types
      missingDependencies, sourcePackageName, overrideDebianNameBase, cabalFlagAssignments, maintainerOption, uploadersOption, buildDir, omitProfVersionDeps, omitLTDeps,
      sourceFormat, buildDepends, buildDependsIndep, extraDevDeps, depends, conflicts, replaces, provides,
      recommends, suggests, extraLibMap, debVersion, revision, epochMap, execMap, utilsPackageNameBase,
-     standardsVersion, official)
+     standardsVersion, official, sourceSection)
 import Debian.Debianize.Types.Atoms (Atoms, EnvSet(..), InstallFile(..), DebAction(..), setBuildEnv, compilerFlavors)
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
 import Debian.Orphans ()
@@ -104,6 +104,8 @@ options =
              (unlines [ "Use this name for the debian source package, the name in the Source field at the top of the"
                       , "debian control file, and also at the very beginning of the debian/changelog file.  By default"
                       , "this is haskell-<cabalname>, where the cabal package name is downcased."]),
+      Option "" ["source-section"] (ReqArg (\ name -> sourceSection ~= Just (read name)) "NAME")
+             "Set the Section: field of the Debian source package.",
       Option "" ["disable-library-profiling"] (NoArg (noProfilingLibrary ~= True))
              (unlines [ "Don't generate profiling (-prof) library packages.  This has been used in one case"
                       , "where the package code triggered a compiler bug."]),

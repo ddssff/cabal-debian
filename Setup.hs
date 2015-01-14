@@ -22,22 +22,29 @@ runTestScript lbi =
 
 -- Do all we can to create or update a symbolic link - remove any
 -- existing file or directory and verify the link contents.
+ensureSymbolicLink :: FilePath -> FilePath -> IO ()
 ensureSymbolicLink destination location = do
   result <- try (readSymbolicLink location)
   case result of
     Right destination' | destination' == destination -> return ()
-    Right _ -> remove location >> ensureSymbolicLink destination location
+    Right _ -> removeAndRepeat
     Left e -> case ioe_type e of
-                InvalidArgument -> remove location >> ensureSymbolicLink destination location
+                InvalidArgument -> removeAndRepeat
                 NoSuchThing -> createSymbolicLink destination location
                 _ -> error $ "ensureSymbolicLink " ++ show destination ++ " " ++ show location ++ " -> " ++ show e
     where
-      remove path =
-          do fileExists <- doesFileExist path
+      removeAndRepeat :: IO ()
+      removeAndRepeat =
+          do result <- try remove
+             case (result :: Either IOError ()) of
+               Left e -> error $ "Unable to remove " ++ show location ++ ": " ++ show e
+               Right () -> ensureSymbolicLink destination location
+      remove =
+          do fileExists <- doesFileExist location
              case fileExists of
-               True -> removeFile path
+               True -> removeFile location
                False -> do
-                 dirExists <- doesDirectoryExist path
+                 dirExists <- doesDirectoryExist location
                  case dirExists of
-                   True -> removeDirectoryRecursive path
+                   True -> removeDirectoryRecursive location
                    False -> return ()

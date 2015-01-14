@@ -1,9 +1,8 @@
 #!/usr/bin/make -f
 
+DEB_SETUP_GHC_CONFIGURE_ARGS = -fbackups
 DEB_CABAL_PACKAGE = clckwrks-dot-com
 DEB_DEFAULT_COMPILER = ghc
-
-DEB_SETUP_GHC_CONFIGURE_ARGS = -fbackups
 
 include /usr/share/cdbs/1/rules/debhelper.mk
 include /usr/share/cdbs/1/class/hlibrary.mk

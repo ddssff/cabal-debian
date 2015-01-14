@@ -612,9 +612,9 @@ test9 label =
                      outTop = "test-data/alex/output"
                      envset = EnvSet "/" "/" "/"
                  atoms <- testAtoms
-                 old <- withCurrentDirectory outTop (execDebT (inputDebianization envset) atoms)
-                 let Just (ChangeLog (entry : _)) = getL T.changelog old
-                 new <- withCurrentDirectory inTop (execDebT (debianize (defaultAtoms >> customize >> copyChangelogDate (logDate entry))) atoms)
+                 new <- withCurrentDirectory inTop (execDebT (debianize (defaultAtoms >> customize)) atoms)
+                 let Just (ChangeLog (entry : _)) = getL T.changelog new
+                 old <- withCurrentDirectory outTop (execDebT (inputDebianization envset >> copyChangelogDate (logDate entry)) atoms)
                  diff <- diffDebianizations old new
                  assertEqual label [] diff)
     where
@@ -650,9 +650,9 @@ test10 label =
                      outTop = "test-data/archive/output"
                      envset = EnvSet "/" "/" "/"
                  atoms <- testAtoms
-                 old <- withCurrentDirectory outTop (execDebT (inputDebianization envset) atoms)
-                 let Just (ChangeLog (entry : _)) = getL T.changelog old
-                 new <- withCurrentDirectory inTop (execDebT (debianize (defaultAtoms >> customize >> copyChangelogDate (logDate entry))) atoms)
+                 new <- withCurrentDirectory inTop (execDebT (debianize (defaultAtoms >> customize)) atoms)
+                 let Just (ChangeLog (entry : _)) = getL T.changelog new
+                 old <- withCurrentDirectory outTop (execDebT (inputDebianization envset >> copyChangelogDate (logDate entry)) atoms)
                  diff <- diffDebianizations old new
                  assertEqual label [] diff)
     where

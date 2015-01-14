@@ -147,9 +147,9 @@ Provides: ${haskell:Provides}
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
-  ${haskell:LongDescription}
-  .
-  ${haskell:Blurb}
+ ${haskell:LongDescription}
+ .
+ ${haskell:Blurb}
 
 Package: libghc-artvaluereport-data-prof
 Architecture: any
@@ -160,9 +160,9 @@ Provides: ${haskell:Provides}
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
-  ${haskell:LongDescription}
-  .
-  ${haskell:Blurb}
+ ${haskell:LongDescription}
+ .
+ ${haskell:Blurb}
 
 Package: libghc-artvaluereport-data-doc
 Architecture: all
@@ -173,7 +173,7 @@ Conflicts: ${haskell:Conflicts}
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
-  ${haskell:LongDescription}
-  .
-  ${haskell:Blurb}
+ ${haskell:LongDescription}
+ .
+ ${haskell:Blurb}
 

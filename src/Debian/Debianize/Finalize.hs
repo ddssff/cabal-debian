@@ -17,7 +17,7 @@ import Data.Digest.Pure.MD5 (md5)
 import Data.Lens.Lazy (access, getL)
 import Data.List as List (intercalate, map, nub, unlines)
 import Data.Map as Map (delete, elems, lookup, Map, toList, insertWith)
-import Data.Maybe (fromMaybe, isJust)
+import Data.Maybe (fromMaybe, isJust, isNothing)
 import Data.Monoid ((<>), mempty)
 import Data.Set as Set (difference, filter, fromList, map, null, Set, singleton, toList, union, unions, fold)
 import Data.Set.Extra as Set (mapM_)
@@ -44,16 +44,18 @@ import qualified Debian.Relation as D (BinPkgName(BinPkgName), Relation(..))
 import Debian.Release (parseReleaseName)
 import Debian.Time (getCurrentLocalRFC822Time)
 import Debian.Version (buildDebianVersion, DebianVersion, parseDebianVersion)
+import Debug.Trace (trace)
 import Distribution.Compiler (CompilerFlavor(GHC))
 #if MIN_VERSION_Cabal(1,21,0)
 import Distribution.Compiler (CompilerFlavor(GHCJS))
 #endif
 import Distribution.Package (Dependency(..), PackageIdentifier(..), PackageName(PackageName))
 import Distribution.PackageDescription (PackageDescription)
-import Distribution.PackageDescription as Cabal (allBuildInfo, BuildInfo(buildable, extraLibs), Executable(buildInfo, exeName), maintainer)
+import Distribution.PackageDescription as Cabal (allBuildInfo, BuildInfo(buildable, extraLibs), Executable(buildInfo, exeName), maintainer, author)
 import qualified Distribution.PackageDescription as Cabal (PackageDescription(dataDir, dataFiles, executables, library, package))
 import Prelude hiding (init, log, map, unlines, unlines, writeFile, (.))
 import System.FilePath ((</>), (<.>), makeRelative, splitFileName, takeDirectory, takeFileName)
+import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr(..))
 import Text.PrettyPrint.HughesPJClass (Pretty(pPrint))
 
 -- | Given an Atoms value, get any additional configuration
@@ -203,9 +205,10 @@ finalizeMaintainer = do
   Just pkgDesc <- access T.packageDescription
   maintainerOption <- access T.maintainerOption
   uploadersOption <- access T.uploadersOption
-  let cabalMaintainer = case Cabal.maintainer pkgDesc of
-                          "" -> Nothing
-                          x -> either (const Nothing) Just (parseMaintainer (takeWhile (\ c -> c /= ',' && c /= '\n') x))
+  let cabalAuthorString = takeWhile (\ c -> c /= ',' && c /= '\n') (Cabal.author pkgDesc)
+      cabalMaintainerString = takeWhile (\ c -> c /= ',' && c /= '\n') (Cabal.maintainer pkgDesc)
+      cabalMaintainerString' = cabalAuthorString <> " <" <> cabalMaintainerString <> ">"
+      cabalMaintainerString'' = cabalAuthorString <> " " <> cabalMaintainerString
   changelogSignature <-
       do log <- get >>= return . getL T.changelog
          case log of
@@ -220,13 +223,27 @@ finalizeMaintainer = do
       (S.uploaders . T.control) %= whenEmpty (maybe [] (: []) currentUser)
     False -> do
       (S.maintainer . T.control) ~?= maintainerOption
-      (S.maintainer . T.control) ~?= cabalMaintainer
+      (S.maintainer . T.control) ~?= (either (const Nothing) Just $ parseMaintainer cabalMaintainerString)
+      (S.maintainer . T.control) ~?= (either (const Nothing) Just $ parseMaintainer cabalMaintainerString')
+      (S.maintainer . T.control) ~?= (either (const Nothing) Just $ parseMaintainer cabalMaintainerString'')
+      -- Sometimes the maintainer is just an email, if it matches the author's email we can use it
+      (S.maintainer . T.control) ~?= (case parseMaintainer cabalAuthorString of
+                                        Right x | nameAddr_addr x == cabalMaintainerString -> Just x
+                                        _ -> Nothing)
+      -- Sometimes the maintainer is just an email, try combining it with the author's name
+      (S.maintainer . T.control) ~?= (case parseMaintainer cabalAuthorString of
+                                        Right (NameAddr {nameAddr_name = Just name}) -> either (const Nothing) Just (parseMaintainer (name ++ " <" ++ cabalMaintainerString ++ ">"))
+                                        _ -> Nothing)
       (S.maintainer . T.control) ~?= currentUser
       (S.maintainer . T.control) ~?= changelogSignature
+      x <- access (S.maintainer . T.control)
+      when (isNothing x) 
+           (do liftIO $ putStrLn ("Unable to construct a debian maintainer, using nobody <nobody@nowhere>. Cabal maintainer strings tried:\n " ++
+                                  show cabalMaintainerString ++ ", " ++ show cabalMaintainerString' ++ ", " ++ show cabalMaintainerString'' ++
+                                  ", currentUser: " ++ show currentUser)
+               return ())
+      (S.maintainer . T.control) ~?= (either (const Nothing) Just $ parseMaintainer "nobody <nobody@nowhere>")
       (S.uploaders . T.control) %= whenEmpty uploadersOption
-      -- (S.uploaders . T.control) %= whenEmpty (maybe [] (: []) cabalMaintainer)
-      -- (S.uploaders . T.control) %= whenEmpty (maybe [] (: []) currentUser)
-      -- (S.uploaders . T.control) %= whenEmpty (maybe [] (: []) changelogSignature)
 
 -- | If l is the empty list return d, otherwise return l.
 whenEmpty :: [a] -> [a] -> [a]

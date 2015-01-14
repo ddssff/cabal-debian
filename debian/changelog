@@ -1,3 +1,10 @@
+haskell-cabal-debian (4.20.1) unstable; urgency=low
+
+  * Fix a bug in the computation of the debian maintainer field
+  * Improve rules file generation
+
+ -- David Fox <dsf@seereason.com>  Wed, 14 Jan 2015 14:38:56 -0800
+
 haskell-cabal-debian (4.20) unstable; urgency=low
 
   * Add a --source-section option

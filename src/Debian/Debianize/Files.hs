@@ -18,7 +18,6 @@ import Data.Monoid ((<>), mempty)
 import Data.Set as Set (toList, member, fold)
 import Data.Text as Text (Text, pack, unpack, lines, unlines, null, intercalate, dropWhile, dropWhileEnd, strip)
 import Debian.Control (Control'(Control, unControl), Paragraph'(Paragraph), Field'(Field))
-import Debian.Debianize.Goodies (makeRulesHead)
 import Debian.Debianize.Monad (DebT)
 import Debian.Debianize.Prelude (showDeps')
 import qualified Debian.Debianize.Types.Atoms as T
@@ -139,9 +138,11 @@ prermFiles =
 
 rules :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
 rules =
-    do rh <- lift (access T.rulesHead) >>= maybe (lift makeRulesHead) return
+    do Just rh <- lift (access T.rulesHead)
+       rassignments <- lift (access T.rulesSettings) >>= return . intercalate "\n"
+       rincludes <- lift (access T.rulesIncludes) >>= return . intercalate "\n"
        rl <- (reverse . Set.toList) <$> lift (access T.rulesFragments)
-       return [("debian/rules", intercalate "\n\n" (List.map strip (rh : rl)) <> "\n")]
+       return [("debian/rules", intercalate "\n\n" (filter (not . Text.null) (List.map strip (rh : rassignments : rincludes : rl))) <> "\n")]
 
 changelog :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
 changelog =

@@ -16,23 +16,20 @@ module Debian.Debianize.Goodies
     , serverAtoms
     , backupAtoms
     , execAtoms
-    , makeRulesHead
     ) where
 
-import Data.Char (toLower, isSpace)
+import Data.Char (isSpace)
 import Data.Lens.Lazy (modL, access)
 import Data.List as List (map, intersperse, intercalate, dropWhileEnd)
 import Data.Map as Map (insertWith)
 import Data.Maybe (fromMaybe)
 import Data.Monoid ((<>))
-import Data.Set as Set (insert, union, singleton, toList)
+import Data.Set as Set (insert, union, singleton)
 import Data.Text as Text (Text, pack, unlines)
-import Debian.Debianize.DebianName (debianNameBase)
 import Debian.Debianize.Monad (Atoms, DebT, execDebM)
 import Debian.Debianize.Prelude (stripWith, (%=), (+=), (++=), (+++=))
 import qualified Debian.Debianize.Types as T
 import qualified Debian.Debianize.Types.Atoms as T
-import Debian.Debianize.VersionSplits (DebBase(DebBase))
 import Debian.Orphans ()
 import Debian.Pretty (ppDisplay, ppDisplay')
 import Debian.Policy (apacheLogDirectory, apacheErrorLog, apacheAccessLog, databaseDirectory, serverAppLog, serverAccessLog)
@@ -354,25 +351,3 @@ fileAtoms' b sourceDir' execName' destDir' destName' r =
       (Just s, False) -> execDebM (T.installTo b (s </> execName') (d </> destName')) r
     where
       d = fromMaybe "usr/bin" destDir'
-
--- | Build a suitable value for the head of the rules file.
-makeRulesHead :: (Monad m, Functor m) => DebT m Text
-makeRulesHead =
-    do DebBase b <- debianNameBase
-       compilers <- access T.compilerFlavors
-       let ls = ["DEB_CABAL_PACKAGE = " <> pack b] ++
-                -- If there is a single entry in the compiler list we
-                -- can tell debian/rules what compiler to use,
-                -- otherwise it has to figure this out from the
-                -- package names in debian/control.  This is required
-                -- to build a package without a library.
-                (case toList compilers of
-                   [x] -> ["DEB_DEFAULT_COMPILER = " <> pack (map toLower (show x))]
-                   _ -> []) ++
-                [""]
-       return $
-          Text.unlines $
-            ["#!/usr/bin/make -f", ""] ++
-            ls ++
-            ["include /usr/share/cdbs/1/rules/debhelper.mk",
-             "include /usr/share/cdbs/1/class/hlibrary.mk"]

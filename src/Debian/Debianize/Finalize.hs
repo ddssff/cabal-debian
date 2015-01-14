@@ -12,6 +12,7 @@ import Control.Monad as List (mapM_)
 import Control.Monad.State (get, modify)
 import Control.Monad.Trans (liftIO, MonadIO)
 import Data.ByteString.Lazy.UTF8 (fromString)
+import Data.Char (toLower)
 import Data.Digest.Pure.MD5 (md5)
 import Data.Lens.Lazy (access, getL)
 import Data.List as List (intercalate, map, nub, unlines)
@@ -31,7 +32,7 @@ import Debian.Debianize.Monad as Monad (DebT)
 import Debian.Debianize.Options (compileCommandlineArgs, compileEnvironmentArgs)
 import Debian.Debianize.Prelude ((%=), (+=), fromEmpty, fromSingleton, (~=), (~?=))
 import qualified Debian.Debianize.Types as T (apacheSite, backups, binaryArchitectures, binaryPackages, binarySection, breaks, buildDepends, buildDependsIndep, buildDir, builtUsing, changelog, comments, compat, conflicts, debianDescription, debVersion, depends, epochMap, executable, extraDevDeps, extraLibMap, file, install, installCabalExec, installData, installDir, installTo, intermediateFiles, link, maintainerOption, uploadersOption, noDocumentationLibrary, noProfilingLibrary, omitProfVersionDeps, packageDescription, packageType, preDepends, provides, recommends, replaces, revision, rulesFragments, serverInfo, standardsVersion, source, sourceFormat, sourcePackageName, sourcePriority, sourceSection, suggests, utilsPackageNameBase, verbosity, watch, website, control, homepage, official, vcsFields)
-import qualified Debian.Debianize.Types.Atoms as A (InstallFile(execName, sourceDir), showAtoms, compilerFlavors, Atom(..), atomSet)
+import qualified Debian.Debianize.Types.Atoms as A (InstallFile(execName, sourceDir), showAtoms, compilerFlavors, Atom(..), atomSet, rulesHead, rulesSettings, rulesIncludes)
 import qualified Debian.Debianize.Types.BinaryDebDescription as B (BinaryDebDescription, package, PackageType(Development, Documentation, Exec, Profiling, Source, HaskellSource, Utilities), PackageType)
 import qualified Debian.Debianize.Types.SourceDebDescription as S (xDescription, VersionControlSpec(..), maintainer, uploaders)
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
@@ -100,6 +101,7 @@ finalizeDebianization' date debhelperCompat =
        T.compat ~?= debhelperCompat
        finalizeChangelog date
        finalizeControl
+       finalizeRules
        -- T.license ~?= Just (Cabal.license pkgDesc)
        expandAtoms
        -- Create the binary packages for the web sites, servers, backup packges, and other executables
@@ -249,10 +251,11 @@ finalizeChangelog date =
     do finalizeMaintainer
        ver <- debianVersion
        src <- access T.sourcePackageName
-       Just maint <- access (S.maintainer . T.control)
+       Just debianMaintainer <- access (S.maintainer . T.control)
+       -- pkgDesc <- access T.packageDescription >>= return . maybe Nothing (either Nothing Just . parseMaintainer . Cabal.maintainer)
        cmts <- access T.comments
        T.changelog %= fmap (dropFutureEntries ver)
-       T.changelog %= fixLog src ver cmts maint
+       T.changelog %= fixLog src ver cmts debianMaintainer
     where
       -- Ensure that the package name is correct in the first log entry.
       fixLog src ver cmts _maint (Just (ChangeLog (entry : older))) | logVersion entry == ver =
@@ -565,6 +568,19 @@ expandAtoms =
       expandExecutable =
           do mp <- get >>= return . getL T.executable
              List.mapM_ (\ (b, f) -> modify (execAtoms b f)) (Map.toList mp)
+
+-- | Add the normal default values to the rules files.
+finalizeRules :: (Monad m) => DebT m ()
+finalizeRules =
+    do DebBase b <- debianNameBase
+       compilers <- access A.compilerFlavors
+       A.rulesHead ~?= Just "#!/usr/bin/make -f"
+       A.rulesSettings %= (++ ["DEB_CABAL_PACKAGE = " <> pack b])
+       A.rulesSettings %= (++ (case Set.toList compilers of
+                                 [x] -> ["DEB_DEFAULT_COMPILER = " <> pack (List.map toLower (show x))]
+                                 _ -> []))
+       A.rulesIncludes %= (++ ["include /usr/share/cdbs/1/rules/debhelper.mk",
+                               "include /usr/share/cdbs/1/class/hlibrary.mk"])
 
 data Dependency_
   = BuildDepends Dependency

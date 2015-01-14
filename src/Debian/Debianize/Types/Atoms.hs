@@ -130,6 +130,8 @@ data Atoms
       , intermediateFiles_ :: Set (FilePath, Text)
       -- ^ Put this text into a file with the given name in the debianization.
       , rulesHead_ :: Maybe Text
+      , rulesSettings_ :: [Text]
+      , rulesIncludes_ :: [Text]
       -- ^ The header of the debian/rules file.  The remainder is assembled
       -- from DebRulesFragment values in the atom list.
       , rulesFragments_ :: Set Text
@@ -298,6 +300,8 @@ makeAtoms envset =
       , watch_ = Nothing
       , intermediateFiles_ = mempty
       , rulesHead_ = Nothing
+      , rulesSettings_ = mempty
+      , rulesIncludes_ = mempty
       , rulesFragments_ = mempty
       , warning_ = mempty
       , utilsPackageNameBase_ = Nothing
@@ -602,9 +606,17 @@ sourceArchitectures = lens sourceArchitecture_ (\ a b -> b {sourceArchitecture_ 
 extraDevDeps :: Lens Atoms Relations
 extraDevDeps = lens extraDevDeps_ (\ a b -> b {extraDevDeps_ = a})
 
--- | The beginning of the rules file
+-- | The rules file header
 rulesHead :: Lens Atoms (Maybe Text)
 rulesHead = lens rulesHead_ (\ a b -> b {rulesHead_ = a})
+
+-- | The rules file assignments
+rulesSettings :: Lens Atoms [Text]
+rulesSettings = lens rulesSettings_ (\ a b -> b {rulesSettings_ = a})
+
+-- | The rules file include directives
+rulesIncludes :: Lens Atoms [Text]
+rulesIncludes = lens rulesIncludes_ (\ a b -> b {rulesIncludes_ = a})
 
 -- | Additional fragments of the rules file
 rulesFragments :: Lens Atoms (Set Text)

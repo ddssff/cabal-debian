@@ -36,6 +36,8 @@ module Debian.Debianize.Types
     , comments
     , standardsVersion
     , rulesHead
+    , rulesSettings
+    , rulesIncludes
     , rulesFragments
     , official
     , noProfilingLibrary

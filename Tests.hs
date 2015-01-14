@@ -14,16 +14,15 @@ import Data.Lens.Lazy (access, getL, setL)
 import Data.List (sortBy)
 import Data.Map as Map (differenceWithKey, intersectionWithKey)
 import qualified Data.Map as Map (elems, Map, toList)
-import Data.Maybe (fromMaybe)
 import Data.Monoid ((<>), mconcat, mempty)
 import Data.Set as Set (fromList, singleton, union)
-import Data.Text as Text (intercalate, lines, split, Text, unlines, unpack)
+import Data.Text as Text (intercalate, split, Text, unlines, unpack)
 import Data.Version (Version(Version))
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(..), parseEntry)
 import Debian.Debianize.DebianName (mapCabal, splitCabal)
 import Debian.Debianize.Files (debianizationFileMap)
 import Debian.Debianize.Finalize (debianize, finalizeDebianization)
-import Debian.Debianize.Goodies (doBackups, doExecutable, doServer, doWebsite, makeRulesHead, tightDependencyFixup)
+import Debian.Debianize.Goodies (doBackups, doExecutable, doServer, doWebsite, tightDependencyFixup)
 import Debian.Debianize.Input (inputChangeLog, inputDebianization, inputCabalization)
 import Debian.Debianize.Monad (DebT, evalDebT, execDebM, execDebT)
 import Debian.Debianize.Prelude ((%=), (++=), (+=), (~=), withCurrentDirectory)
@@ -424,12 +423,7 @@ test4 label =
       serverNames = map BinPkgName ["clckwrks-dot-com-production"] -- , "clckwrks-dot-com-staging", "clckwrks-dot-com-development"]
       -- Insert a line just above the debhelper.mk include
       fixRules =
-          makeRulesHead >>= \ rh -> T.rulesHead %= (\ mt -> (Just . f) (fromMaybe rh mt))
-          where
-            f t = Text.unlines $ concat $
-                  map (\ line -> if line == "include /usr/share/cdbs/1/rules/debhelper.mk"
-                                 then ["DEB_SETUP_GHC_CONFIGURE_ARGS = -fbackups", "", line] :: [Text]
-                                 else [line] :: [Text]) (Text.lines t)
+          rulesSettings %= (++ ["DEB_SETUP_GHC_CONFIGURE_ARGS = -fbackups"])
 {-
           mapAtoms f deb
           where

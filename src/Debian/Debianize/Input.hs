@@ -19,7 +19,7 @@ import Control.Exception (bracket)
 import Control.Monad (when, filterM)
 import Control.Monad.State (put)
 import Control.Monad.Trans (MonadIO, liftIO)
-import Data.Char (isSpace, toLower)
+import Data.Char (isSpace)
 import Data.Lens.Lazy (setL, modL, access)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Monoid ((<>))
@@ -51,7 +51,7 @@ import Distribution.Compiler (CompilerId)
 #if MIN_VERSION_Cabal(1,22,0)
 import Distribution.Compiler (unknownCompilerInfo, AbiTag(NoAbiTag))
 #endif
-import Distribution.Package (Package(packageId), PackageIdentifier(..), PackageName(PackageName), Dependency)
+import Distribution.Package (Package(packageId), PackageIdentifier(..), PackageName(unPackageName), Dependency)
 import qualified Distribution.PackageDescription as Cabal (PackageDescription(package, license, copyright {-, synopsis, description-}))
 #if MIN_VERSION_Cabal(1,19,0)
 import qualified Distribution.PackageDescription as Cabal (PackageDescription(licenseFiles))
@@ -59,6 +59,7 @@ import qualified Distribution.PackageDescription as Cabal (PackageDescription(li
 import qualified Distribution.PackageDescription as Cabal (PackageDescription(licenseFile))
 #endif
 import Distribution.PackageDescription as Cabal (PackageDescription, FlagName)
+import qualified Distribution.PackageDescription as Cabal (dataDir)
 import Distribution.PackageDescription.Configuration (finalizePackageDescription)
 import Distribution.PackageDescription.Parse (readPackageDescription)
 import Distribution.Simple.Utils (defaultPackageDesc, die, setupMessage)
@@ -357,7 +358,9 @@ autoreconf verbose pkgDesc = do
 -- package description.  This needs to match the path cabal assigns to
 -- datadir in the dist/build/autogen/Paths_packagename.hs module, or
 -- perhaps the path in the cabal_debian_datadir environment variable.
-dataDir :: Cabal.PackageDescription -> FilePath
-dataDir p =
-    let PackageName pkgname = pkgName . Cabal.package $ p in
-    "usr/share" </> map toLower pkgname
+dataDir :: MonadIO m => DebT m FilePath
+dataDir = do
+  (Just d) <- access packageDescription
+  return $ case Cabal.dataDir d of
+             [] -> "usr/share" </> (unPackageName $ pkgName $ Cabal.package d)
+             x -> x

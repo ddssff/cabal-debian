@@ -44,7 +44,6 @@ import qualified Debian.Relation as D (BinPkgName(BinPkgName), Relation(..))
 import Debian.Release (parseReleaseName)
 import Debian.Time (getCurrentLocalRFC822Time)
 import Debian.Version (buildDebianVersion, DebianVersion, parseDebianVersion)
-import Debug.Trace (trace)
 import Distribution.Compiler (CompilerFlavor(GHC))
 #if MIN_VERSION_Cabal(1,21,0)
 import Distribution.Compiler (CompilerFlavor(GHCJS))
@@ -468,7 +467,7 @@ makeUtilsPackage pkgDesc hc =
             (Nothing) -> A.execName i
             (Just s) ->  s </> A.execName i
 
-expandAtoms :: Monad m => DebT m ()
+expandAtoms :: MonadIO m => DebT m ()
 expandAtoms =
     do hcs <- access A.compilerFlavors >>= return . Set.toList
        builddir <- access T.buildDir >>= return . fromEmpty (case hcs of
@@ -477,7 +476,7 @@ expandAtoms =
                                                                [GHCJS] -> singleton "dist-ghcjs/build"
 #endif
                                                                _ -> error $ "Unexpected compiler: " ++ show hcs)
-       dDir <- access T.packageDescription >>= maybe (error "expandAtoms") (return . dataDir)
+       dDir <- dataDir
        expandApacheSites
        expandInstallCabalExecs (fromSingleton (error "no builddir") (\ xs -> error $ "multiple builddirs:" ++ show xs) builddir)
        expandInstallCabalExecTo (fromSingleton (error "no builddir") (\ xs -> error $ "multiple builddirs:" ++ show xs) builddir)

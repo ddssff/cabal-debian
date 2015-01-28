@@ -14,13 +14,13 @@ import Data.Lens.Lazy (access, getL)
 import Data.List as List (filter, map, minimumBy, nub)
 import Data.Map as Map (lookup, Map)
 import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing)
-import Data.Set as Set (Set, member, toList, fromList, map, fold, union, empty)
+import Data.Set as Set (Set, member, toList, fromList, map, fold, union, empty, singleton)
 import Data.Version (showVersion, Version)
 import Debian.Debianize.Bundled (builtIn)
 import Debian.Debianize.DebianName (mkPkgName, mkPkgName')
 import Debian.Debianize.Monad as Monad (Atoms, DebT)
 import qualified Debian.Debianize.Types as T (buildDepends, buildDependsIndep, debianNameMap, epochMap, execMap, extraLibMap, missingDependencies, noDocumentationLibrary, noProfilingLibrary, omitProfVersionDeps)
-import Debian.Debianize.Types.Atoms (EnvSet(dependOS), buildEnv, compilerFlavors)
+import Debian.Debianize.Types.Atoms (EnvSet(dependOS), buildEnv, compilerFlavor)
 import qualified Debian.Debianize.Types.BinaryDebDescription as B (PackageType(Development, Documentation, Profiling))
 import Debian.Debianize.VersionSplits (packageRangesFromVersionSplits)
 import Debian.Orphans ()
@@ -80,7 +80,8 @@ allBuildDepends buildDepends' buildTools' pkgconfigDepends' extraLibs' =
 -- the rules for building haskell packages.
 debianBuildDeps :: (MonadIO m, Functor m) => PackageDescription -> DebT m D.Relations
 debianBuildDeps pkgDesc =
-    do hcs <- access compilerFlavors
+    do hc <- access compilerFlavor
+       let hcs = singleton hc -- vestigial
        let hcTypePairs =
                fold union empty $
                   Set.map (\ hc -> Set.map (hc,) $ hcPackageTypes hc) hcs
@@ -119,7 +120,8 @@ debianBuildDeps pkgDesc =
 
 debianBuildDepsIndep :: (MonadIO m, Functor m) => PackageDescription -> DebT m D.Relations
 debianBuildDepsIndep pkgDesc =
-    do hcs <- access compilerFlavors
+    do hc <- access compilerFlavor
+       let hcs = singleton hc -- vestigial
        doc <- get >>= return . not . getL T.noDocumentationLibrary
        bDeps <- get >>= return . getL T.buildDependsIndep
        cDeps <- cabalDeps
@@ -154,7 +156,8 @@ debianBuildDepsIndep pkgDesc =
 -- dependencies, so we have access to all the cross references.
 docDependencies :: (MonadIO m, Functor m) => Dependency_ -> DebT m D.Relations
 docDependencies (BuildDepends (Dependency name ranges)) =
-    do hcs <- access compilerFlavors
+    do hc <- access compilerFlavor
+       let hcs = singleton hc -- vestigial
        omitProfDeps <- access T.omitProfVersionDeps
        concat <$> mapM (\ hc -> dependencies hc B.Documentation name ranges omitProfDeps) (toList hcs)
 docDependencies _ = return []

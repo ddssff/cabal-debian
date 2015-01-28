@@ -12,7 +12,6 @@ import Control.Monad.State (get, put)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Char (toLower, toUpper, isDigit, ord)
 import Data.Lens.Lazy (Lens)
-import Data.Set (singleton, insert, delete)
 import Debian.Debianize.Goodies (doExecutable)
 import Debian.Debianize.Monad (DebT)
 import Debian.Debianize.Prelude (read', maybeRead, (+=), (~=), (%=), (++=), (+++=))
@@ -22,7 +21,7 @@ import Debian.Debianize.Types
      sourceFormat, buildDepends, buildDependsIndep, extraDevDeps, depends, conflicts, replaces, provides,
      recommends, suggests, extraLibMap, debVersion, revision, epochMap, execMap, utilsPackageNameBase,
      standardsVersion, official, sourceSection)
-import Debian.Debianize.Types.Atoms (Atoms, EnvSet(..), InstallFile(..), DebAction(..), setBuildEnv, compilerFlavors)
+import Debian.Debianize.Types.Atoms (Atoms, EnvSet(..), InstallFile(..), DebAction(..), setBuildEnv, compilerFlavor)
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
 import Debian.Orphans ()
 import Debian.Policy (SourceFormat(Quilt3, Native3), parseMaintainer, parseStandardsVersion)
@@ -188,7 +187,7 @@ options =
              "The package has an no upstream tarball, write '3.0 (native)' into source/format.",
       Option "" ["official"] (NoArg (official ~= True))
              "This packaging is created of the official Debian Haskell Group",
-      Option "" ["builddir"] (ReqArg (\ s -> buildDir ~= singleton (s </> "build")) "PATH")
+      Option "" ["builddir"] (ReqArg (\ s -> buildDir ~= Just (s </> "build")) "PATH")
              (unlines [ "Subdirectory where cabal does its build, dist/build by default, dist-ghc when"
                       , "run by haskell-devscripts.  The build subdirectory is added to match the"
                       , "behavior of the --builddir option in the Setup script."]),
@@ -200,22 +199,15 @@ options =
                       , "be generated.  This determines which compiler will be available, which in turn"
                       , "determines which basic libraries can be provided by the compiler.  This can be"
                       , "set to /, but it must be set."]),
-      Option "" ["ghc"] (NoArg (compilerFlavors %= (insert GHC))) "Generate packages for GHC - same as --with-compiler GHC",
-      Option "" ["no-ghc"] (NoArg (compilerFlavors %= (delete GHC))) "Do not generate packages for GHC - same as --without-compiler GHC",
+      Option "" ["ghc"] (NoArg (compilerFlavor ~= GHC)) "Generate packages for GHC - same as --with-compiler GHC",
 #if MIN_VERSION_Cabal(1,21,0)
-      Option "" ["ghcjs"] (NoArg (compilerFlavors %= (insert GHCJS))) "Generate packages for GHCJS - same as --with-compiler GHCJS",
-      Option "" ["no-ghcjs"] (NoArg (compilerFlavors %= (delete GHCJS))) "Do not generate packages for GHCJS - same as --without-compiler GHCJS",
+      Option "" ["ghcjs"] (NoArg (compilerFlavor ~= GHCJS)) "Generate packages for GHCJS - same as --with-compiler GHCJS",
 #endif
-      Option "" ["hugs"] (NoArg (compilerFlavors %= (insert Hugs))) "Generate packages for Hugs - same as --with-compiler GHC",
-      Option "" ["no-hugs"] (NoArg (compilerFlavors %= (delete Hugs))) "Do not generate packages for Hugs - same as --without-compiler Hugs",
+      Option "" ["hugs"] (NoArg (compilerFlavor ~= Hugs)) "Generate packages for Hugs - same as --with-compiler GHC",
       Option "" ["with-compiler"] (ReqArg (\ s -> maybe (error $ "Invalid compiler id: " ++ show s)
-                                                        (\ hc -> compilerFlavors %= insert hc)
+                                                        (\ hc -> compilerFlavor ~= hc)
                                                         (readMaybe (map toUpper s) :: Maybe CompilerFlavor)) "COMPILER")
              (unlines [ "Generate packages for this CompilerFlavor" ]),
-      Option "" ["without-compiler"] (ReqArg (\ s -> maybe (error $ "Invalid compiler id: " ++ show s)
-                                                           (\ hc -> compilerFlavors %= delete hc)
-                                                           (readMaybe (map toUpper s) :: Maybe CompilerFlavor)) "COMPILER")
-             (unlines [ "Do not generate packages for this CompilerFlavors, e.g. GHC" ]),
       Option "f" ["flags"] (ReqArg (\ fs -> mapM_ (cabalFlagAssignments +=) (flagList fs)) "FLAGS")
              (unlines [ "Flags to pass to the finalizePackageDescription function in"
                       , "Distribution.PackageDescription.Configuration when loading the cabal file."]),

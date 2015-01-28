@@ -23,7 +23,7 @@ import Data.Generics (Data, Typeable)
 import Data.Lens.Lazy (Lens, lens, (%=))
 import Data.Map as Map (Map)
 import Data.Monoid (Monoid(..))
-import Data.Set as Set (Set, singleton, insert)
+import Data.Set as Set (Set, insert)
 import Data.Text (Text)
 import Debian.Changes (ChangeLog)
 import Debian.Debianize.Types.CopyrightDescription
@@ -68,7 +68,7 @@ data Atoms
       , omitLTDeps_ :: Bool
       -- ^ If present, don't generate the << dependency when we see a cabal
       -- equals dependency.  (The implementation of this was somehow lost.)
-      , buildDir_ :: Set FilePath
+      , buildDir_ :: Maybe FilePath
       -- ^ The build directory used by cabal, typically dist/build when
       -- building manually or dist-ghc/build when building using GHC and
       -- haskell-devscripts.  This value is used to locate files
@@ -230,8 +230,10 @@ data Atoms
       -- reason to use this is because we don't yet know the name of the dev library package.
       , packageDescription_ :: Maybe PackageDescription
       -- ^ The result of reading a cabal configuration file.
-      , compilerFlavors_ :: Set CompilerFlavor
-      -- ^ Which compilers should we generate library packages for?
+      , compilerFlavor_ :: {-Set-} CompilerFlavor
+      -- ^ Which compiler should we generate library packages for?  In theory a single
+      -- deb could handle multiple compiler flavors, but the support tools are not ready
+      -- for this as of right now (28 Jan 2015.)
       , official_ :: Bool
       -- ^ Whether this packaging is created by the Debian Haskell Group
       } deriving (Eq, Show, Data, Typeable)
@@ -284,7 +286,7 @@ makeAtoms envset =
       , noProfilingLibrary_ = False
       , omitProfVersionDeps_ = False
       , omitLTDeps_ = False
-      , buildDir_ = mempty
+      , buildDir_ = Nothing
       , buildEnv_ = envset
       , flags_ = defaultFlags
       , debianNameMap_ = mempty
@@ -346,7 +348,7 @@ makeAtoms envset =
       , backups_ = mempty
       , extraDevDeps_ = mempty
       , packageDescription_ = Nothing
-      , compilerFlavors_ = singleton GHC
+      , compilerFlavor_ = GHC
       , official_ = False
       }
 
@@ -459,7 +461,7 @@ warning = lens warning_ (\ a b -> b {warning_ = a})
 -- @dpkg-buildpackage@ the compiler name is appended, so it is typically
 -- @dist-ghc@.  Cabal-debian needs the correct value of buildDir to find
 -- the build results.
-buildDir :: Lens Atoms (Set FilePath)
+buildDir :: Lens Atoms (Maybe FilePath)
 buildDir = lens buildDir_ (\ b a -> a {buildDir_ = b})
 
 -- We need to update ghcVersion when this is changed, which means doing IO
@@ -745,8 +747,8 @@ installInit = lens installInit_ (\ a b -> b {installInit_ = a})
 intermediateFiles :: Lens Atoms (Set (FilePath, Text))
 intermediateFiles = lens intermediateFiles_ (\ a b -> b {intermediateFiles_ = a})
 
-compilerFlavors :: Lens Atoms (Set CompilerFlavor)
-compilerFlavors = lens compilerFlavors_ (\ a b -> b {compilerFlavors_ = a})
+compilerFlavor :: Lens Atoms CompilerFlavor
+compilerFlavor = lens compilerFlavor_ (\ a b -> b {compilerFlavor_ = a})
 
 {-
 compilerFlavor :: Monad m => StateT Atoms m CompilerFlavor

@@ -64,7 +64,7 @@ testAtoms :: IO Atoms
 testAtoms = ghc763 <$> T.newAtoms
     where
       ghc763 :: Atoms -> Atoms
-      ghc763 atoms = setL T.compilerFlavors (singleton GHC) atoms
+      ghc763 atoms = setL T.compilerFlavor GHC atoms
 
 -- | Create a Debianization based on a changelog entry and a license
 -- value.  Uses the currently installed versions of debhelper and

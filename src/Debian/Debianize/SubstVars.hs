@@ -21,7 +21,7 @@ import Data.Maybe (catMaybes, listToMaybe, fromMaybe)
 import qualified Data.Set as Set (member, Set)
 import Data.Text (pack)
 import Debian.Control (Control'(unControl), ControlFunctions(lookupP, parseControl, stripWS), Field'(Field))
-import Debian.Debianize.Input (inputCabalization)
+import Debian.Debianize.InputCabalPackageDescription (inputCabalization)
 import Debian.Debianize.Monad (DebT)
 import Debian.Debianize.Prelude ((!), buildDebVersionMap, cond, DebMap, debOfFile, diffFile, dpkgFileMap, replaceFile, showDeps, modifyM)
 import qualified Debian.Debianize.Types.Atoms as T

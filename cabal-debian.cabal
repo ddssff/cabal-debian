@@ -195,6 +195,7 @@ Library
    Debian.Debianize.Finalize
    Debian.Debianize.Goodies
    Debian.Debianize.Input
+   Debian.Debianize.InputCabalPackageDescription
    Debian.Debianize.Interspersed
    Debian.Debianize.Monad
    Debian.Debianize.Options

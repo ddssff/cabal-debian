@@ -5,73 +5,50 @@ module Debian.Debianize.Input
     ( inputDebianization
     , inputDebianizationFile
     , inputChangeLog
-    , inputCabalization
-    , inputCabalization'
     , dataDir
     ) where
 
 import Debug.Trace (trace)
 
-import Control.Applicative ((<$>))
 import Control.Category ((.))
 --import Control.DeepSeq (NFData, force)
-import Control.Exception (bracket)
-import Control.Monad (when, filterM)
+import Control.Monad (filterM)
 import Control.Monad.State (put)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Char (isSpace)
 import Data.Lens.Lazy (setL, modL, access)
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (fromMaybe)
 import Data.Monoid ((<>))
-import Data.Set as Set (Set, toList, fromList, insert, singleton)
+import Data.Set as Set (fromList, insert, singleton)
 import Data.Text (Text, unpack, pack, lines, words, break, strip, null)
 import Data.Text.IO (readFile)
 --import Data.Version (showVersion, Version(Version))
 import Debian.Changes (parseChangeLog)
 import Debian.Control (Control'(unControl), Paragraph'(..), stripWS, parseControlFromFile, Field, Field'(..), ControlFunctions)
-import qualified Debian.Debianize.Types.Atoms as T (makeAtoms, compilerFlavors)
+import qualified Debian.Debianize.Types.Atoms as T (makeAtoms)
 import Debian.Debianize.Types.BinaryDebDescription (BinaryDebDescription, newBinaryDebDescription)
 import qualified Debian.Debianize.Types.BinaryDebDescription as B
-import Debian.Debianize.Types.CopyrightDescription (readCopyrightDescription, CopyrightDescription(..), FilesOrLicenseDescription(..))
+import Debian.Debianize.Types.CopyrightDescription (readCopyrightDescription)
 import qualified Debian.Debianize.Types.SourceDebDescription as S
 import Debian.Debianize.Types.Atoms
     (control, warning, sourceFormat, watch, rulesHead, compat, packageDescription,
      copyright, changelog, installInit, postInst, postRm, preInst, preRm,
-     logrotateStanza, link, install, installDir, intermediateFiles, cabalFlagAssignments, verbosity, buildEnv)
+     logrotateStanza, link, install, installDir, intermediateFiles)
 import Debian.Debianize.Monad (DebT)
-import Debian.Debianize.Prelude (getDirectoryContents', readFileMaybe, read', intToVerbosity', (~=), (~?=), (+=), (++=), (+++=), (%=))
-import Debian.Debianize.Types.Atoms (EnvSet(dependOS))
-import Debian.GHC (newestAvailableCompilerId)
+import Debian.Debianize.Prelude (getDirectoryContents', readFileMaybe, read', (~=), (~?=), (+=), (++=), (+++=))
+import Debian.Debianize.Types.Atoms (EnvSet)
 import Debian.Orphans ()
 import Debian.Policy (Section(..), parseStandardsVersion, readPriority, readSection, parsePackageArchitectures, parseMaintainer,
-                      parseUploaders, readSourceFormat, fromCabalLicense)
+                      parseUploaders, readSourceFormat)
 import Debian.Relation (Relations, BinPkgName(..), SrcPkgName(..), parseRelations)
 --import Debian.Version (DebianVersion, parseDebianVersion)
-import Distribution.Compiler (CompilerId)
-#if MIN_VERSION_Cabal(1,22,0)
-import Distribution.Compiler (unknownCompilerInfo, AbiTag(NoAbiTag))
-#endif
-import Distribution.Package (Package(packageId), PackageIdentifier(..), PackageName(unPackageName), Dependency)
-import qualified Distribution.PackageDescription as Cabal (PackageDescription(package, license, copyright {-, synopsis, description-}))
-#if MIN_VERSION_Cabal(1,19,0)
-import qualified Distribution.PackageDescription as Cabal (PackageDescription(licenseFiles))
-#else
-import qualified Distribution.PackageDescription as Cabal (PackageDescription(licenseFile))
-#endif
-import Distribution.PackageDescription as Cabal (PackageDescription, FlagName)
+import Distribution.Package (PackageIdentifier(..), PackageName(unPackageName))
+import qualified Distribution.PackageDescription as Cabal (PackageDescription(package))
 import qualified Distribution.PackageDescription as Cabal (dataDir)
-import Distribution.PackageDescription.Configuration (finalizePackageDescription)
-import Distribution.PackageDescription.Parse (readPackageDescription)
-import Distribution.Simple.Utils (defaultPackageDesc, die, setupMessage)
-import Distribution.System (Platform(..), buildOS, buildArch)
-import Distribution.Verbosity (Verbosity)
 import Prelude hiding (readFile, lines, words, break, null, log, sum, (.))
 -- import qualified Prelude (lines)
-import System.Directory (doesFileExist, getCurrentDirectory)
-import System.Exit (ExitCode(..))
+import System.Directory (doesFileExist)
 import System.FilePath ((</>), takeExtension, dropExtension)
-import System.Posix.Files (setFileCreationMask)
-import System.Process (system)
 import System.IO.Error (catchIOError, tryIOError)
 -- import System.Unix.Chroot (useEnv)
 -- import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr)
@@ -274,81 +251,6 @@ readInstall p line =
 -- | Read a line from a debian .dirs file
 readDir :: Monad m => BinPkgName -> Text -> DebT m ()
 readDir p line = installDir p (unpack line)
-
-nothingIf :: (a -> Bool) -> a -> Maybe a
-nothingIf p x = if p x then Nothing else Just x
-
-inputCabalization :: (MonadIO m, Functor m) => DebT m ()
-inputCabalization =
-    do vb <- access verbosity >>= return . intToVerbosity'
-       flags <- access cabalFlagAssignments
-       root <- dependOS <$> access buildEnv
-       hcs <- access T.compilerFlavors
-       let cids = map (newestAvailableCompilerId root) (toList hcs)
-       ePkgDescs <- liftIO $ inputCabalization' vb flags cids
-       mapM_ (either (\ deps -> liftIO getCurrentDirectory >>= \ here ->
-                                error $ "Missing dependencies in cabal package at " ++ here ++ ": " ++ show deps)
-                     (\ pkgDesc -> do
-                        packageDescription ~= Just pkgDesc
-                        -- This will contain either the contents of the file given in
-                        -- the license-file: field or the contents of the license:
-                        -- field.
-                        licenseFiles <- mapM (\ path -> liftIO (readFileMaybe path) >>= \ text -> return (path, text))
-#if MIN_VERSION_Cabal(1,19,0)
-                                             (Cabal.licenseFiles pkgDesc)
-#else
-                                             (case Cabal.licenseFile pkgDesc of
-                                                "" -> []
-                                                path -> [path])
-#endif
-                        -- It is possible we might interpret the license file path
-                        -- as a license name, so I hang on to it here.
-                        let licenseFiles' = mapMaybe (\ (path, text) -> maybe Nothing (\ t -> Just (path, t)) text) licenseFiles
-                        copyright %= cabalToCopyrightDescription pkgDesc licenseFiles'
-                      ))
-             ePkgDescs
-
-cabalToCopyrightDescription :: PackageDescription -> [(FilePath, Text)] -> CopyrightDescription -> CopyrightDescription
-cabalToCopyrightDescription pkgDesc licenseFiles cdesc =
-    let triples = zip3 (repeat (nothingIf (null . strip) (pack (Cabal.copyright pkgDesc))))
-                       (repeat (Cabal.license pkgDesc))
-                       (case licenseFiles of
-                          [] -> [Nothing]
-                          xs -> map (Just. snd) xs)
-        fnls = map (\ (copyrt, license, comment) ->
-                         FilesDescription
-                                {_filesPattern = "*"
-                                , _filesCopyright = fromMaybe (pack "(No copyright field in cabal file)") copyrt
-                                , _filesLicense = fromCabalLicense license
-                                , _filesComment = comment }) triples in
-     cdesc { _filesAndLicenses = fnls }
-
-inputCabalization' :: Verbosity -> Set (FlagName, Bool) -> [CompilerId] -> IO [Either [Dependency] PackageDescription]
-inputCabalization' vb flags cids = do
-         descPath <- defaultPackageDesc vb
-         genPkgDesc <- readPackageDescription vb descPath
-         let finalized = map (\ cid -> finalizePackageDescription (toList flags) (const True) (Platform buildArch buildOS) cid [] genPkgDesc) $
-#if MIN_VERSION_Cabal(1,22,0)
-                             map (\ i -> unknownCompilerInfo i NoAbiTag)
-#endif
-                                                     cids
-         mapM (either (return . Left)
-                      (\ (pkgDesc, _) -> do bracket (setFileCreationMask 0o022) setFileCreationMask $ \ _ -> autoreconf vb pkgDesc
-                                            return (Right pkgDesc)))
-              finalized
-
--- | Run the package's configuration script.
-autoreconf :: Verbosity -> Cabal.PackageDescription -> IO ()
-autoreconf verbose pkgDesc = do
-    ac <- doesFileExist "configure.ac"
-    when ac $ do
-        c <- doesFileExist "configure"
-        when (not c) $ do
-            setupMessage verbose "Running autoreconf" (packageId pkgDesc)
-            ret <- system "autoreconf"
-            case ret of
-              ExitSuccess -> return ()
-              ExitFailure n -> die ("autoreconf failed with status " ++ show n)
 
 -- chroot :: NFData a => FilePath -> IO a -> IO a
 -- chroot "/" task = task

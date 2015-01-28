@@ -169,8 +169,9 @@ data Atoms
       , compat_ :: Maybe Int
       -- ^ The debhelper compatibility level, from debian/compat.
       -- , copyright_ :: Maybe (Either CopyrightDescription Text)
-      , copyright_ :: CopyrightDescription
-      -- ^ Copyright and license information
+      , copyright_ :: PackageDescription -> IO CopyrightDescription
+      -- ^ Copyright and license information.  This function takes a list of FilePath like
+      -- the licenseFiles field of the PackageDescription and returns a CopyrightDescription.
       , apacheSite_ :: Map BinPkgName (String, FilePath, Text)
       -- ^ Have Apache configure a site using PACKAGE, DOMAIN, LOGDIR, and APACHECONFIGFILE
       , logrotateStanza_ :: Map BinPkgName (Set Text)
@@ -236,7 +237,7 @@ data Atoms
       -- for this as of right now (28 Jan 2015.)
       , official_ :: Bool
       -- ^ Whether this packaging is created by the Debian Haskell Group
-      } deriving (Eq, Show, Data, Typeable)
+      } deriving (Show, Data, Typeable)
 
 instance Canonical Atoms where
     canonical x = x {control_ = canonical (control_ x)}
@@ -316,7 +317,7 @@ makeAtoms envset =
       , epochMap_ = mempty
       , packageInfo_ = mempty
       , compat_ = Nothing
-      , copyright_ = newCopyrightDescription
+      , copyright_ = defaultCopyrightDescription newCopyrightDescription
       , apacheSite_ = mempty
       , logrotateStanza_ = mempty
       , postInst_ = mempty
@@ -583,7 +584,7 @@ official :: Lens Atoms Bool
 official = lens official_ (\ b a -> a {official_ = b})
 
 -- | The copyright information from the cabal file
-copyright :: Lens Atoms CopyrightDescription
+copyright :: Lens Atoms (PackageDescription -> IO CopyrightDescription)
 copyright = lens copyright_ (\ a b -> b {copyright_ = a})
 
 {-

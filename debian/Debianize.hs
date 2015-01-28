@@ -62,7 +62,7 @@ main =
              standardsVersion ~= Just (StandardsVersion 3 9 3 Nothing)
              compat ~= Just 9
              utilsPackageNameBase ~= Just "cabal-debian"
-             copyright %= copyrightFn
+             copyright %= (\ f -> (\ pkgDesc -> f pkgDesc >>= \ c -> return $ copyrightFn c))
              conflicts (BinPkgName "cabal-debian") %= (++ (rels "haskell-debian-utils (<< 3.59)"))
              depends (BinPkgName "cabal-debian") %= (++ (rels "apt-file, debian-policy, debhelper, haskell-devscripts (>= 0.8.19)"))
              depends (BinPkgName "libghc-cabal-debian-dev") %= (++ (rels "debian-policy"))

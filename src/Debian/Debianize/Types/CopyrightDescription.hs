@@ -1,5 +1,5 @@
 -- | <https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/>
-{-# LANGUAGE DeriveDataTypeable, FlexibleInstances, OverloadedStrings, ScopedTypeVariables, TemplateHaskell, TupleSections #-}
+{-# LANGUAGE CPP, DeriveDataTypeable, FlexibleInstances, OverloadedStrings, ScopedTypeVariables, TemplateHaskell, TupleSections #-}
 module Debian.Debianize.Types.CopyrightDescription
     ( CopyrightDescription(..)
     , FilesOrLicenseDescription(..)
@@ -16,24 +16,28 @@ module Debian.Debianize.Types.CopyrightDescription
     , filesCopyright
     , filesLicense
     , filesComment
-    , license
+    , Debian.Debianize.Types.CopyrightDescription.license
     , comment
     , newCopyrightDescription
     , readCopyrightDescription
     , parseCopyrightDescription
+    , defaultCopyrightDescription
     ) where
 
+import Control.Monad.Trans (liftIO)
 import Data.Char (isSpace)
 import Data.Generics (Data, Typeable)
 import Data.Lens.Template (makeLenses)
 import Data.List (dropWhileEnd)
-import Data.Maybe (isJust, catMaybes, fromJust)
+import Data.Maybe (isJust, catMaybes, fromJust, fromMaybe, mapMaybe)
 import Data.Monoid ((<>))
-import Data.Text (Text, pack, unpack)
+import Data.Text as Text (Text, pack, strip, unpack, null)
 import Debian.Control (Field'(Field), lookupP, Paragraph'(Paragraph), Control'(Control, unControl), parseControl)
+import Debian.Debianize.Prelude (readFileMaybe)
 import Debian.Orphans ()
-import Debian.Policy (License(..), readLicense)
+import Debian.Policy (License(..), readLicense, fromCabalLicense)
 import Debian.Pretty (PP(PP, unPP), display', ppDisplay', ppPrint)
+import Distribution.PackageDescription as Cabal (PackageDescription(licenseFiles, copyright, license))
 import Network.URI (URI, parseURI)
 import Prelude hiding (init, init, log, log, unlines, readFile)
 import Text.PrettyPrint.HughesPJClass (Pretty(pPrint), text)
@@ -158,5 +162,38 @@ toParagraph ld@LicenseDescription {} =
     Paragraph $
       [ Field ("License", " " <> display' (_license ld)) ] ++
       maybe [] (\ t -> [Field ("Comment", " " <> t)]) (_comment ld)
+
+defaultCopyrightDescription :: CopyrightDescription -> PackageDescription -> IO CopyrightDescription
+defaultCopyrightDescription copyright0 pkgDesc = do
+  licenseFiles <- mapM (\ path -> liftIO (readFileMaybe path) >>= \ text -> return (path, text))
+#if MIN_VERSION_Cabal(1,19,0)
+                       (Cabal.licenseFiles pkgDesc)
+#else
+                       (case Cabal.licenseFile pkgDesc of
+                          "" -> []
+                          path -> [path])
+#endif
+  -- It is possible we might interpret the license file path
+  -- as a license name, so I hang on to it here.
+  let licenseFiles' = mapMaybe (\ (path, text) -> maybe Nothing (\ t -> Just (path, t)) text) licenseFiles
+  return $ cabalToCopyrightDescription pkgDesc licenseFiles' copyright0
+
+cabalToCopyrightDescription :: PackageDescription -> [(FilePath, Text)] -> CopyrightDescription -> CopyrightDescription
+cabalToCopyrightDescription pkgDesc licenseFiles cdesc =
+    let triples = zip3 (repeat (nothingIf (Text.null . strip) (pack (Cabal.copyright pkgDesc))))
+                       (repeat (Cabal.license pkgDesc))
+                       (case licenseFiles of
+                          [] -> [Nothing]
+                          xs -> map (Just. snd) xs)
+        fnls = map (\ (copyrt, license, comment) ->
+                         FilesDescription
+                                {_filesPattern = "*"
+                                , _filesCopyright = fromMaybe (pack "(No copyright field in cabal file)") copyrt
+                                , _filesLicense = fromCabalLicense license
+                                , _filesComment = comment }) triples in
+     cdesc { _filesAndLicenses = fnls }
+
+nothingIf :: (a -> Bool) -> a -> Maybe a
+nothingIf p x = if p x then Nothing else Just x
 
 $(makeLenses [''CopyrightDescription, ''FilesOrLicenseDescription])

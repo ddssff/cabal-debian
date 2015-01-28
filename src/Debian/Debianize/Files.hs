@@ -22,9 +22,11 @@ import Debian.Debianize.Monad (DebT)
 import Debian.Debianize.Prelude (showDeps')
 import qualified Debian.Debianize.Types.Atoms as T
 import qualified Debian.Debianize.Types.BinaryDebDescription as B
+import Debian.Debianize.Types.CopyrightDescription (CopyrightDescription)
 import qualified Debian.Debianize.Types.SourceDebDescription as S
 import Debian.Pretty (PP(..), ppDisplay, ppPrint, ppDisplay')
 import Debian.Relation (Relations, BinPkgName(BinPkgName))
+import Distribution.PackageDescription (PackageDescription)
 import Prelude hiding (init, unlines, writeFile, log, dropWhile)
 --import System.Directory (getCurrentDirectory)
 import System.FilePath ((</>))
@@ -163,6 +165,9 @@ copyright :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
 copyright =
     do copyrt <- lift $ access T.copyright
        return [("debian/copyright", ppDisplay' copyrt)]
+
+instance Pretty (PP (PackageDescription -> IO CopyrightDescription)) where
+    pPrint _ = text "<function>"
 
 controlFile :: S.SourceDebDescription -> Control' String
 controlFile src =

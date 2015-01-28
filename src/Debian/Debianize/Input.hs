@@ -210,7 +210,7 @@ inputAtoms debian name@"source/format" = liftIO (readFile (debian </> name)) >>=
 inputAtoms debian name@"watch" = liftIO (readFile (debian </> name)) >>= \ text -> watch ~= Just text
 inputAtoms debian name@"rules" = liftIO (readFile (debian </> name)) >>= \ text -> rulesHead ~= (Just $ strip text <> "\n")
 inputAtoms debian name@"compat" = liftIO (readFile (debian </> name)) >>= \ text -> compat ~= Just (read' (\ s -> error $ "compat: " ++ show s) (unpack text))
-inputAtoms debian name@"copyright" = liftIO (readFile (debian </> name)) >>= \ text -> copyright ~= readCopyrightDescription text
+inputAtoms debian name@"copyright" = liftIO (readFile (debian </> name)) >>= \ text -> copyright ~= (\ _ -> return (readCopyrightDescription text))
 inputAtoms debian name@"changelog" =
     liftIO (readFile (debian </> name)) >>= return . parseChangeLog . unpack >>= \ log -> changelog ~= Just log
 inputAtoms debian name =

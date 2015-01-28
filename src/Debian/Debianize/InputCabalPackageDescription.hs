@@ -11,29 +11,20 @@ import Control.Exception (bracket)
 import Control.Monad (when)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Lens.Lazy (access)
-import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set as Set (Set, toList)
-import Data.Text (Text, pack, strip, null)
 import qualified Debian.Debianize.Types.Atoms as T (compilerFlavor)
-import Debian.Debianize.Types.CopyrightDescription (CopyrightDescription(..), FilesOrLicenseDescription(..))
-import Debian.Debianize.Types.Atoms (verbosity, cabalFlagAssignments, buildEnv, packageDescription, copyright)
+import Debian.Debianize.Types.Atoms (verbosity, cabalFlagAssignments, buildEnv, packageDescription)
 import Debian.Debianize.Monad (DebT)
-import Debian.Debianize.Prelude (readFileMaybe, intToVerbosity', (~=), (%=))
+import Debian.Debianize.Prelude (intToVerbosity', (~=))
 import Debian.Debianize.Types.Atoms (EnvSet(dependOS))
 import Debian.GHC (newestAvailableCompilerId)
 import Debian.Orphans ()
-import Debian.Policy (fromCabalLicense)
 import Distribution.Compiler (CompilerId)
 #if MIN_VERSION_Cabal(1,22,0)
 import Distribution.Compiler (unknownCompilerInfo, AbiTag(NoAbiTag))
 #endif
 import Distribution.Package (Package(packageId), Dependency)
-import qualified Distribution.PackageDescription as Cabal (PackageDescription(license, copyright))
-#if MIN_VERSION_Cabal(1,19,0)
-import qualified Distribution.PackageDescription as Cabal (PackageDescription(licenseFiles))
-#else
-import qualified Distribution.PackageDescription as Cabal (PackageDescription(licenseFile))
-#endif
+import qualified Distribution.PackageDescription as Cabal (PackageDescription)
 import Distribution.PackageDescription as Cabal (PackageDescription, FlagName)
 import Distribution.PackageDescription.Configuration (finalizePackageDescription)
 import Distribution.PackageDescription.Parse (readPackageDescription)
@@ -59,42 +50,12 @@ inputCabalization =
        ePkgDesc <- liftIO $ inputCabalization' vb flags cid
        either (\ deps -> liftIO getCurrentDirectory >>= \ here ->
                          error $ "Missing dependencies in cabal package at " ++ here ++ ": " ++ show deps)
-              (\ pkgDesc -> do
-                 packageDescription ~= Just pkgDesc
+              (\ pkgDesc -> packageDescription ~= Just pkgDesc)
                  -- This will contain either the contents of the file given in
                  -- the license-file: field or the contents of the license:
                  -- field.
-                 licenseFiles <- mapM (\ path -> liftIO (readFileMaybe path) >>= \ text -> return (path, text))
-#if MIN_VERSION_Cabal(1,19,0)
-                                      (Cabal.licenseFiles pkgDesc)
-#else
-                                      (case Cabal.licenseFile pkgDesc of
-                                         "" -> []
-                                         path -> [path])
-#endif
-                 -- It is possible we might interpret the license file path
-                 -- as a license name, so I hang on to it here.
-                 let licenseFiles' = mapMaybe (\ (path, text) -> maybe Nothing (\ t -> Just (path, t)) text) licenseFiles
-                 copyright %= cabalToCopyrightDescription pkgDesc licenseFiles')
-             ePkgDesc
 
-cabalToCopyrightDescription :: PackageDescription -> [(FilePath, Text)] -> CopyrightDescription -> CopyrightDescription
-cabalToCopyrightDescription pkgDesc licenseFiles cdesc =
-    let triples = zip3 (repeat (nothingIf (null . strip) (pack (Cabal.copyright pkgDesc))))
-                       (repeat (Cabal.license pkgDesc))
-                       (case licenseFiles of
-                          [] -> [Nothing]
-                          xs -> map (Just. snd) xs)
-        fnls = map (\ (copyrt, license, comment) ->
-                         FilesDescription
-                                {_filesPattern = "*"
-                                , _filesCopyright = fromMaybe (pack "(No copyright field in cabal file)") copyrt
-                                , _filesLicense = fromCabalLicense license
-                                , _filesComment = comment }) triples in
-     cdesc { _filesAndLicenses = fnls }
-
-nothingIf :: (a -> Bool) -> a -> Maybe a
-nothingIf p x = if p x then Nothing else Just x
+              ePkgDesc
 
 -- | Load a GenericPackageDescription from the current directory and
 -- from that create a finalized PackageDescription for the given

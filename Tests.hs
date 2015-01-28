@@ -15,7 +15,7 @@ import Data.List (sortBy)
 import Data.Map as Map (differenceWithKey, intersectionWithKey)
 import qualified Data.Map as Map (elems, Map, toList)
 import Data.Monoid ((<>), mconcat, mempty)
-import Data.Set as Set (fromList, singleton, union)
+import Data.Set as Set (fromList, union)
 import Data.Text as Text (intercalate, split, Text, unlines, unpack)
 import Data.Version (Version(Version))
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(..), parseEntry)
@@ -123,7 +123,7 @@ test1 label =
                           (do -- let top = Top "."
                               defaultAtoms
                               newDebianization (ChangeLog [testEntry]) level standards
-                              copyright %= (\ c -> c { _summaryLicense = Just BSD_3_Clause })
+                              copyright %= (\ f -> (\ pkgDesc -> f pkgDesc >>= \ c -> return $ c { _summaryLicense = Just BSD_3_Clause }))
                               -- inputCabalization top
                               finalizeDebianization)
                           atoms
@@ -141,7 +141,7 @@ test1 label =
                                                 , "include /usr/share/cdbs/1/rules/debhelper.mk"
                                                 , "include /usr/share/cdbs/1/class/hlibrary.mk" ])))
                 compat ~= Just 9 -- This will change as new version of debhelper are released
-                copyright %= (\ c -> c { _summaryLicense = Just BSD_3_Clause })
+                copyright %= (\ f -> (\ pkgDesc -> f pkgDesc >>= \ c -> return $ c { _summaryLicense = Just BSD_3_Clause }))
                 T.source ~= Just (SrcPkgName {unSrcPkgName = "haskell-cabal-debian"})
                 (S.maintainer . T.control) ~= Just (NameAddr (Just "David Fox") "dsf@seereason.com")
                 T.standardsVersion ~= Just (StandardsVersion 3 9 3 (Just 1)) -- This will change as new versions of debian-policy are released
@@ -170,7 +170,7 @@ test2 label =
                           (do -- let top = Top "."
                               defaultAtoms
                               newDebianization (ChangeLog [testEntry]) level standards
-                              copyright %= (\ c -> c { _summaryLicense = Just BSD_3_Clause })
+                              copyright %= (\ f -> (\ pkgDesc -> f pkgDesc >>= \ c -> return $ c { _summaryLicense = Just BSD_3_Clause }))
                               -- inputCabalization top
                               finalizeDebianization)
                           atoms
@@ -187,7 +187,7 @@ test2 label =
                                                  "include /usr/share/cdbs/1/rules/debhelper.mk",
                                                  "include /usr/share/cdbs/1/class/hlibrary.mk"])))
                 compat ~= Just 9
-                copyright %= (\ c -> c { _summaryLicense = Just BSD_3_Clause })
+                copyright %= (\ f -> (\ pkgDesc -> f pkgDesc >>= \ c -> return $ c { _summaryLicense = Just BSD_3_Clause }))
                 T.source ~= Just (SrcPkgName {unSrcPkgName = "haskell-cabal-debian"})
                 (S.maintainer . T.control) ~= Just (NameAddr {nameAddr_name = Just "David Fox", nameAddr_addr = "dsf@seereason.com"})
                 T.standardsVersion ~= Just (StandardsVersion 3 9 3 (Just 1))
@@ -279,7 +279,7 @@ test3 label =
                                                     "",
                                                     ""])
                 T.compat ~= Just 7
-                T.copyright %= \ c -> c { _summaryComment = Just "This package was debianized by John Goerzen <jgoerzen@complete.org> on\nWed,  6 Oct 2004 09:46:14 -0500.\n\nCopyright information removed from this test data.\n" }
+                T.copyright %= (\ f -> (\ pkgDesc -> f pkgDesc >>= \ c -> return $ c { _summaryComment = Just "This package was debianized by John Goerzen <jgoerzen@complete.org> on\nWed,  6 Oct 2004 09:46:14 -0500.\n\nCopyright information removed from this test data.\n" }))
                 T.source ~= Just (SrcPkgName {unSrcPkgName = "haskell-devscripts"})
                 (S.maintainer . T.control) ~= Just (NameAddr {nameAddr_name = Just "Debian Haskell Group", nameAddr_addr = "pkg-haskell-maintainers@lists.alioth.debian.org"})
                 (S.uploaders . T.control) ~= [NameAddr {nameAddr_name = Just "Marco Silva", nameAddr_addr = "marcot@debian.org"},NameAddr {nameAddr_name = Just "Joachim Breitner", nameAddr_addr = "nomeata@debian.org"}]

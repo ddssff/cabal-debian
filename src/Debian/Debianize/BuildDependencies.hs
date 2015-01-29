@@ -20,7 +20,7 @@ import Data.Version (showVersion, Version)
 import Debian.Debianize.Bundled (builtIn)
 import Debian.Debianize.DebianName (mkPkgName, mkPkgName')
 import Debian.Debianize.InputCabalPackageDescription (EnvSet(dependOS), buildEnv, compilerFlavor)
-import Debian.Debianize.Monad as Monad (Atoms, DebT)
+import Debian.Debianize.Monad as Monad (Atoms, CabalT)
 import qualified Debian.Debianize.Types as T (buildDepends, buildDependsIndep, debianNameMap, epochMap, execMap, extraLibMap, missingDependencies, noDocumentationLibrary, noProfilingLibrary, omitProfVersionDeps)
 import Debian.Debianize.Types.Atoms (flags, debInfo)
 import qualified Debian.Debianize.Types.BinaryDebDescription as B (PackageType(Development, Documentation, Profiling))
@@ -65,7 +65,7 @@ unboxDependency (ExtraLibs _) = Nothing -- Dependency (PackageName d) anyVersion
 
 -- |Debian packages don't have per binary package build dependencies,
 -- so we just gather them all up here.
-allBuildDepends :: Monad m => [Dependency] -> [Dependency] -> [Dependency] -> [String] -> DebT m [Dependency_]
+allBuildDepends :: Monad m => [Dependency] -> [Dependency] -> [Dependency] -> [String] -> CabalT m [Dependency_]
 allBuildDepends buildDepends' buildTools' pkgconfigDepends' extraLibs' =
     do atoms <- get
        return $ nub $ List.map BuildDepends buildDepends' ++
@@ -80,7 +80,7 @@ allBuildDepends buildDepends' buildTools' pkgconfigDepends' extraLibs' =
 
 -- The haskell-cdbs package contains the hlibrary.mk file with
 -- the rules for building haskell packages.
-debianBuildDeps :: (MonadIO m, Functor m) => PackageDescription -> DebT m D.Relations
+debianBuildDeps :: (MonadIO m, Functor m) => PackageDescription -> CabalT m D.Relations
 debianBuildDeps pkgDesc =
     do hc <- access (compilerFlavor . flags . debInfo)
        let hcs = singleton hc -- vestigial
@@ -120,7 +120,7 @@ debianBuildDeps pkgDesc =
       hcPackageTypes hc = error $ "Unsupported compiler flavor: " ++ show hc
 
 
-debianBuildDepsIndep :: (MonadIO m, Functor m) => PackageDescription -> DebT m D.Relations
+debianBuildDepsIndep :: (MonadIO m, Functor m) => PackageDescription -> CabalT m D.Relations
 debianBuildDepsIndep pkgDesc =
     do hc <- access (compilerFlavor . flags . debInfo)
        let hcs = singleton hc -- vestigial
@@ -156,7 +156,7 @@ debianBuildDepsIndep pkgDesc =
 -- | The documentation dependencies for a package include the
 -- documentation package for any libraries which are build
 -- dependencies, so we have access to all the cross references.
-docDependencies :: (MonadIO m, Functor m) => Dependency_ -> DebT m D.Relations
+docDependencies :: (MonadIO m, Functor m) => Dependency_ -> CabalT m D.Relations
 docDependencies (BuildDepends (Dependency name ranges)) =
     do hc <- access (compilerFlavor . flags . debInfo)
        let hcs = singleton hc -- vestigial
@@ -167,7 +167,7 @@ docDependencies _ = return []
 -- | The Debian build dependencies for a package include the profiling
 -- libraries and the documentation packages, used for creating cross
 -- references.  Also the packages associated with extra libraries.
-buildDependencies :: (MonadIO m, Functor m) => Set (CompilerFlavor, B.PackageType) -> Dependency_ -> DebT m D.Relations
+buildDependencies :: (MonadIO m, Functor m) => Set (CompilerFlavor, B.PackageType) -> Dependency_ -> CabalT m D.Relations
 buildDependencies hcTypePairs (BuildDepends (Dependency name ranges)) =
     access T.omitProfVersionDeps >>= \ omitProfDeps ->
     concat <$> mapM (\ (hc, typ) -> dependencies hc typ name ranges omitProfDeps) (toList hcTypePairs)
@@ -222,7 +222,7 @@ anyrel' x = [D.Rel x Nothing Nothing]
 -- | Turn a cabal dependency into debian dependencies.  The result
 -- needs to correspond to a single debian package to be installed,
 -- so we will return just an OrRelation.
-dependencies :: MonadIO m => CompilerFlavor -> B.PackageType -> PackageName -> VersionRange -> Bool -> DebT m Relations
+dependencies :: MonadIO m => CompilerFlavor -> B.PackageType -> PackageName -> VersionRange -> Bool -> CabalT m Relations
 dependencies hc typ name cabalRange omitProfVersionDeps =
     do nameMap <- access T.debianNameMap
        -- Compute a list of alternative debian dependencies for
@@ -294,14 +294,14 @@ doBundled :: MonadIO m =>
           -> PackageName
           -> CompilerFlavor
           -> [D.Relation]
-          -> DebT m [D.Relation]
+          -> CabalT m [D.Relation]
 doBundled typ name hc rels =
     mapM doRel rels >>= return . concat
     where
       -- If a library is built into the compiler, this is the debian
       -- package name the compiler will conflict with.
       comp = D.Rel (compilerPackageName hc typ) Nothing Nothing
-      doRel :: MonadIO m => D.Relation -> DebT m [D.Relation]
+      doRel :: MonadIO m => D.Relation -> CabalT m [D.Relation]
       doRel rel@(D.Rel dname req _) = do
         -- gver <- access ghcVersion
         splits <- access T.debianNameMap
@@ -358,17 +358,17 @@ doBundled :: MonadIO m =>
              B.PackageType  -- Documentation, Profiling, Development...
           -> PackageName    -- Cabal package name
           -> [D.Relation]   -- Original set of debian dependencies
-          -> DebT m [D.Relation] -- Modified debian dependencies accounting for the packages the compiler provides
+          -> CabalT m [D.Relation] -- Modified debian dependencies accounting for the packages the compiler provides
 doBundled hc typ name rels =
     concat <$> mapM doRel rels
     where
-      doRel :: MonadIO m => D.Relation -> DebT m [D.Relation]
+      doRel :: MonadIO m => D.Relation -> CabalT m [D.Relation]
       doRel rel@(D.Rel dname req _) = do
         hc <- access
 -}
 
 -- Convert a cabal version to a debian version, adding an epoch number if requested
-debianVersion' :: Monad m => PackageName -> Version -> DebT m DebianVersion
+debianVersion' :: Monad m => PackageName -> Version -> CabalT m DebianVersion
 debianVersion' name v =
     do atoms <- get
        return $ parseDebianVersion (maybe "" (\ n -> show n ++ ":") (Map.lookup name (getL T.epochMap atoms)) ++ showVersion v)
@@ -387,7 +387,7 @@ canonical (Rel' rel) = And [Or [Rel' rel]]
 canonical (And rels) = And $ concatMap (unAnd . canonical) rels
 canonical (Or rels) = And . List.map Or $ sequence $ List.map (concat . List.map unOr . unAnd . canonical) $ rels
 
-filterMissing :: Monad m => [[Relation]] -> DebT m [[Relation]]
+filterMissing :: Monad m => [[Relation]] -> CabalT m [[Relation]]
 filterMissing rels =
     get >>= \ atoms -> return $
     List.filter (/= []) (List.map (List.filter (\ (Rel name _ _) -> not (Set.member name (getL T.missingDependencies atoms)))) rels)

@@ -27,7 +27,7 @@ import Data.Maybe (fromMaybe)
 import Data.Monoid ((<>))
 import Data.Set as Set (insert, union, singleton)
 import Data.Text as Text (Text, pack, unlines)
-import Debian.Debianize.Monad (Atoms, DebT, execDebM)
+import Debian.Debianize.Monad (Atoms, CabalT, DebianT, execCabalM)
 import Debian.Debianize.Prelude (stripWith, (%=), (+=), (++=), (+++=))
 import qualified Debian.Debianize.Types as T
 import qualified Debian.Debianize.Types.Atoms as T
@@ -55,10 +55,10 @@ translate str =
 -- to find out B's version number, version B.  Then write a rule into
 -- P's .substvar that makes P require that that exact version of A,
 -- and another that makes P conflict with any older version of A.
-tightDependencyFixup :: Monad m => [(BinPkgName, BinPkgName)] -> BinPkgName -> DebT m ()
+tightDependencyFixup :: Monad m => [(BinPkgName, BinPkgName)] -> BinPkgName -> DebianT m ()
 tightDependencyFixup [] _ = return ()
 tightDependencyFixup pairs p =
-    (T.rulesFragments . T.debInfo) +=
+    T.rulesFragments +=
           (Text.unlines $
                ([ "binary-fixup/" <> name <> "::"
                 , "\techo -n 'haskell:Depends=' >> debian/" <> name <> ".substvars" ] ++
@@ -74,25 +74,25 @@ tightDependencyFixup pairs p =
       display' = ppDisplay'
 
 -- | Add a debian binary package to the debianization containing a cabal executable file.
-doExecutable :: Monad m => BinPkgName -> T.InstallFile -> DebT m ()
+doExecutable :: Monad m => BinPkgName -> T.InstallFile -> CabalT m ()
 doExecutable p f = T.executable ++= (p, f)
 
 -- | Add a debian binary package to the debianization containing a cabal executable file set up to be a server.
-doServer :: Monad m => BinPkgName -> T.Server -> DebT m ()
+doServer :: Monad m => BinPkgName -> T.Server -> CabalT m ()
 doServer p s = T.serverInfo ++= (p, s)
 
 -- | Add a debian binary package to the debianization containing a cabal executable file set up to be a web site.
-doWebsite :: Monad m => BinPkgName -> T.Site -> DebT m ()
+doWebsite :: Monad m => BinPkgName -> T.Site -> CabalT m ()
 doWebsite p w = T.website ++= (p, w)
 
 -- | Add a debian binary package to the debianization containing a cabal executable file set up to be a backup script.
-doBackups :: Monad m => BinPkgName -> String -> DebT m ()
+doBackups :: Monad m => BinPkgName -> String -> CabalT m ()
 doBackups bin s =
     do T.backups ++= (bin, s)
        (T.depends bin . T.debInfo) %= (++ [[Rel (BinPkgName "anacron") Nothing Nothing]])
        -- depends +++= (bin, Rel (BinPkgName "anacron") Nothing Nothing)
 
-describe :: Monad m => DebT m Text
+describe :: Monad m => CabalT m Text
 describe =
     do p <- access T.packageDescription
        return $
@@ -169,7 +169,7 @@ watchAtom (PackageName pkgname) =
 
 siteAtoms :: BinPkgName -> T.Site -> Atoms -> Atoms
 siteAtoms b site =
-    execDebM
+    execCabalM
       (do (T.atomSet . T.debInfo) %= (Set.insert $ T.InstallDir b "/etc/apache2/sites-available")
           (T.atomSet . T.debInfo) %= (Set.insert $ T.Link b ("/etc/apache2/sites-available/" ++ T.domain site) ("/etc/apache2/sites-enabled/" ++ T.domain site))
           (T.atomSet . T.debInfo) %= (Set.insert $ T.File b ("/etc/apache2/sites-available" </> T.domain site) apacheConfig)
@@ -347,9 +347,9 @@ fileAtoms b installFile' r =
 fileAtoms' :: BinPkgName -> Maybe FilePath -> String -> Maybe FilePath -> String -> Atoms -> Atoms
 fileAtoms' b sourceDir' execName' destDir' destName' r =
     case (sourceDir', execName' == destName') of
-      (Nothing, True) -> execDebM ((T.atomSet . T.debInfo) %= (Set.insert $ T.InstallCabalExec b execName' d)) r
-      (Just s, True) -> execDebM ((T.atomSet . T.debInfo) %= (Set.insert $ T.Install b (s </> execName') d)) r
-      (Nothing, False) -> execDebM ((T.atomSet . T.debInfo) %= (Set.insert $ T.InstallCabalExecTo b execName' (d </> destName'))) r
-      (Just s, False) -> execDebM ((T.atomSet . T.debInfo) %= (Set.insert $ T.InstallTo b (s </> execName') (d </> destName'))) r
+      (Nothing, True) -> execCabalM ((T.atomSet . T.debInfo) %= (Set.insert $ T.InstallCabalExec b execName' d)) r
+      (Just s, True) -> execCabalM ((T.atomSet . T.debInfo) %= (Set.insert $ T.Install b (s </> execName') d)) r
+      (Nothing, False) -> execCabalM ((T.atomSet . T.debInfo) %= (Set.insert $ T.InstallCabalExecTo b execName' (d </> destName'))) r
+      (Just s, False) -> execCabalM ((T.atomSet . T.debInfo) %= (Set.insert $ T.InstallTo b (s </> execName') (d </> destName'))) r
     where
       d = fromMaybe "usr/bin" destDir'

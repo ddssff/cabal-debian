@@ -29,7 +29,7 @@ import Debian.Debianize.DebianName (debianName, debianNameBase)
 import Debian.Debianize.Goodies (backupAtoms, describe, execAtoms, serverAtoms, siteAtoms, watchAtom)
 import Debian.Debianize.Input (dataDir, inputChangeLog)
 import Debian.Debianize.InputCabalPackageDescription (verbosity, compilerFlavor)
-import Debian.Debianize.Monad as Monad (DebT, liftCabal)
+import Debian.Debianize.Monad as Monad (CabalT, liftCabal)
 import Debian.Debianize.Options (compileCommandlineArgs, compileEnvironmentArgs)
 import Debian.Debianize.Prelude ((%=), (+=), (~=), (~?=))
 import qualified Debian.Debianize.Types as T (apacheSite, backups, binaryArchitectures, binaryPackages, binarySection, breaks, buildDepends, buildDependsIndep, buildDir, builtUsing, changelog, comments, compat, conflicts, debianDescription, debVersion, depends, epochMap, executable, extraDevDeps, extraLibMap, intermediateFiles, maintainerOption, uploadersOption, noDocumentationLibrary, noProfilingLibrary, omitProfVersionDeps, packageDescription, packageType, preDepends, provides, recommends, revision, rulesFragments, serverInfo, standardsVersion, source, sourceFormat, sourcePackageName, sourcePriority, sourceSection, suggests, utilsPackageNameBase, watch, website, control, homepage, official, vcsFields, flags)
@@ -63,17 +63,17 @@ import Text.PrettyPrint.HughesPJClass (Pretty(pPrint))
 -- description and possibly the debian/changelog file, then generate
 -- and return the new debianization (along with the data directory
 -- computed from the cabal package description.)
-debianize :: (MonadIO m, Functor m) => DebT m () -> DebT m ()
+debianize :: (MonadIO m, Functor m) => CabalT m () -> CabalT m ()
 debianize customize =
     do compileEnvironmentArgs
        compileCommandlineArgs
-       -- inputCabalization -- already done because we're in DebT
+       -- inputCabalization -- already done because we're in CabalT
        liftCabal inputChangeLog
        customize
        finalizeDebianization
 
 -- | Do some light IO and call finalizeDebianization.
-finalizeDebianization :: (MonadIO m, Functor m) => DebT m ()
+finalizeDebianization :: (MonadIO m, Functor m) => CabalT m ()
 finalizeDebianization =
     do date <- liftIO getCurrentLocalRFC822Time
        debhelperCompat <- liftIO getDebhelperCompatLevel
@@ -88,7 +88,7 @@ finalizeDebianization =
 -- this function is not idempotent.  (Exported for use in unit tests.)
 -- FIXME: we should be able to run this without a PackageDescription, change
 --        paramter type to Maybe PackageDescription and propagate down thru code
-finalizeDebianization'  :: (MonadIO m, Functor m) => String -> Maybe Int -> DebT m ()
+finalizeDebianization'  :: (MonadIO m, Functor m) => String -> Maybe Int -> CabalT m ()
 finalizeDebianization' date debhelperCompat =
     do -- In reality, hcs must be a singleton or many things won't work.  But some day...
        hc <- access (compilerFlavor . T.flags . A.debInfo)
@@ -124,10 +124,10 @@ finalizeDebianization' date debhelperCompat =
 -- description fields from the cabal descriptions and the values that
 -- have already been set.
 {-
-finalizeDescriptions :: (Monad m, Functor m) => DebT m ()
+finalizeDescriptions :: (Monad m, Functor m) => CabalT m ()
 finalizeDescriptions = access T.binaryPackages >>= List.mapM_ finalizeDescription
 
-finalizeDescription :: (Monad m, Functor m) => B.BinaryDebDescription -> DebT m ()
+finalizeDescription :: (Monad m, Functor m) => B.BinaryDebDescription -> CabalT m ()
 finalizeDescription bdd =
     do let b = getL B.package bdd
        cabDesc <- describe
@@ -141,7 +141,7 @@ finalizeDescription bdd =
 -- the cabal version of the package.  Otherwise, the cabal version is
 -- combined with the given epoch number and revision string to create
 -- a version.
-debianVersion :: Monad m => DebT m DebianVersion
+debianVersion :: Monad m => CabalT m DebianVersion
 debianVersion =
     do pkgDesc <- access T.packageDescription
        let pkgId = Cabal.package pkgDesc
@@ -173,13 +173,13 @@ debianVersion =
 
 -- | Return the Debian epoch number assigned to the given cabal
 -- package - the 1 in version numbers like 1:3.5-2.
-debianEpoch :: Monad m => PackageName -> DebT m (Maybe Int)
+debianEpoch :: Monad m => PackageName -> CabalT m (Maybe Int)
 debianEpoch name = get >>= return . Map.lookup name . getL T.epochMap
 
 -- | Compute and return the debian source package name, based on the
 -- sourcePackageName if it was specified, and constructed from the
 -- cabal name otherwise.
-finalizeSourceName :: (Monad m, Functor m) => B.PackageType -> DebT m ()
+finalizeSourceName :: (Monad m, Functor m) => B.PackageType -> CabalT m ()
 finalizeSourceName typ =
     do DebBase debName <- debianNameBase
        T.sourcePackageName ~?= Just (SrcPkgName (case typ of
@@ -198,7 +198,7 @@ finalizeSourceName typ =
 --    6. the Debian Haskell Group, @pkg-haskell-maintainers\@lists.alioth.debian.org@
 -- <http://www.debian.org/doc/debian-policy/ch-controlfields.html#s-f-Maintainer>
 -- <http://www.debian.org/doc/debian-policy/ch-controlfields.html#s-f-Uploaders>
-finalizeMaintainer :: MonadIO m => DebT m ()
+finalizeMaintainer :: MonadIO m => CabalT m ()
 finalizeMaintainer = do
   o <- access T.official
   currentUser <- liftIO getCurrentDebianUser
@@ -250,7 +250,7 @@ whenEmpty :: [a] -> [a] -> [a]
 whenEmpty d [] = d
 whenEmpty _ l = l
 
-finalizeControl :: (MonadIO m, Functor m) => DebT m ()
+finalizeControl :: (MonadIO m, Functor m) => CabalT m ()
 finalizeControl =
     do finalizeMaintainer
        Just src <- access T.sourcePackageName
@@ -263,7 +263,7 @@ finalizeControl =
 -- source package name implied by the debianization.  This means
 -- either adding an entry or modifying the latest entry (if its
 -- version number is the exact one in our debianization.)
-finalizeChangelog :: (MonadIO m, Functor m) => String -> DebT m ()
+finalizeChangelog :: (MonadIO m, Functor m) => String -> CabalT m ()
 finalizeChangelog date =
     do finalizeMaintainer
        ver <- debianVersion
@@ -294,7 +294,7 @@ finalizeChangelog date =
 -- | Convert the extraLibs field of the cabal build info into debian
 -- binary package names and make them dependendencies of the debian
 -- devel package (if there is one.)
-addExtraLibDependencies :: (Monad m, Functor m) => CompilerFlavor -> DebT m ()
+addExtraLibDependencies :: (Monad m, Functor m) => CompilerFlavor -> CabalT m ()
 addExtraLibDependencies hc =
     do pkgDesc <- access T.packageDescription
        devName <- debianName B.Development hc
@@ -308,14 +308,14 @@ addExtraLibDependencies hc =
       devDep libMap cab = maybe [[Rel (BinPkgName ("lib" ++ cab ++ "-dev")) Nothing Nothing]] id (Map.lookup cab libMap)
 
 -- | Applies a few settings to official packages (unless already set)
-checkOfficialSettings :: (Monad m, Functor m) => CompilerFlavor -> DebT m ()
+checkOfficialSettings :: (Monad m, Functor m) => CompilerFlavor -> CabalT m ()
 checkOfficialSettings flavor =
     do o <- access T.official
        when o $ case flavor of
                   GHC -> officialSettings
                   _ -> error $ "There is no official packaging for " ++ show flavor
 
-officialSettings :: (Monad m, Functor m) => DebT m ()
+officialSettings :: (Monad m, Functor m) => CabalT m ()
 officialSettings =
     do pkgDesc <- access T.packageDescription
        let PackageName cabal = pkgName (Cabal.package pkgDesc)
@@ -331,14 +331,14 @@ officialSettings =
           ])
  
 
-putBuildDeps :: (MonadIO m, Functor m) => PackageDescription -> DebT m ()
+putBuildDeps :: (MonadIO m, Functor m) => PackageDescription -> CabalT m ()
 putBuildDeps pkgDesc =
     do deps <- debianBuildDeps pkgDesc
        depsIndep <- debianBuildDepsIndep pkgDesc
        (T.buildDepends . A.debInfo) ~= deps
        (T.buildDependsIndep . A.debInfo) ~= depsIndep
 
-cabalExecBinaryPackage :: Monad m => BinPkgName -> DebT m ()
+cabalExecBinaryPackage :: Monad m => BinPkgName -> CabalT m ()
 cabalExecBinaryPackage b =
     do (T.packageType b . A.debInfo) ~?= Just B.Exec
        (T.binaryArchitectures b . A.debInfo) ~?= Just Any
@@ -347,7 +347,7 @@ cabalExecBinaryPackage b =
        binaryPackageRelations b B.Exec
     where
 
-binaryPackageRelations :: Monad m => BinPkgName -> B.PackageType -> DebT m ()
+binaryPackageRelations :: Monad m => BinPkgName -> B.PackageType -> CabalT m ()
 binaryPackageRelations b typ =
     do edds <- access T.extraDevDeps
        (T.depends b . A.debInfo) %= \ rels ->
@@ -364,7 +364,7 @@ binaryPackageRelations b typ =
        (T.builtUsing b . A.debInfo) ~= []
 
 -- | Add the library paragraphs for a particular compiler flavor.
-librarySpecs :: (Monad m, Functor m) => PackageDescription -> CompilerFlavor -> DebT m ()
+librarySpecs :: (Monad m, Functor m) => PackageDescription -> CompilerFlavor -> CabalT m ()
 librarySpecs pkgDesc hc =
     do let dev = isJust (Cabal.library pkgDesc)
        doc <- get >>= return . not . getL T.noDocumentationLibrary
@@ -373,7 +373,7 @@ librarySpecs pkgDesc hc =
        when (dev && prof && hc == GHC) (librarySpec Any B.Profiling hc)
        when (dev && doc) (docSpecsParagraph hc)
 
-docSpecsParagraph :: (Monad m, Functor m) => CompilerFlavor -> DebT m ()
+docSpecsParagraph :: (Monad m, Functor m) => CompilerFlavor -> CabalT m ()
 docSpecsParagraph hc =
     do b <- debianName B.Documentation hc
        binaryPackageRelations b B.Documentation
@@ -383,7 +383,7 @@ docSpecsParagraph hc =
        (T.binarySection b . A.debInfo) ~?= Just (MainSection "doc")
        (T.debianDescription b . A.debInfo) ~?= Just desc
 
-librarySpec :: (Monad m, Functor m) => PackageArchitectures -> B.PackageType -> CompilerFlavor -> DebT m ()
+librarySpec :: (Monad m, Functor m) => PackageArchitectures -> B.PackageType -> CompilerFlavor -> CabalT m ()
 librarySpec arch typ hc =
     do b <- debianName typ hc
        binaryPackageRelations b typ
@@ -407,7 +407,7 @@ desc = Text.intercalate "\n "
 -- files, assign them to the packages returned by the
 -- utilsPackageNames lens, and make sure those packages are in the
 -- source deb description.
-makeUtilsPackage :: forall m. (MonadIO m, Functor m) => PackageDescription -> CompilerFlavor -> DebT m ()
+makeUtilsPackage :: forall m. (MonadIO m, Functor m) => PackageDescription -> CompilerFlavor -> CabalT m ()
 makeUtilsPackage pkgDesc hc =
     do -- Files the cabal package expects to be installed
        -- Files that are already assigned to any binary deb
@@ -416,12 +416,12 @@ makeUtilsPackage pkgDesc hc =
                                            A.Install b from _ -> Map.insertWith Set.union b (singleton from) r
                                            A.InstallTo b from _ -> Map.insertWith Set.union b (singleton from) r
                                            A.InstallData b from _ -> Map.insertWith Set.union b (singleton from) r
-                                           _ -> r) mempty <$> access (A.atomSet . A.debInfo) :: DebT m (Map BinPkgName (Set FilePath))
+                                           _ -> r) mempty <$> access (A.atomSet . A.debInfo) :: CabalT m (Map BinPkgName (Set FilePath))
        installedExecMap <- Set.fold (\ x r ->
                                          case x of
                                            A.InstallCabalExec b name _ -> Map.insertWith Set.union b (singleton name) r
                                            A.InstallCabalExecTo b name _ -> Map.insertWith Set.union b (singleton name) r
-                                           _ -> r) mempty <$> access (A.atomSet . A.debInfo) :: DebT m (Map BinPkgName (Set String))
+                                           _ -> r) mempty <$> access (A.atomSet . A.debInfo) :: CabalT m (Map BinPkgName (Set String))
 
        -- The names of cabal executables that go into eponymous debs
        insExecPkg <- access T.executable >>= return . Set.map ename . Set.fromList . elems
@@ -468,7 +468,7 @@ makeUtilsPackage pkgDesc hc =
             (Nothing) -> A.execName i
             (Just s) ->  s </> A.execName i
 
-expandAtoms :: MonadIO m => DebT m ()
+expandAtoms :: MonadIO m => CabalT m ()
 expandAtoms =
     do hc <- access (compilerFlavor . T.flags . A.debInfo)
        builddir <- access T.buildDir >>= return . fromMaybe (case hc of
@@ -489,7 +489,7 @@ expandAtoms =
        expandBackups
        expandExecutable
     where
-      expandApacheSites :: Monad m => DebT m ()
+      expandApacheSites :: Monad m => CabalT m ()
       expandApacheSites =
           do mp <- get >>= return . getL T.apacheSite
              List.mapM_ expandApacheSite (Map.toList mp)
@@ -500,12 +500,12 @@ expandAtoms =
                    (A.atomSet . A.debInfo) %= (Set.insert $ A.File b ("/etc/apache2/sites-available" </> dom) text)
 
       -- Turn A.InstallCabalExec into A.Install
-      expandInstallCabalExecs :: Monad m => FilePath -> DebT m ()
+      expandInstallCabalExecs :: Monad m => FilePath -> CabalT m ()
       expandInstallCabalExecs builddir = do
         hc <- access (compilerFlavor . T.flags . A.debInfo)
         access (A.atomSet . A.debInfo) >>= Set.mapM_ (doAtom hc)
           where
-            doAtom :: Monad m => CompilerFlavor -> A.Atom -> DebT m ()
+            doAtom :: Monad m => CompilerFlavor -> A.Atom -> CabalT m ()
             doAtom GHC (A.InstallCabalExec b name dest) = (A.atomSet . A.debInfo) %= (Set.insert $ A.Install b (builddir </> name </> name) dest)
             -- A GHCJS executable is a directory with files, copy them
             -- all into place.
@@ -520,12 +520,12 @@ expandAtoms =
             doAtom _ _ = return ()
 
       -- Turn A.InstallCabalExecTo into a make rule
-      expandInstallCabalExecTo :: Monad m => FilePath -> DebT m ()
+      expandInstallCabalExecTo :: Monad m => FilePath -> CabalT m ()
       expandInstallCabalExecTo builddir = do
         hc <- access (compilerFlavor . T.flags . A.debInfo)
         access (A.atomSet . A.debInfo) >>= Set.mapM_ (doAtom hc)
           where
-            doAtom :: Monad m => CompilerFlavor -> A.Atom -> DebT m ()
+            doAtom :: Monad m => CompilerFlavor -> A.Atom -> CabalT m ()
             doAtom GHC (A.InstallCabalExecTo b name dest) =
                 (T.rulesFragments . A.debInfo) +=
                                      (Text.unlines
@@ -536,11 +536,11 @@ expandAtoms =
             doAtom _ _ = return ()
 
       -- Turn A.InstallData into either an Install or an InstallTo
-      expandInstallData :: Monad m => FilePath -> DebT m ()
+      expandInstallData :: Monad m => FilePath -> CabalT m ()
       expandInstallData dDir =
           access (A.atomSet . A.debInfo) >>= List.mapM_ doAtom . Set.toList
           where
-            doAtom :: Monad m => A.Atom -> DebT m ()
+            doAtom :: Monad m => A.Atom -> CabalT m ()
             doAtom (A.InstallData b from dest) =
                 if takeFileName from == takeFileName dest
                 then (A.atomSet . A.debInfo) %= (Set.insert $ A.Install b from (dDir </> makeRelative "/" (takeDirectory dest)))
@@ -548,11 +548,11 @@ expandAtoms =
             doAtom _ = return ()
 
       -- Turn A.InstallTo into a make rule
-      expandInstallTo :: Monad m => DebT m ()
+      expandInstallTo :: Monad m => CabalT m ()
       expandInstallTo =
           access (A.atomSet . A.debInfo) >>= List.mapM_ doAtom . Set.toList
           where
-            doAtom :: Monad m => A.Atom -> DebT m ()
+            doAtom :: Monad m => A.Atom -> CabalT m ()
             doAtom (A.InstallTo b from dest) =
                 (T.rulesFragments . A.debInfo) +=
                                     (Text.unlines [ pack ("binary-fixup" </> ppDisplay b) <> "::"
@@ -560,11 +560,11 @@ expandAtoms =
             doAtom _ = return ()
 
       -- Turn A.File into an intermediateFile and an A.Install
-      expandFile :: Monad m => DebT m ()
+      expandFile :: Monad m => CabalT m ()
       expandFile =
           access (A.atomSet . A.debInfo) >>= List.mapM_ doAtom . Set.toList
           where
-            doAtom :: Monad m => A.Atom -> DebT m ()
+            doAtom :: Monad m => A.Atom -> CabalT m ()
             doAtom (A.File b path text) =
                 do let (destDir', destName') = splitFileName path
                        tmpDir = "debian/cabalInstall" </> show (md5 (fromString (unpack text)))
@@ -573,28 +573,28 @@ expandAtoms =
                    (A.atomSet . A.debInfo) %= (Set.insert $ A.Install b tmpPath destDir')
             doAtom _ = return ()
 
-      expandWebsite :: Monad m => DebT m ()
+      expandWebsite :: Monad m => CabalT m ()
       expandWebsite =
           do mp <- get >>= return . getL T.website
              List.mapM_ (\ (b, site) -> modify (siteAtoms b site)) (Map.toList mp)
 
-      expandServer :: Monad m => DebT m ()
+      expandServer :: Monad m => CabalT m ()
       expandServer =
           do mp <- get >>= return . getL T.serverInfo
              List.mapM_ (\ (b, x) -> modify (serverAtoms b x False)) (Map.toList mp)
 
-      expandBackups :: Monad m => DebT m ()
+      expandBackups :: Monad m => CabalT m ()
       expandBackups =
           do mp <- get >>= return . getL T.backups
              List.mapM_ (\ (b, name) -> modify (backupAtoms b name)) (Map.toList mp)
 
-      expandExecutable :: Monad m => DebT m ()
+      expandExecutable :: Monad m => CabalT m ()
       expandExecutable =
           do mp <- get >>= return . getL T.executable
              List.mapM_ (\ (b, f) -> modify (execAtoms b f)) (Map.toList mp)
 
 -- | Add the normal default values to the rules files.
-finalizeRules :: (Monad m) => DebT m ()
+finalizeRules :: (Monad m) => CabalT m ()
 finalizeRules =
     do DebBase b <- debianNameBase
        compiler <- access (compilerFlavor . T.flags . A.debInfo)

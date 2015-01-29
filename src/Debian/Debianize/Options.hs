@@ -13,7 +13,7 @@ import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Char (isDigit, ord)
 import Data.Lens.Lazy (Lens)
 import Debian.Debianize.Goodies (doExecutable)
-import Debian.Debianize.Monad (DebT, DebianT)
+import Debian.Debianize.Monad (CabalT, DebianT)
 import Debian.Debianize.Prelude (maybeRead, (+=), (~=), (%=), (++=), (+++=))
 import Debian.Debianize.Types
     (noDocumentationLibrary, noProfilingLibrary,
@@ -38,7 +38,7 @@ import System.Posix.Env (setEnv)
 import Text.Regex.TDFA ((=~))
 
 -- | Apply a list of command line arguments to the monadic state.
-compileArgs :: MonadIO m => [String] -> DebT m ()
+compileArgs :: MonadIO m => [String] -> CabalT m ()
 compileArgs args =
     case getOpt' RequireOrder options args of
       (os, [], [], []) -> sequence_ os
@@ -48,17 +48,17 @@ compileArgs args =
 
 -- | Get a list of arguments from the CABALDEBIAN environment variable
 -- and apply them to the monadic state.
-compileEnvironmentArgs :: MonadIO m => DebT m ()
+compileEnvironmentArgs :: MonadIO m => CabalT m ()
 compileEnvironmentArgs = withEnvironmentArgs compileArgs
 
 -- | Get the list of command line arguments and apply them to the
 -- monadic state.
-compileCommandlineArgs :: MonadIO m => DebT m ()
+compileCommandlineArgs :: MonadIO m => CabalT m ()
 compileCommandlineArgs = liftIO getArgs >>= compileArgs
 
 -- | Read a value out of the CABALDEBIAN environment variable which is
 -- the result of applying show to a [String].
-withEnvironmentArgs :: MonadIO m => ([String] -> DebT m a) -> DebT m a
+withEnvironmentArgs :: MonadIO m => ([String] -> CabalT m a) -> CabalT m a
 withEnvironmentArgs f =
     liftIO (tryIOError (getEnv "CABALDEBIAN")) >>= either (\ _ -> f []) (maybe (f []) f . maybeRead)
 
@@ -69,7 +69,7 @@ putEnvironmentArgs :: [String] -> IO ()
 putEnvironmentArgs fs = setEnv "CABALDEBIAN" (show fs) True
 
 -- | Options that modify other atoms.
-options :: MonadIO m => [OptDescr (DebT m ())]
+options :: MonadIO m => [OptDescr (CabalT m ())]
 options =
     [ Option "" ["executable"] (ReqArg (\ path -> executableOption path (\ bin e -> doExecutable bin e)) "SOURCEPATH or SOURCEPATH:DESTDIR")
              (unlines [ "Create an individual binary package to hold this executable.  Other executables "
@@ -202,7 +202,7 @@ executableOption arg f =
 addDep' :: Monad m => (BinPkgName -> Lens DebInfo Relations) -> String -> DebianT m ()
 addDep' lns arg = mapM_ (\ (b, rel) -> lns b %= (++ [[rel]])) (parseDeps arg)
 
-addDep :: Monad m => (BinPkgName -> Lens DebInfo Relations) -> String -> DebT m ()
+addDep :: Monad m => (BinPkgName -> Lens DebInfo Relations) -> String -> CabalT m ()
 addDep lns arg = mapM_ (\ (b, rel) -> (lns b . debInfo) %= (++ [[rel]])) (parseDeps arg)
 
 parseDeps :: String -> [(BinPkgName, Relation)]

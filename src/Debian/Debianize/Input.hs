@@ -34,7 +34,7 @@ import Debian.Debianize.Types.Atoms
     (control, warning, sourceFormat, watch, rulesHead, compat, packageDescription,
      copyright, changelog, installInit, postInst, postRm, preInst, preRm,
      logrotateStanza, link, install, installDir, intermediateFiles)
-import Debian.Debianize.Monad (DebT, DebianT)
+import Debian.Debianize.Monad (CabalT, DebianT)
 import Debian.Debianize.Prelude (getDirectoryContents', readFileMaybe, read', (~=), (~?=), (+=), (++=), (+++=))
 import Debian.Orphans ()
 import Debian.Policy (Section(..), parseStandardsVersion, readPriority, readSection, parsePackageArchitectures, parseMaintainer,
@@ -259,7 +259,7 @@ readDir p line = installDir p (unpack line)
 -- package description.  This needs to match the path cabal assigns to
 -- datadir in the dist/build/autogen/Paths_packagename.hs module, or
 -- perhaps the path in the cabal_debian_datadir environment variable.
-dataDir :: MonadIO m => DebT m FilePath
+dataDir :: MonadIO m => CabalT m FilePath
 dataDir = do
   d <- access packageDescription
   return $ case Cabal.dataDir d of

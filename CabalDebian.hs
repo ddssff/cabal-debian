@@ -13,7 +13,7 @@ import Data.List as List (unlines)
 import Debian.Debianize.Details (debianDefaultAtoms)
 import Debian.Debianize.Finalize (debianize)
 import Debian.Debianize.InputCabalPackageDescription (DebAction(Debianize, SubstVar, Usage), debAction)
-import Debian.Debianize.Monad (DebT, evalDebT, liftCabal)
+import Debian.Debianize.Monad (CabalT, evalCabalT, liftCabal)
 import Debian.Debianize.Options (options)
 import Debian.Debianize.Output (doDebianizeAction)
 import Debian.Debianize.SubstVars (substvars)
@@ -26,16 +26,16 @@ main :: IO ()
 main = cabalDebianMain debianDefaultAtoms
 
 -- | The main function for the cabal-debian executable.
-cabalDebianMain :: (MonadIO m, Functor m) => DebT m () -> m ()
+cabalDebianMain :: (MonadIO m, Functor m) => CabalT m () -> m ()
 cabalDebianMain init =
     -- This picks up the options required to decide what action we are
     -- taking.  Much of this will be repeated in the call to debianize.
     do atoms <- liftIO $ newAtoms
-       evalDebT (do debianize init
-                    action <- access (debAction . flags . debInfo)
-                    finish action) atoms
+       evalCabalT (do debianize init
+                      action <- access (debAction . flags . debInfo)
+                      finish action) atoms
     where
-      finish :: forall m. (MonadIO m, Functor m) => DebAction -> DebT m ()
+      finish :: forall m. (MonadIO m, Functor m) => DebAction -> CabalT m ()
       finish (SubstVar debType) = substvars debType
       finish Debianize = liftCabal doDebianizeAction
       finish Usage = do
@@ -51,4 +51,4 @@ cabalDebianMain init =
                              , "reason I recommend either using a pristine unpacked directory each time, or else"
                              , "using a revision control system to revert the package to a known state before running."
                              , "The following additional options are available:" ]
-          liftIO $ putStrLn (usageInfo info (options :: [OptDescr (DebT m ())]))
+          liftIO $ putStrLn (usageInfo info (options :: [OptDescr (CabalT m ())]))

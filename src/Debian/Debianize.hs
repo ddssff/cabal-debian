@@ -124,7 +124,7 @@ module Debian.Debianize
     , Debian.Debianize.Input.inputChangeLog
 
     -- * Deb monad - 'Debian.Debianize.Monad'
-    , DebT, runDebT, execDebT, evalDebT, DebM, runDebM, execDebM, evalDebM
+    , CabalT, runCabalT, execCabalT, evalCabalT, CabalM, runCabalM, execCabalM, evalCabalM
 
     , Debian.Debianize.DebianName.mapCabal
     , Debian.Debianize.DebianName.splitCabal

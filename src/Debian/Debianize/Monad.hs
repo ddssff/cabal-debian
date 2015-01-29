@@ -3,14 +3,14 @@
 module Debian.Debianize.Monad
     ( Atoms
 
-    , DebT
-    , runDebT
-    , evalDebT
-    , execDebT
-    , DebM
-    , runDebM
-    , evalDebM
-    , execDebM
+    , CabalT
+    , runCabalT
+    , evalCabalT
+    , execCabalT
+    , CabalM
+    , runCabalM
+    , evalCabalM
+    , execCabalM
 
     -- * modify cabal to debian package version map
     -- , mapCabal
@@ -28,26 +28,26 @@ import Debian.Debianize.Types.Atoms (Atoms, DebInfo, debInfo)
 import Debian.Orphans ()
 import Prelude hiding (init, log, unlines)
 
-type DebT m = StateT Atoms m -- Better name - CabalT?
-type DebM = State Atoms
+type CabalT m = StateT Atoms m -- Better name - CabalT?
+type CabalM = State Atoms
 
-execDebT :: Monad m => DebT m a -> Atoms -> m Atoms
-execDebT action atoms = execStateT action atoms
+execCabalT :: Monad m => CabalT m a -> Atoms -> m Atoms
+execCabalT action atoms = execStateT action atoms
 
-evalDebT :: Monad m => DebT m a -> Atoms -> m a
-evalDebT action atoms = evalStateT action atoms
+evalCabalT :: Monad m => CabalT m a -> Atoms -> m a
+evalCabalT action atoms = evalStateT action atoms
 
-runDebT :: Monad m => DebT m a -> Atoms -> m (a, Atoms)
-runDebT action atoms = runStateT action atoms
+runCabalT :: Monad m => CabalT m a -> Atoms -> m (a, Atoms)
+runCabalT action atoms = runStateT action atoms
 
-execDebM :: DebM a -> Atoms -> Atoms
-execDebM action atoms = execState action atoms
+execCabalM :: CabalM a -> Atoms -> Atoms
+execCabalM action atoms = execState action atoms
 
-evalDebM :: DebM a -> Atoms -> a
-evalDebM action atoms = evalState action atoms
+evalCabalM :: CabalM a -> Atoms -> a
+evalCabalM action atoms = evalState action atoms
 
-runDebM :: DebM a -> Atoms -> (a, Atoms)
-runDebM action atoms = runState action atoms
+runCabalM :: CabalM a -> Atoms -> (a, Atoms)
+runCabalM action atoms = runState action atoms
 
 type DebianT m = StateT DebInfo m
 

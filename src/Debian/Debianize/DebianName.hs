@@ -17,7 +17,7 @@ import Data.Map as Map (lookup, alter)
 import Data.Version (Version, showVersion)
 import Debian.Debianize.Types.BinaryDebDescription as Debian (PackageType(..))
 import Debian.Debianize.Types.Atoms as T (debianNameMap, packageDescription, utilsPackageNameBase, overrideDebianNameBase)
-import Debian.Debianize.Monad (DebT)
+import Debian.Debianize.Monad (CabalT)
 import Debian.Debianize.Prelude ((%=))
 import Debian.Debianize.VersionSplits (DebBase(DebBase, unDebBase), insertSplit, doSplits, VersionSplits, makePackage)
 import Debian.Orphans ()
@@ -37,7 +37,7 @@ data Dependency_
     deriving (Eq, Show)
 
 -- | Build the Debian package name for a given package type.
-debianName :: (Monad m, Functor m, PkgName name) => PackageType -> CompilerFlavor -> DebT m name
+debianName :: (Monad m, Functor m, PkgName name) => PackageType -> CompilerFlavor -> CabalT m name
 debianName typ cfl =
     do base <-
            case (typ, cfl) of
@@ -50,7 +50,7 @@ debianName typ cfl =
 -- names based on version numbers.  If a version split happens at v,
 -- this will return the ltName if < v, and the geName if the relation
 -- is >= v.
-debianNameBase :: Monad m => DebT m DebBase
+debianNameBase :: Monad m => CabalT m DebBase
 debianNameBase =
     do nameBase <- access T.overrideDebianNameBase
        pkgDesc <- access packageDescription
@@ -99,7 +99,7 @@ debianBaseName (PackageName name) =
 -- Not really a debian package name, but the name of a cabal package
 -- that maps to the debian package name we want.  (Should this be a
 -- SrcPkgName?)
-mapCabal :: Monad m => PackageName -> DebBase -> DebT m ()
+mapCabal :: Monad m => PackageName -> DebBase -> CabalT m ()
 mapCabal pname dname =
     debianNameMap %= Map.alter f pname
     where
@@ -108,7 +108,7 @@ mapCabal pname dname =
       f (Just sp) = error $ "mapCabal " ++ show pname ++ " " ++ show dname ++ ": - already mapped: " ++ show sp
 
 -- | Map versions less than ver of Cabal Package pname to Debian package ltname
-splitCabal :: Monad m => PackageName -> DebBase -> Version -> DebT m ()
+splitCabal :: Monad m => PackageName -> DebBase -> Version -> CabalT m ()
 splitCabal pname ltname ver =
     debianNameMap %= Map.alter f pname
     where
@@ -119,7 +119,7 @@ splitCabal pname ltname ver =
 -- | Replace any existing mapping of the cabal name 'pname' with the
 -- debian name 'dname'.  (Use case: to change the debian package name
 -- so it differs from the package provided by ghc.)
-remapCabal :: Monad m => PackageName -> DebBase -> DebT m ()
+remapCabal :: Monad m => PackageName -> DebBase -> CabalT m ()
 remapCabal pname dname = do
   debianNameMap %= Map.alter (const Nothing) pname
   mapCabal pname dname

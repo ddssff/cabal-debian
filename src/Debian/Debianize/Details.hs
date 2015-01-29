@@ -10,15 +10,15 @@ import Data.Version (Version(Version))
 import Debian.Relation (Relation(Rel), BinPkgName(BinPkgName))
 import Debian.Debianize.DebianName (mapCabal, {-remapCabal,-} splitCabal)
 import Debian.Debianize.Types.Atoms as T (epochMap, execMap)
-import Debian.Debianize.Monad (DebT)
+import Debian.Debianize.Monad (CabalT)
 import Debian.Debianize.Prelude ((++=))
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
 import Distribution.Package (PackageName(PackageName))
 
--- | Update the Atoms value in the DebT state with some details about
+-- | Update the Atoms value in the CabalT state with some details about
 -- the debian repository - special cases for how some cabal packages
 -- are mapped to debian package names.
-debianDefaultAtoms :: Monad m => DebT m ()
+debianDefaultAtoms :: Monad m => CabalT m ()
 debianDefaultAtoms =
     do -- These are the two epoch names I know about in the debian repo
        T.epochMap ++= (PackageName "HaXml", 1)

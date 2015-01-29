@@ -22,7 +22,7 @@ import qualified Data.Set as Set (member, Set)
 import Data.Text (pack)
 import Debian.Control (Control'(unControl), ControlFunctions(lookupP, parseControl, stripWS), Field'(Field))
 import Debian.Debianize.InputCabalPackageDescription (DebType(..), dryRun)
-import Debian.Debianize.Monad (DebT)
+import Debian.Debianize.Monad (CabalT)
 import Debian.Debianize.Prelude ((!), buildDebVersionMap, cond, DebMap, debOfFile, diffFile, dpkgFileMap, replaceFile, showDeps, modifyM)
 import qualified Debian.Debianize.Types.Atoms as T
 import Debian.Orphans ()
@@ -60,14 +60,14 @@ buildCompilerId = CompilerId GHC (Version [7,6,3] [])
 -- documentation package name.
 substvars :: (MonadIO m, Functor m) =>
              DebType  -- ^ The type of deb we want to write substvars for - Dev, Prof, or Doc
-          -> DebT m ()
+          -> CabalT m ()
 substvars debType =
     do debVersions <- liftIO buildDebVersionMap
        modifyM (liftIO . libPaths debVersions)
        control <- liftIO $ readFile "debian/control" >>= either (error . show) return . parseControl "debian/control"
        substvars' debType control
 
-substvars' :: (MonadIO m, Functor m) => DebType -> Control' String -> DebT m ()
+substvars' :: (MonadIO m, Functor m) => DebType -> Control' String -> CabalT m ()
 substvars' debType control =
     get >>= return . getL T.packageInfo >>= \ info ->
     cabalDependencies >>= \ cabalDeps ->
@@ -169,7 +169,7 @@ unboxDependency (ExtraLibs _) = Nothing -- Dependency (PackageName d) anyVersion
 
 -- Make a list of the debian devel packages corresponding to cabal packages
 -- which are build dependencies
-debDeps :: (MonadIO m, Functor m) => DebType -> Control' String -> DebT m D.Relations
+debDeps :: (MonadIO m, Functor m) => DebType -> Control' String -> CabalT m D.Relations
 debDeps debType control =
     do info <- get >>= return . getL T.packageInfo
        cabalDeps <- cabalDependencies
@@ -190,7 +190,7 @@ debDeps debType control =
                                                Doc -> T.docDeb p)
                             Nothing -> Nothing) cabalDeps)
 
-cabalDependencies :: (MonadIO m, Functor m) => DebT m [Dependency]
+cabalDependencies :: (MonadIO m, Functor m) => CabalT m [Dependency]
 cabalDependencies =
     do pkgDesc <- access T.packageDescription
        atoms <- get
@@ -225,7 +225,7 @@ debNameFromType control debType =
     where
       debNames = map (\ (Field (_, s)) -> stripWS s) (catMaybes (map (lookupP "Package") (tail (unControl control))))
 
-filterMissing :: Monad m => [[Relation]] -> DebT m [[Relation]]
+filterMissing :: Monad m => [[Relation]] -> CabalT m [[Relation]]
 filterMissing rels =
     do missing <- get >>= return . getL T.missingDependencies
        return $ filter (/= []) (List.map (filter (\ (D.Rel name _ _) -> not (Set.member name missing))) rels)

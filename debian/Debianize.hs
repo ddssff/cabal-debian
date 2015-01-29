@@ -24,7 +24,7 @@ import Debian.Debianize.Types as T
     (changelog, compat, conflicts, control, depends, debianDescription, homepage, packageDescription,
      installCabalExec, sourceFormat, standardsVersion, utilsPackageNameBase, copyright, xDescription)
 import Debian.Debianize.Types.Atoms as T (Atoms, newAtoms, DebInfo, debInfo, makeDebInfo, atomSet, Atom(..))
-import Debian.Debianize.Monad (Atoms, DebT, execDebT, evalDebT, execDebM, execDebianT, liftCabal)
+import Debian.Debianize.Monad (Atoms, CabalT, execCabalT, evalCabalT, execDebianT, liftCabal)
 import Debian.Debianize.Output (compareDebianization)
 import Debian.Debianize.Prelude ((~=), (~?=), (%=), (+=), (++=))
 import Debian.Debianize.Types.CopyrightDescription (CopyrightDescription(..), FilesOrLicenseDescription(..), newCopyrightDescription)
@@ -44,12 +44,12 @@ main =
        -- This is both a debianization script and a unit test - it
        -- makes sure the debianization generated matches the one
        -- checked into version control.
-       log <- newAtoms >>= evalDebT (liftCabal inputChangeLog >> access (changelog . debInfo))
+       log <- newAtoms >>= evalCabalT (liftCabal inputChangeLog >> access (changelog . debInfo))
        old <- newFlags >>= execDebianT inputDebianization . makeDebInfo
-       new <- newAtoms >>= execDebT (debianize (do debianDefaultAtoms
-                                                   (changelog . debInfo) ~?= log
-                                                   customize
-                                                   copyFirstLogEntry old))
+       new <- newAtoms >>= execCabalT (debianize (do debianDefaultAtoms
+                                                     (changelog . debInfo) ~?= log
+                                                     customize
+                                                     copyFirstLogEntry old))
        diff <- compareDebianization old (getL debInfo new)
        case diff of
          "" -> return ()
@@ -58,7 +58,7 @@ main =
        -- just make sure it matches:
        -- writeDebianization "." new
     where
-      customize :: Monad m => DebT m ()
+      customize :: Monad m => CabalT m ()
       customize =
           do (sourceFormat . debInfo) ~= Just Native3
              (standardsVersion . debInfo) ~= Just (StandardsVersion 3 9 3 Nothing)
@@ -124,7 +124,7 @@ copyrightFn =
 -- | This copies the first log entry of deb1 into deb2.  Because the
 -- debianization process updates that log entry, we need to undo that
 -- update in order to get a clean comparison.
-copyFirstLogEntry :: Monad m => DebInfo -> DebT m ()
+copyFirstLogEntry :: Monad m => DebInfo -> CabalT m ()
 copyFirstLogEntry src =
     do dst <- get
        let Just (ChangeLog (hd1 : _)) = getL T.changelog src

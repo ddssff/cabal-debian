@@ -25,7 +25,7 @@ import Debian.Debianize.Finalize (debianize, finalizeDebianization)
 import Debian.Debianize.Goodies (doBackups, doExecutable, doServer, doWebsite, tightDependencyFixup)
 import Debian.Debianize.Input (inputDebianization)
 import Debian.Debianize.InputCabalPackageDescription (compilerFlavor, newFlags)
-import Debian.Debianize.Monad (DebT, evalDebT, execDebM, execDebT, liftCabal, execDebianT, DebianT, evalDebianT)
+import Debian.Debianize.Monad (CabalT, evalCabalT, execCabalM, execCabalT, liftCabal, execDebianT, DebianT, evalDebianT)
 import Debian.Debianize.Prelude ((%=), (++=), (+=), (~=), withCurrentDirectory)
 import Debian.Debianize.Types as T
 import Debian.Debianize.Types.Atoms as T
@@ -49,7 +49,7 @@ import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr(..))
 import Text.PrettyPrint.HughesPJClass (pPrint, text, Doc)
 
 -- | A suitable defaultAtoms value for the debian repository.
-defaultAtoms :: Monad m => DebT m ()
+defaultAtoms :: Monad m => CabalT m ()
 defaultAtoms =
     do T.epochMap ++= (PackageName "HaXml", 1)
        T.epochMap ++= (PackageName "HTTP", 1)
@@ -69,7 +69,7 @@ testAtoms = ghc763 <$> T.newAtoms
 -- | Create a Debianization based on a changelog entry and a license
 -- value.  Uses the currently installed versions of debhelper and
 -- debian-policy to set the compatibility levels.
-newDebianization :: Monad m => ChangeLog -> Maybe Int -> Maybe StandardsVersion -> DebT m ()
+newDebianization :: Monad m => ChangeLog -> Maybe Int -> Maybe StandardsVersion -> CabalT m ()
 newDebianization (ChangeLog (WhiteSpace {} : _)) _ _ = error "defaultDebianization: Invalid changelog entry"
 newDebianization (log@(ChangeLog (entry : _))) level standards =
     do (T.changelog . T.debInfo) ~= Just log
@@ -79,7 +79,7 @@ newDebianization (log@(ChangeLog (entry : _))) level standards =
        (T.standardsVersion . T.debInfo) ~= standards
 newDebianization _ _ _ = error "Invalid changelog"
 
-newDebianization' :: Monad m => Maybe Int -> Maybe StandardsVersion -> DebT m ()
+newDebianization' :: Monad m => Maybe Int -> Maybe StandardsVersion -> CabalT m ()
 newDebianization' level standards =
     do (T.compat . T.debInfo) ~= level
        (T.standardsVersion . T.debInfo) ~= standards
@@ -104,10 +104,10 @@ issue23 label =
     TestLabel label $
     TestCase (withCurrentDirectory "test-data/alex/input" $
               do atoms <- testAtoms
-                 actual <- evalDebT (do (T.changelog . T.debInfo) ~= Just (ChangeLog [testEntry])
-                                        (T.compat . T.debInfo) ~= Just 9
-                                        T.official ~= True
-                                        Map.toList <$> liftCabal debianizationFileMap) atoms
+                 actual <- evalCabalT (do (T.changelog . T.debInfo) ~= Just (ChangeLog [testEntry])
+                                          (T.compat . T.debInfo) ~= Just 9
+                                          T.official ~= True
+                                          Map.toList <$> liftCabal debianizationFileMap) atoms
                  assertEqual label
                    []
                    actual)
@@ -118,7 +118,7 @@ test1 label =
     TestCase (do level <- getDebhelperCompatLevel
                  standards <- getDebianStandardsVersion :: IO (Maybe StandardsVersion)
                  atoms <- testAtoms
-                 deb <- execDebT
+                 deb <- execCabalT
                           (do -- let top = Top "."
                               defaultAtoms
                               newDebianization (ChangeLog [testEntry]) level standards
@@ -131,7 +131,7 @@ test1 label =
     where
       testDeb1 :: Atoms -> Atoms
       testDeb1 atoms =
-          execDebM
+          execCabalM
             (do defaultAtoms
                 newDebianization log (Just 9) (Just (StandardsVersion 3 9 3 (Just 1)))
                 (rulesHead . debInfo) %= (const (Just (Text.unlines $
@@ -166,7 +166,7 @@ test2 label =
     TestCase (do level <- getDebhelperCompatLevel
                  standards <- getDebianStandardsVersion
                  atoms <- testAtoms
-                 deb <- execDebT
+                 deb <- execCabalT
                           (do -- let top = Top "."
                               defaultAtoms
                               newDebianization (ChangeLog [testEntry]) level standards
@@ -178,7 +178,7 @@ test2 label =
                  assertEqual label [] diff)
     where
       expect atoms =
-          execDebM
+          execCabalM
             (do defaultAtoms
                 newDebianization log (Just 9) (Just (StandardsVersion 3 9 3 (Just 1)))
                 (rulesHead . debInfo) %= (const (Just (Text.unlines $
@@ -225,13 +225,13 @@ test3 label =
     TestCase (let top = "test-data/haskell-devscripts" in
               withCurrentDirectory top $
               do atoms <- testAtoms
-                 deb <- (execDebT (liftCabal inputDebianization) atoms)
+                 deb <- (execCabalT (liftCabal inputDebianization) atoms)
                  diff <- diffDebianizations (getL debInfo (testDeb2 atoms)) (getL debInfo deb)
                  assertEqual label [] diff)
     where
       testDeb2 :: Atoms -> Atoms
       testDeb2 atoms =
-          execDebM
+          execCabalM
             (do defaultAtoms
                 newDebianization log (Just 7) (Just (StandardsVersion 3 9 4 Nothing))
                 (T.sourceFormat . debInfo) ~= Just Native3
@@ -388,17 +388,17 @@ test4 label =
                  let inTop = "test-data/clckwrks-dot-com/input"
                  atoms <- withCurrentDirectory inTop $ testAtoms
                  old <- withCurrentDirectory outTop $ do
-                          execDebT (liftCabal inputDebianization) atoms
+                          execCabalT (liftCabal inputDebianization) atoms
                  let log = getL (T.changelog . debInfo) old
                  new <- withCurrentDirectory inTop $ do
-                          execDebT (debianize (defaultAtoms >> customize log)) atoms
+                          execCabalT (debianize (defaultAtoms >> customize log)) atoms
                  diff <- diffDebianizations (getL debInfo old) (getL debInfo ({-copyFirstLogEntry old-} new))
                  assertEqual label [] diff)
     where
-      customize :: Maybe ChangeLog -> DebT IO ()
+      customize :: Maybe ChangeLog -> CabalT IO ()
       customize log =
           do (T.changelog . debInfo) ~= log
-             tight
+             liftCabal tight
              fixRules
              doBackups (BinPkgName "clckwrks-dot-com-backups") "clckwrks-dot-com-backups"
              doWebsite (BinPkgName "clckwrks-dot-com-production") (theSite (BinPkgName "clckwrks-dot-com-production"))
@@ -411,15 +411,15 @@ test4 label =
       customize log = modifyM (lift . customize' log)
       customize' :: Maybe ChangeLog -> Atoms -> IO Atoms
       customize' log atoms =
-          execDebT (newDebianization' (Just 7) (Just (StandardsVersion 3 9 4 Nothing))) .
+          execCabalT (newDebianization' (Just 7) (Just (StandardsVersion 3 9 4 Nothing))) .
           modL T.control (\ y -> y {T.homepage = Just "http://www.clckwrks.com/"}) .
           setL T.sourceFormat (Just Native3) .
           modL T.missingDependencies (insert (BinPkgName "libghc-clckwrks-theme-clckwrks-doc")) .
           setL T.revision Nothing .
-          execDebM (doWebsite (BinPkgName "clckwrks-dot-com-production") (theSite (BinPkgName "clckwrks-dot-com-production"))) .
-          execDebM (doBackups (BinPkgName "clckwrks-dot-com-backups") "clckwrks-dot-com-backups") .
+          execCabalM (doWebsite (BinPkgName "clckwrks-dot-com-production") (theSite (BinPkgName "clckwrks-dot-com-production"))) .
+          execCabalM (doBackups (BinPkgName "clckwrks-dot-com-backups") "clckwrks-dot-com-backups") .
           fixRules .
-          execDebM tight .
+          execCabalM tight .
           setL T.changelog log
 -}
       -- A log entry gets added when the Debianization is generated,
@@ -498,7 +498,7 @@ test5 label =
                  old <- withCurrentDirectory outTop $ newFlags >>= execDebianT inputDebianization . makeDebInfo
                  let standards = getL T.standardsVersion old
                      level = getL T.compat old
-                 new <- withCurrentDirectory inTop (execDebT (debianize (defaultAtoms >> customize old level standards)) atoms)
+                 new <- withCurrentDirectory inTop (execCabalT (debianize (defaultAtoms >> customize old level standards)) atoms)
                  diff <- diffDebianizations old (getL debInfo new)
                  assertEqual label [] diff)
     where
@@ -593,7 +593,7 @@ test8 label =
                       outTop = "test-data/artvaluereport-data/output"
                   (old :: DebInfo) <- withCurrentDirectory outTop $ newFlags >>= execDebianT inputDebianization . makeDebInfo
                   let log = getL T.changelog old
-                  new <- withCurrentDirectory inTop $ newAtoms >>= execDebT (debianize (defaultAtoms >> customize log))
+                  new <- withCurrentDirectory inTop $ newAtoms >>= execCabalT (debianize (defaultAtoms >> customize log))
                   diff <- diffDebianizations old (getL debInfo new)
                   assertEqual label [] diff
              )
@@ -611,7 +611,7 @@ test9 label =
     TestLabel label $
     TestCase (do let inTop = "test-data/alex/input"
                      outTop = "test-data/alex/output"
-                 new <- withCurrentDirectory inTop $ newAtoms >>= execDebT (debianize (defaultAtoms >> customize))
+                 new <- withCurrentDirectory inTop $ newAtoms >>= execCabalT (debianize (defaultAtoms >> customize))
                  let Just (ChangeLog (entry : _)) = getL (T.changelog . debInfo) new
                  old <- withCurrentDirectory outTop $ newFlags >>= execDebianT (inputDebianization >> copyChangelogDate (logDate entry)) . makeDebInfo
                  diff <- diffDebianizations old (getL debInfo new)
@@ -647,13 +647,13 @@ test10 label =
     TestLabel label $
     TestCase (do let inTop = "test-data/archive/input"
                      outTop = "test-data/archive/output"
-                 new <- withCurrentDirectory inTop $ newAtoms >>= execDebT (debianize (defaultAtoms >> customize))
+                 new <- withCurrentDirectory inTop $ newAtoms >>= execCabalT (debianize (defaultAtoms >> customize))
                  let Just (ChangeLog (entry : _)) = getL (T.changelog . debInfo) new
                  old <- withCurrentDirectory outTop $ newFlags >>= execDebianT (inputDebianization >> copyChangelogDate (logDate entry)) . makeDebInfo
                  diff <- diffDebianizations old (getL debInfo new)
                  assertEqual label [] diff)
     where
-      customize :: DebT IO ()
+      customize :: CabalT IO ()
       customize =
           do T.sourcePackageName ~= Just (SrcPkgName "seereason-darcs-backups")
              (T.compat . debInfo) ~= Just 5

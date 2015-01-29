@@ -14,7 +14,7 @@ import Debian.Debianize.Types as T
 import Debian.Debianize.Types.Atoms as T
     (Atoms, Atom(..), newAtoms, InstallFile(..), Server(..), Site(..), DebInfo, debInfo, atomSet, makeDebInfo)
 import Debian.Debianize.InputCabalPackageDescription (newFlags)
-import Debian.Debianize.Monad (execDebT, evalDebT, DebT, execDebM, liftCabal, execDebianT)
+import Debian.Debianize.Monad (execCabalT, evalCabalT, CabalT, liftCabal, execDebianT)
 import Debian.Debianize.Types.SourceDebDescription (SourceDebDescription)
 import Debian.Debianize.Output (compareDebianization)
 import Debian.Debianize.Prelude ((~=), (%=), (+=), (++=), (+++=), (~?=), withCurrentDirectory)
@@ -31,14 +31,14 @@ import Prelude hiding ((.))
 -- copyFirstLogEntry.
 main :: IO ()
 main =
-    do log <- withCurrentDirectory "test-data/artvaluereport2/input" $ newAtoms >>= evalDebT (liftCabal inputChangeLog >> access (changelog . debInfo))
-       new <- withCurrentDirectory "test-data/artvaluereport2/input" $ newAtoms >>= execDebT (debianize (debianDefaultAtoms >> customize log))
+    do log <- withCurrentDirectory "test-data/artvaluereport2/input" $ newAtoms >>= evalCabalT (liftCabal inputChangeLog >> access (changelog . debInfo))
+       new <- withCurrentDirectory "test-data/artvaluereport2/input" $ newAtoms >>= execCabalT (debianize (debianDefaultAtoms >> customize log))
        old <- withCurrentDirectory "test-data/artvaluereport2/output" $ newFlags >>= execDebianT inputDebianization . makeDebInfo
        -- The newest log entry gets modified when the Debianization is
        -- generated, it won't match so drop it for the comparison.
        compareDebianization old (copyFirstLogEntry old (getL debInfo new)) >>= putStr
     where
-      customize :: Maybe ChangeLog -> DebT IO ()
+      customize :: Maybe ChangeLog -> CabalT IO ()
       customize log =
           do (T.changelog . debInfo) ~?= log
              (atomSet . debInfo) %= (Set.insert $ InstallCabalExec (BinPkgName "appraisalscope") "lookatareport" "usr/bin")
@@ -70,12 +70,12 @@ main =
              (homepage . debInfo) ~= Just "http://appraisalreportonline.com"
              (compat . debInfo) ~= Just 7
 
-      addServerDeps :: DebT IO ()
+      addServerDeps :: CabalT IO ()
       addServerDeps = mapM_ addDeps (map BinPkgName ["artvaluereport2-development", "artvaluereport2-staging", "artvaluereport2-production"])
       addDeps p = mapM_ (addDep p) (map BinPkgName ["libjpeg-progs", "libjs-jcrop", "libjs-jquery", "libjs-jquery-ui", "netpbm", "texlive-fonts-extra", "texlive-fonts-recommended", "texlive-latex-extra", "texlive-latex-recommended"])
       addDep p dep = (depends p . debInfo) %= (++ [[Rel dep Nothing Nothing]])
 
-      addServerData :: DebT IO ()
+      addServerData :: CabalT IO ()
       addServerData = mapM_ addData (map BinPkgName ["artvaluereport2-development", "artvaluereport2-staging", "artvaluereport2-production"])
       addData p =
           do (atomSet . debInfo) %= (Set.insert $ InstallData p "theme/ArtValueReport_SunsetSpectrum.ico" "ArtValueReport_SunsetSpectrum.ico")

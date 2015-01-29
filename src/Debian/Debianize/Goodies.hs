@@ -18,6 +18,7 @@ module Debian.Debianize.Goodies
     , execAtoms
     ) where
 
+import Control.Category ((.))
 import Data.Char (isSpace)
 import Data.Lens.Lazy (modL, access)
 import Data.List as List (map, intersperse, intercalate, dropWhileEnd)
@@ -36,7 +37,7 @@ import Debian.Policy (apacheLogDirectory, apacheErrorLog, apacheAccessLog, datab
 import Debian.Relation (BinPkgName(BinPkgName), Relation(Rel))
 import Distribution.Package (PackageName(PackageName))
 import Distribution.PackageDescription as Cabal (PackageDescription(package, synopsis, description))
-import Prelude hiding (writeFile, init, unlines, log, map)
+import Prelude hiding (writeFile, init, unlines, log, map, (.))
 import System.FilePath ((</>))
 
 showCommand :: String -> [String] -> String
@@ -57,7 +58,7 @@ translate str =
 tightDependencyFixup :: Monad m => [(BinPkgName, BinPkgName)] -> BinPkgName -> DebT m ()
 tightDependencyFixup [] _ = return ()
 tightDependencyFixup pairs p =
-    T.rulesFragments +=
+    (T.rulesFragments . T.debInfo) +=
           (Text.unlines $
                ([ "binary-fixup/" <> name <> "::"
                 , "\techo -n 'haskell:Depends=' >> debian/" <> name <> ".substvars" ] ++
@@ -88,7 +89,7 @@ doWebsite p w = T.website ++= (p, w)
 doBackups :: Monad m => BinPkgName -> String -> DebT m ()
 doBackups bin s =
     do T.backups ++= (bin, s)
-       T.depends bin %= (++ [[Rel (BinPkgName "anacron") Nothing Nothing]])
+       (T.depends bin . T.debInfo) %= (++ [[Rel (BinPkgName "anacron") Nothing Nothing]])
        -- depends +++= (bin, Rel (BinPkgName "anacron") Nothing Nothing)
 
 describe :: Monad m => DebT m Text
@@ -166,15 +167,15 @@ watchAtom :: PackageName -> Text
 watchAtom (PackageName pkgname) =
     pack $ "version=3\nhttp://hackage.haskell.org/package/" ++ pkgname ++ "/distro-monitor .*-([0-9\\.]+)\\.(?:zip|tgz|tbz|txz|(?:tar\\.(?:gz|bz2|xz)))\n"
 
--- FIXME - use Atoms
 siteAtoms :: BinPkgName -> T.Site -> Atoms -> Atoms
 siteAtoms b site =
     execDebM
-      (do T.installDir b "/etc/apache2/sites-available"
-          T.link b ("/etc/apache2/sites-available/" ++ T.domain site) ("/etc/apache2/sites-enabled/" ++ T.domain site)
-          T.file b ("/etc/apache2/sites-available" </> T.domain site) apacheConfig
-          T.installDir b (apacheLogDirectory b)
-          T.logrotateStanza +++= (b, singleton
+      (do (T.atomSet . T.debInfo) %= (Set.insert $ T.InstallDir b "/etc/apache2/sites-available")
+          (T.atomSet . T.debInfo) %= (Set.insert $ T.Link b ("/etc/apache2/sites-available/" ++ T.domain site) ("/etc/apache2/sites-enabled/" ++ T.domain site))
+          (T.atomSet . T.debInfo) %= (Set.insert $ T.File b ("/etc/apache2/sites-available" </> T.domain site) apacheConfig)
+          (T.atomSet . T.debInfo) %= (Set.insert $ T.InstallDir b (apacheLogDirectory b))
+          (T.logrotateStanza . T.debInfo) +++=
+                              (b, singleton
                                    (Text.unlines $ [ pack (apacheAccessLog b) <> " {"
                                                    , "  copytruncate" -- hslogger doesn't notice when the log is rotated, maybe this will help
                                                    , "  weekly"
@@ -182,7 +183,8 @@ siteAtoms b site =
                                                    , "  compress"
                                                    , "  missingok"
                                                    , "}"]))
-          T.logrotateStanza +++= (b, singleton
+          (T.logrotateStanza . T.debInfo) +++=
+                              (b, singleton
                                    (Text.unlines $ [ pack (apacheErrorLog b) <> " {"
                                                    , "  copytruncate"
                                                    , "  weekly"
@@ -233,8 +235,8 @@ siteAtoms b site =
 -- FIXME - use Atoms
 serverAtoms :: BinPkgName -> T.Server -> Bool -> Atoms -> Atoms
 serverAtoms b server' isSite =
-    modL T.postInst (insertWith (\ old new -> if old /= new then error ("serverAtoms: " ++ show old ++ " -> " ++ show new) else old) b debianPostinst) .
-    modL T.installInit (Map.insertWith (\ old new -> if old /= new then error ("serverAtoms: " ++ show old ++ " -> " ++ show new) else old) b debianInit) .
+    modL (T.postInst . T.debInfo) (insertWith (\ old new -> if old /= new then error ("serverAtoms: " ++ show old ++ " -> " ++ show new) else old) b debianPostinst) .
+    modL (T.installInit . T.debInfo) (Map.insertWith (\ old new -> if old /= new then error ("serverAtoms: " ++ show old ++ " -> " ++ show new) else old) b debianInit) .
     serverLogrotate' b .
     execAtoms b exec
     where
@@ -299,13 +301,13 @@ serverAtoms b server' isSite =
 -- FIXME - use Atoms
 serverLogrotate' :: BinPkgName -> Atoms -> Atoms
 serverLogrotate' b =
-    modL T.logrotateStanza (insertWith Set.union b (singleton (Text.unlines $ [ pack (serverAccessLog b) <> " {"
+    modL (T.logrotateStanza . T.debInfo) (insertWith Set.union b (singleton (Text.unlines $ [ pack (serverAccessLog b) <> " {"
                                  , "  weekly"
                                  , "  rotate 5"
                                  , "  compress"
                                  , "  missingok"
                                  , "}" ]))) .
-    modL T.logrotateStanza (insertWith Set.union b (singleton (Text.unlines $ [ pack (serverAppLog b) <> " {"
+    modL (T.logrotateStanza . T.debInfo) (insertWith Set.union b (singleton (Text.unlines $ [ pack (serverAppLog b) <> " {"
                                  , "  weekly"
                                  , "  rotate 5"
                                  , "  compress"
@@ -315,7 +317,7 @@ serverLogrotate' b =
 -- FIXME - use Atoms
 backupAtoms :: BinPkgName -> String -> Atoms -> Atoms
 backupAtoms b name =
-    modL T.postInst (insertWith (\ old new -> if old /= new then error $ "backupAtoms: " ++ show old ++ " -> " ++ show new else old) b
+    modL (T.postInst . T.debInfo) (insertWith (\ old new -> if old /= new then error $ "backupAtoms: " ++ show old ++ " -> " ++ show new else old) b
                  (Text.unlines $
                   [ "#!/bin/sh"
                   , ""
@@ -332,7 +334,7 @@ backupAtoms b name =
 -- FIXME - use Atoms
 execAtoms :: BinPkgName -> T.InstallFile -> Atoms -> Atoms
 execAtoms b ifile r =
-    modL T.rulesFragments (Set.insert (pack ("build" </> ppDisplay b ++ ":: build-ghc-stamp\n"))) .
+    modL (T.rulesFragments . T.debInfo) (Set.insert (pack ("build" </> ppDisplay b ++ ":: build-ghc-stamp\n"))) .
     fileAtoms b ifile $
     r
 
@@ -345,9 +347,9 @@ fileAtoms b installFile' r =
 fileAtoms' :: BinPkgName -> Maybe FilePath -> String -> Maybe FilePath -> String -> Atoms -> Atoms
 fileAtoms' b sourceDir' execName' destDir' destName' r =
     case (sourceDir', execName' == destName') of
-      (Nothing, True) -> execDebM (T.installCabalExec b execName' d) r
-      (Just s, True) -> execDebM (T.install b (s </> execName') d) r
-      (Nothing, False) -> execDebM (T.installCabalExecTo b execName' (d </> destName')) r
-      (Just s, False) -> execDebM (T.installTo b (s </> execName') (d </> destName')) r
+      (Nothing, True) -> execDebM ((T.atomSet . T.debInfo) %= (Set.insert $ T.InstallCabalExec b execName' d)) r
+      (Just s, True) -> execDebM ((T.atomSet . T.debInfo) %= (Set.insert $ T.Install b (s </> execName') d)) r
+      (Nothing, False) -> execDebM ((T.atomSet . T.debInfo) %= (Set.insert $ T.InstallCabalExecTo b execName' (d </> destName'))) r
+      (Just s, False) -> execDebM ((T.atomSet . T.debInfo) %= (Set.insert $ T.InstallTo b (s </> execName') (d </> destName'))) r
     where
       d = fromMaybe "usr/bin" destDir'

@@ -13,11 +13,11 @@ import Data.List as List (unlines)
 import Debian.Debianize.Details (debianDefaultAtoms)
 import Debian.Debianize.Finalize (debianize)
 import Debian.Debianize.InputCabalPackageDescription (DebAction(Debianize, SubstVar, Usage), debAction)
-import Debian.Debianize.Monad (DebT, evalDebT)
+import Debian.Debianize.Monad (DebT, evalDebT, liftCabal)
 import Debian.Debianize.Options (options)
 import Debian.Debianize.Output (doDebianizeAction)
 import Debian.Debianize.SubstVars (substvars)
-import Debian.Debianize.Types.Atoms (newAtoms, flags)
+import Debian.Debianize.Types.Atoms (newAtoms, flags, debInfo)
 import Prelude hiding (unlines, writeFile, init, (.))
 import System.Console.GetOpt (OptDescr, usageInfo)
 import System.Environment (getProgName)
@@ -32,12 +32,12 @@ cabalDebianMain init =
     -- taking.  Much of this will be repeated in the call to debianize.
     do atoms <- liftIO $ newAtoms
        evalDebT (do debianize init
-                    action <- access (debAction . flags)
+                    action <- access (debAction . flags . debInfo)
                     finish action) atoms
     where
       finish :: forall m. (MonadIO m, Functor m) => DebAction -> DebT m ()
       finish (SubstVar debType) = substvars debType
-      finish Debianize = doDebianizeAction
+      finish Debianize = liftCabal doDebianizeAction
       finish Usage = do
           progName <- liftIO getProgName
           let info = unlines [ "Typical usage is to cd to the top directory of the package's unpacked source and run: "

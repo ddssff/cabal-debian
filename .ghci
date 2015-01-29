@@ -1,0 +1,1 @@
+:set -isrc -DMIN_VERSION_Cabal(a,b,c)=1

@@ -7,22 +7,24 @@
 --
 -- Be sure to run it with the local-debian flag turned off!
 
+import Control.Category ((.))
 import Control.Exception (throw)
 import Control.Monad.State (get)
 import Data.Lens.Lazy (getL, access)
 import Data.List (intercalate)
 import Data.Monoid (mempty)
-import Data.Set (singleton)
+import Data.Set as Set (singleton, insert)
 import Data.Text as Text (Text, pack)
 import Debian.Changes (ChangeLog(ChangeLog))
 import Debian.Debianize (inputChangeLog, inputDebianization)
 import Debian.Debianize.Details (debianDefaultAtoms)
 import Debian.Debianize.Finalize (debianize)
+import Debian.Debianize.InputCabalPackageDescription (newFlags)
 import Debian.Debianize.Types as T
     (changelog, compat, conflicts, control, depends, debianDescription, homepage, packageDescription,
      installCabalExec, sourceFormat, standardsVersion, utilsPackageNameBase, copyright, xDescription)
-import Debian.Debianize.Types.Atoms as T (Atoms, newAtoms)
-import Debian.Debianize.Monad (Atoms, DebT, execDebT, evalDebT, execDebM)
+import Debian.Debianize.Types.Atoms as T (Atoms, newAtoms, DebInfo, debInfo, makeDebInfo, atomSet, Atom(..))
+import Debian.Debianize.Monad (Atoms, DebT, execDebT, evalDebT, execDebM, execDebianT, liftCabal)
 import Debian.Debianize.Output (compareDebianization)
 import Debian.Debianize.Prelude ((~=), (~?=), (%=), (+=), (++=))
 import Debian.Debianize.Types.CopyrightDescription (CopyrightDescription(..), FilesOrLicenseDescription(..), newCopyrightDescription)
@@ -31,7 +33,7 @@ import Debian.Policy (SourceFormat(Native3), StandardsVersion(StandardsVersion),
 import Debian.Relation (BinPkgName(BinPkgName), Relation(Rel), VersionReq(SLT, GRE), Relations, parseRelations)
 import Debian.Version (parseDebianVersion)
 import Distribution.Compiler(CompilerFlavor(GHC))
-import Prelude hiding (log)
+import Prelude hiding (log, (.))
 import System.Directory (copyFile)
 
 main :: IO ()
@@ -42,13 +44,13 @@ main =
        -- This is both a debianization script and a unit test - it
        -- makes sure the debianization generated matches the one
        -- checked into version control.
-       log <- newAtoms >>= evalDebT (inputChangeLog >> access changelog)
-       old <- newAtoms >>= execDebT (access packageDescription >>= inputDebianization)
+       log <- newAtoms >>= evalDebT (liftCabal inputChangeLog >> access (changelog . debInfo))
+       old <- newFlags >>= execDebianT inputDebianization . makeDebInfo
        new <- newAtoms >>= execDebT (debianize (do debianDefaultAtoms
-                                                   changelog ~?= log
+                                                   (changelog . debInfo) ~?= log
                                                    customize
                                                    copyFirstLogEntry old))
-       diff <- compareDebianization old new
+       diff <- compareDebianization old (getL debInfo new)
        case diff of
          "" -> return ()
          s -> error $ "Debianization mismatch:\n" ++ s
@@ -58,19 +60,19 @@ main =
     where
       customize :: Monad m => DebT m ()
       customize =
-          do sourceFormat ~= Just Native3
-             standardsVersion ~= Just (StandardsVersion 3 9 3 Nothing)
-             compat ~= Just 9
+          do (sourceFormat . debInfo) ~= Just Native3
+             (standardsVersion . debInfo) ~= Just (StandardsVersion 3 9 3 Nothing)
+             (compat . debInfo) ~= Just 9
              utilsPackageNameBase ~= Just "cabal-debian"
-             copyright %= (\ f -> (\ pkgDesc -> f pkgDesc >>= \ c -> return $ copyrightFn c))
-             conflicts (BinPkgName "cabal-debian") %= (++ (rels "haskell-debian-utils (<< 3.59)"))
-             depends (BinPkgName "cabal-debian") %= (++ (rels "apt-file, debian-policy, debhelper, haskell-devscripts (>= 0.8.19)"))
-             depends (BinPkgName "libghc-cabal-debian-dev") %= (++ (rels "debian-policy"))
-             installCabalExec (BinPkgName "cabal-debian-tests") "cabal-debian-tests" "/usr/bin"
-             installCabalExec (BinPkgName "cabal-debian") "cabal-debian" "/usr/bin"
+             (copyright . debInfo) %= (\ f -> (\ pkgDesc -> f pkgDesc >>= \ c -> return $ copyrightFn c))
+             (conflicts (BinPkgName "cabal-debian") . debInfo) %= (++ (rels "haskell-debian-utils (<< 3.59)"))
+             (depends (BinPkgName "cabal-debian") . debInfo) %= (++ (rels "apt-file, debian-policy, debhelper, haskell-devscripts (>= 0.8.19)"))
+             (depends (BinPkgName "libghc-cabal-debian-dev") . debInfo) %= (++ (rels "debian-policy"))
+             (atomSet . debInfo) %= (Set.insert $ InstallCabalExec (BinPkgName "cabal-debian-tests") "cabal-debian-tests" "/usr/bin")
+             (atomSet . debInfo) %= (Set.insert $ InstallCabalExec (BinPkgName "cabal-debian") "cabal-debian" "/usr/bin")
              utilsPackageNameBase ~= Just "cabal-debian"
              -- extraDevDeps (BinPkgName "debian-policy")
-             homepage ~= Just (pack "https://github.com/ddssff/cabal-debian")
+             (homepage . debInfo) ~= Just (pack "https://github.com/ddssff/cabal-debian")
 
 rels :: String -> Relations
 rels = either (throw . userError . show) id . parseRelations
@@ -122,12 +124,12 @@ copyrightFn =
 -- | This copies the first log entry of deb1 into deb2.  Because the
 -- debianization process updates that log entry, we need to undo that
 -- update in order to get a clean comparison.
-copyFirstLogEntry :: Monad m => Atoms -> DebT m ()
+copyFirstLogEntry :: Monad m => DebInfo -> DebT m ()
 copyFirstLogEntry src =
     do dst <- get
        let Just (ChangeLog (hd1 : _)) = getL T.changelog src
-           Just (ChangeLog (_ : tl2)) = getL T.changelog dst
-       changelog ~= Just (ChangeLog (hd1 : tl2))
+           Just (ChangeLog (_ : tl2)) = getL (T.changelog . debInfo) dst
+       (changelog . debInfo) ~= Just (ChangeLog (hd1 : tl2))
 {-
     get >>= \ dst -> 
 copyFirstLogEntry :: Atoms -> Atoms -> Atoms

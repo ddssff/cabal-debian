@@ -8,11 +8,12 @@ module Debian.Debianize.Options
     , withEnvironmentArgs
     ) where
 
+import Control.Category ((.))
 import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Char (isDigit, ord)
 import Data.Lens.Lazy (Lens)
 import Debian.Debianize.Goodies (doExecutable)
-import Debian.Debianize.Monad (DebT)
+import Debian.Debianize.Monad (DebT, DebianT)
 import Debian.Debianize.Prelude (maybeRead, (+=), (~=), (%=), (++=), (+++=))
 import Debian.Debianize.Types
     (noDocumentationLibrary, noProfilingLibrary,
@@ -20,7 +21,7 @@ import Debian.Debianize.Types
      sourceFormat, buildDepends, buildDependsIndep, extraDevDeps, depends, conflicts, replaces, provides,
      recommends, suggests, extraLibMap, debVersion, revision, epochMap, execMap, utilsPackageNameBase,
      standardsVersion, official, sourceSection)
-import Debian.Debianize.Types.Atoms (Atoms, InstallFile(..))
+import Debian.Debianize.Types.Atoms (InstallFile(..), debInfo, DebInfo)
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
 import Debian.Orphans ()
 import Debian.Policy (SourceFormat(Quilt3, Native3), parseMaintainer, parseStandardsVersion)
@@ -28,7 +29,7 @@ import Debian.Relation (BinPkgName(..), SrcPkgName(..), Relations, Relation(..))
 import Debian.Relation.String (parseRelations)
 import Debian.Version (parseDebianVersion)
 import Distribution.Package (PackageName(..))
-import Prelude hiding (readFile, lines, null, log, sum)
+import Prelude hiding (readFile, lines, null, log, sum, (.))
 import System.Console.GetOpt (ArgDescr(..), OptDescr(..), ArgOrder(RequireOrder), getOpt')
 import System.Environment (getArgs, getEnv)
 import System.FilePath ((</>), splitFileName)
@@ -93,7 +94,7 @@ options =
              (unlines [ "Use this name for the debian source package, the name in the Source field at the top of the"
                       , "debian control file, and also at the very beginning of the debian/changelog file.  By default"
                       , "this is haskell-<cabalname>, where the cabal package name is downcased."]),
-      Option "" ["source-section"] (ReqArg (\ name -> sourceSection ~= Just (read name)) "NAME")
+      Option "" ["source-section"] (ReqArg (\ name -> (sourceSection . debInfo) ~= Just (read name)) "NAME")
              "Set the Section: field of the Debian source package.",
       Option "" ["disable-library-profiling"] (NoArg (noProfilingLibrary ~= True))
              (unlines [ "Don't generate profiling (-prof) library packages.  This has been used in one case"
@@ -102,13 +103,13 @@ options =
              (unlines [ "Supply a value for the Maintainer field.  Final value is computed from several inputs."]),
       Option "" ["uploader"] (ReqArg (\ s -> either (error ("Invalid uploader string: " ++ show s)) (\ x -> uploadersOption %= (\ l -> l ++ [x])) (parseMaintainer s)) "Uploader Name <email addr>")
              (unlines [ "Add one entry to the uploader list"]),
-      Option "" ["standards-version"] (ReqArg (\ sv -> standardsVersion ~= Just (parseStandardsVersion sv)) "VERSION")
+      Option "" ["standards-version"] (ReqArg (\ sv -> (standardsVersion . debInfo) ~= Just (parseStandardsVersion sv)) "VERSION")
              "Claim compatibility to this version of the Debian policy (i.e. the value of the Standards-Version field)",
       Option "" ["build-dep"]
                  (ReqArg (\ name ->
                               case parseRelations name of
                                 Left err -> error ("cabal-debian option --build-dep " ++ show name ++ ": " ++ show err)
-                                Right rss -> buildDepends %= (++ rss)) "Debian package relations")
+                                Right rss -> (buildDepends . debInfo) %= (++ rss)) "Debian package relations")
                  (unlines [ "Add a dependency relation to the Build-Depends: field for this source package, e.g."
                           , ""
                           , "     --build-dep libglib2.0-dev"
@@ -117,7 +118,7 @@ options =
                  (ReqArg (\ name ->
                               case parseRelations name of
                                 Left err -> error ("cabal-debian option --build-dep-indep " ++ show name ++ ": " ++ show err)
-                                Right rss -> buildDependsIndep %= (++ rss)) "Debian binary package name")
+                                Right rss -> (buildDependsIndep . debInfo) %= (++ rss)) "Debian binary package name")
                  (unlines [ "Similar to --build-dep, but the dependencies are added to Build-Depends-Indep, e.g.:"
                           , ""
                           , "    --build-dep-indep perl" ]),
@@ -171,9 +172,9 @@ options =
                       , "dependencies are less useful and more troublesome for debian packages than cabal,"
                       , "because you can't install multiple versions of a given debian package.  For more"
                       , "google 'cabal hell'."]),
-      Option "" ["quilt"] (NoArg (sourceFormat ~= Just Quilt3))
+      Option "" ["quilt"] (NoArg ((sourceFormat . debInfo) ~= Just Quilt3))
              "The package has an upstream tarball, write '3.0 (quilt)' into source/format.",
-      Option "" ["native"] (NoArg (sourceFormat ~= Just Native3))
+      Option "" ["native"] (NoArg ((sourceFormat . debInfo) ~= Just Native3))
              "The package has an no upstream tarball, write '3.0 (native)' into source/format.",
       Option "" ["official"] (NoArg (official ~= True))
              "This packaging is created of the official Debian Haskell Group",
@@ -198,8 +199,11 @@ executableOption arg f =
                          , sourceDir = case sd of "./" -> Nothing; _ -> Just sd
                          , destDir = case md of (':' : dd) -> Just dd; _ -> Nothing })
 
-addDep :: Monad m => (BinPkgName -> Lens Atoms Relations) -> String -> DebT m ()
-addDep lns arg = mapM_ (\ (b, rel) -> lns b %= (++ [[rel]])) (parseDeps arg)
+addDep' :: Monad m => (BinPkgName -> Lens DebInfo Relations) -> String -> DebianT m ()
+addDep' lns arg = mapM_ (\ (b, rel) -> lns b %= (++ [[rel]])) (parseDeps arg)
+
+addDep :: Monad m => (BinPkgName -> Lens DebInfo Relations) -> String -> DebT m ()
+addDep lns arg = mapM_ (\ (b, rel) -> (lns b . debInfo) %= (++ [[rel]])) (parseDeps arg)
 
 parseDeps :: String -> [(BinPkgName, Relation)]
 parseDeps arg =

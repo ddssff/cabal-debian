@@ -1,8 +1,10 @@
 {-# LANGUAGE CPP, OverloadedStrings #-}
+
+import Control.Category ((.))
 import Data.Lens.Lazy (getL, modL, access)
 import Data.Maybe (fromMaybe)
 import Data.Monoid (mempty)
-import Data.Set (singleton)
+import Data.Set as Set (singleton, insert)
 import Data.Text as Text (intercalate)
 import Debian.Changes (ChangeLog(..))
 import Debian.Debianize (debianize, doBackups, doExecutable, doServer, doWebsite, inputChangeLog, inputDebianization, debianDefaultAtoms)
@@ -10,8 +12,9 @@ import Debian.Debianize.Types as T
     (changelog, binaryArchitectures, buildDependsIndep, changelog, compat, control, depends, debianDescription,
      installCabalExec, installData, sourcePackageName, homepage, standardsVersion, packageDescription)
 import Debian.Debianize.Types.Atoms as T
-    (Atoms, newAtoms, InstallFile(..), Server(..), Site(..))
-import Debian.Debianize.Monad (execDebT, evalDebT, DebT, execDebM)
+    (Atoms, Atom(..), newAtoms, InstallFile(..), Server(..), Site(..), DebInfo, debInfo, atomSet, makeDebInfo)
+import Debian.Debianize.InputCabalPackageDescription (newFlags)
+import Debian.Debianize.Monad (execDebT, evalDebT, DebT, execDebM, liftCabal, execDebianT)
 import Debian.Debianize.Types.SourceDebDescription (SourceDebDescription)
 import Debian.Debianize.Output (compareDebianization)
 import Debian.Debianize.Prelude ((~=), (%=), (+=), (++=), (+++=), (~?=), withCurrentDirectory)
@@ -19,25 +22,26 @@ import Debian.Pretty (ppDisplay)
 import Debian.Policy (databaseDirectory, PackageArchitectures(All), StandardsVersion(StandardsVersion))
 import Debian.Relation (BinPkgName(BinPkgName), Relation(Rel), SrcPkgName(..), VersionReq(SLT))
 import Debian.Version (parseDebianVersion)
+import Prelude hiding ((.))
 
--- This looks just like a "real" Debianize.hs file except that it
+-- This looks somewhat like a "real" Debianize.hs file except that it
 -- returns the comparison string instead of doing a
 -- writeDebianization, and it reads and writes the test-data
 -- directories instead of ".".  Also, you wouldn't want to
 -- copyFirstLogEntry.
 main :: IO ()
 main =
-    do log <- withCurrentDirectory "test-data/artvaluereport2/input" $ newAtoms >>= evalDebT (inputChangeLog >> access changelog)
+    do log <- withCurrentDirectory "test-data/artvaluereport2/input" $ newAtoms >>= evalDebT (liftCabal inputChangeLog >> access (changelog . debInfo))
        new <- withCurrentDirectory "test-data/artvaluereport2/input" $ newAtoms >>= execDebT (debianize (debianDefaultAtoms >> customize log))
-       old <- withCurrentDirectory "test-data/artvaluereport2/output" $ newAtoms >>= execDebT (access packageDescription >>= inputDebianization)
+       old <- withCurrentDirectory "test-data/artvaluereport2/output" $ newFlags >>= execDebianT inputDebianization . makeDebInfo
        -- The newest log entry gets modified when the Debianization is
        -- generated, it won't match so drop it for the comparison.
-       compareDebianization old (copyFirstLogEntry old new) >>= putStr
+       compareDebianization old (copyFirstLogEntry old (getL debInfo new)) >>= putStr
     where
       customize :: Maybe ChangeLog -> DebT IO ()
       customize log =
-          do T.changelog ~?= log
-             installCabalExec (BinPkgName "appraisalscope") "lookatareport" "usr/bin"
+          do (T.changelog . debInfo) ~?= log
+             (atomSet . debInfo) %= (Set.insert $ InstallCabalExec (BinPkgName "appraisalscope") "lookatareport" "usr/bin")
              doExecutable (BinPkgName "appraisalscope") (InstallFile {execName = "appraisalscope", sourceDir = Nothing, destDir = Nothing, destName = "appraisalscope"})
              doServer (BinPkgName "artvaluereport2-development") (theServer (BinPkgName "artvaluereport2-development"))
              doServer (BinPkgName "artvaluereport2-staging") (theServer (BinPkgName "artvaluereport2-staging"))
@@ -45,7 +49,7 @@ main =
              doBackups (BinPkgName "artvaluereport2-backups") "artvaluereport2-backups"
              -- This should go into the "real" data directory.  And maybe a different icon for each server?
              -- install (BinPkgName "artvaluereport2-server") ("theme/ArtValueReport_SunsetSpectrum.ico", "usr/share/artvaluereport2-data")
-             debianDescription (BinPkgName "artvaluereport2-backups") ~=
+             (debianDescription (BinPkgName "artvaluereport2-backups") . debInfo) ~=
                      Just (Text.intercalate "\n"
                                   [ "backup program for the appraisalreportonline.com site"
                                   , "  Install this somewhere other than where the server is running get"
@@ -53,31 +57,31 @@ main =
              addDep (BinPkgName "artvaluereport2-production") (BinPkgName "apache2")
              addServerData
              addServerDeps
-             debianDescription (BinPkgName "appraisalscope") ~= Just "Offline manipulation of appraisal database"
-             buildDependsIndep %= (++ [[Rel (BinPkgName "libjs-jquery-ui") (Just (SLT (parseDebianVersion ("1.10" :: String)))) Nothing]])
-             buildDependsIndep %= (++ [[Rel (BinPkgName "libjs-jquery") Nothing Nothing]])
-             buildDependsIndep %= (++ [[Rel (BinPkgName "libjs-jcrop") Nothing Nothing]])
-             binaryArchitectures (BinPkgName "artvaluereport2-staging") ~= Just All
-             binaryArchitectures (BinPkgName "artvaluereport2-production") ~= Just All
-             binaryArchitectures (BinPkgName "artvaluereport2-development") ~= Just All
+             (debianDescription (BinPkgName "appraisalscope") . debInfo) ~= Just "Offline manipulation of appraisal database"
+             (buildDependsIndep . debInfo) %= (++ [[Rel (BinPkgName "libjs-jquery-ui") (Just (SLT (parseDebianVersion ("1.10" :: String)))) Nothing]])
+             (buildDependsIndep . debInfo) %= (++ [[Rel (BinPkgName "libjs-jquery") Nothing Nothing]])
+             (buildDependsIndep . debInfo) %= (++ [[Rel (BinPkgName "libjs-jcrop") Nothing Nothing]])
+             (binaryArchitectures (BinPkgName "artvaluereport2-staging") . debInfo) ~= Just All
+             (binaryArchitectures (BinPkgName "artvaluereport2-production") . debInfo) ~= Just All
+             (binaryArchitectures (BinPkgName "artvaluereport2-development") . debInfo) ~= Just All
              -- utilsPackageNames [BinPkgName "artvaluereport2-server"]
              sourcePackageName ~= Just (SrcPkgName "haskell-artvaluereport2")
-             T.standardsVersion ~= Just (StandardsVersion 3 9 1 Nothing)
-             homepage ~= Just "http://appraisalreportonline.com"
-             compat ~= Just 7
+             (T.standardsVersion . debInfo) ~= Just (StandardsVersion 3 9 1 Nothing)
+             (homepage . debInfo) ~= Just "http://appraisalreportonline.com"
+             (compat . debInfo) ~= Just 7
 
       addServerDeps :: DebT IO ()
       addServerDeps = mapM_ addDeps (map BinPkgName ["artvaluereport2-development", "artvaluereport2-staging", "artvaluereport2-production"])
       addDeps p = mapM_ (addDep p) (map BinPkgName ["libjpeg-progs", "libjs-jcrop", "libjs-jquery", "libjs-jquery-ui", "netpbm", "texlive-fonts-extra", "texlive-fonts-recommended", "texlive-latex-extra", "texlive-latex-recommended"])
-      addDep p dep = depends p %= (++ [[Rel dep Nothing Nothing]])
+      addDep p dep = (depends p . debInfo) %= (++ [[Rel dep Nothing Nothing]])
 
       addServerData :: DebT IO ()
       addServerData = mapM_ addData (map BinPkgName ["artvaluereport2-development", "artvaluereport2-staging", "artvaluereport2-production"])
       addData p =
-          do installData p "theme/ArtValueReport_SunsetSpectrum.ico" "ArtValueReport_SunsetSpectrum.ico"
+          do (atomSet . debInfo) %= (Set.insert $ InstallData p "theme/ArtValueReport_SunsetSpectrum.ico" "ArtValueReport_SunsetSpectrum.ico")
              mapM_ (addDataFile p) ["Udon.js", "flexbox.css", "DataTables-1.8.2", "html5sortable", "jGFeed", "searchMag.png",
                                     "Clouds.jpg", "tweaks.css", "verticalTabs.css", "blueprint", "jquery.blockUI", "jquery.tinyscrollbar"]
-      addDataFile p path = installData p path path
+      addDataFile p path = (atomSet . debInfo) %= (Set.insert $ InstallData p path path)
 
       theSite :: BinPkgName -> Site
       theSite deb =
@@ -130,7 +134,7 @@ main =
 anyrel :: BinPkgName -> Relation
 anyrel b = Rel b Nothing Nothing
 
-copyFirstLogEntry :: Atoms -> Atoms -> Atoms
+copyFirstLogEntry :: DebInfo -> DebInfo -> DebInfo
 copyFirstLogEntry deb1 deb2 =
     modL T.changelog (const (Just (ChangeLog (hd1 : tl2)))) deb2
     where

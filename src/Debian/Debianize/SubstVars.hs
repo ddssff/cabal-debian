@@ -84,7 +84,7 @@ substvars' debType control =
           do old <- liftIO $ readFile path'
              deps <- debDeps debType control
              new <- addDeps old deps
-             dry <- get >>= return . getL (dryRun . T.flags)
+             dry <- get >>= return . getL (dryRun . T.flags . T.debInfo)
              liftIO (diffFile path' (pack new) >>= maybe (putStrLn ("cabal-debian substvars: No updates found for " ++ show path'))
                                                        (\ diff -> if dry then putStr diff else replaceFile path' new))
       ([], Nothing) -> return ()

@@ -25,7 +25,7 @@ import Data.Text.IO (readFile)
 --import Data.Version (showVersion, Version(Version))
 import Debian.Changes (parseChangeLog)
 import Debian.Control (Control'(unControl), Paragraph'(..), stripWS, parseControlFromFile, Field, Field'(..), ControlFunctions)
-import qualified Debian.Debianize.Types.Atoms as T (makeAtoms, flags)
+import qualified Debian.Debianize.Types.Atoms as T (flags, makeDebInfo)
 import Debian.Debianize.Types.BinaryDebDescription (BinaryDebDescription, newBinaryDebDescription)
 import qualified Debian.Debianize.Types.BinaryDebDescription as B
 import Debian.Debianize.Types.CopyrightDescription (readCopyrightDescription)
@@ -34,7 +34,7 @@ import Debian.Debianize.Types.Atoms
     (control, warning, sourceFormat, watch, rulesHead, compat, packageDescription,
      copyright, changelog, installInit, postInst, postRm, preInst, preRm,
      logrotateStanza, link, install, installDir, intermediateFiles)
-import Debian.Debianize.Monad (DebT)
+import Debian.Debianize.Monad (DebT, DebianT)
 import Debian.Debianize.Prelude (getDirectoryContents', readFileMaybe, read', (~=), (~?=), (+=), (++=), (+++=))
 import Debian.Orphans ()
 import Debian.Policy (Section(..), parseStandardsVersion, readPriority, readSection, parsePackageArchitectures, parseMaintainer,
@@ -52,22 +52,22 @@ import System.IO.Error (catchIOError, tryIOError)
 -- import System.Unix.Chroot (useEnv)
 -- import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr)
 
-inputDebianization :: MonadIO m => Cabal.PackageDescription -> DebT m ()
-inputDebianization pkgDesc =
+inputDebianization :: MonadIO m => DebianT m ()
+inputDebianization =
     do -- Erase any the existing information
        fs <- access T.flags
-       put $ T.makeAtoms fs pkgDesc
+       put $ T.makeDebInfo fs
        (ctl, _) <- inputSourceDebDescription
        inputAtomsFromDirectory
        control ~= ctl
 
 -- | Try to input a file and if successful add it to the debianization.
-inputDebianizationFile :: MonadIO m => FilePath -> DebT m ()
+inputDebianizationFile :: MonadIO m => FilePath -> DebianT m ()
 inputDebianizationFile path =
     do inputAtomsFromDirectory
        liftIO (readFileMaybe path) >>= maybe (return ()) (\ text -> intermediateFiles += (path, text))
 
-inputSourceDebDescription :: MonadIO m => DebT m (S.SourceDebDescription, [Field])
+inputSourceDebDescription :: MonadIO m => DebianT m (S.SourceDebDescription, [Field])
 inputSourceDebDescription =
     do paras <- liftIO $ parseControlFromFile "debian/control" >>= either (error . show) (return . unControl)
        case paras of
@@ -173,25 +173,25 @@ yes "yes" = True
 yes "no" = False
 yes x = error $ "Expecting yes or no: " ++ x
 
-inputChangeLog :: MonadIO m => DebT m ()
+inputChangeLog :: MonadIO m => DebianT m ()
 inputChangeLog =
     do log <- liftIO $ tryIOError (readFile "debian/changelog" >>= return . parseChangeLog . unpack)
        changelog ~?= either (\ _ -> Nothing) Just log
 
-inputAtomsFromDirectory :: MonadIO m => DebT m () -- .install files, .init files, etc.
+inputAtomsFromDirectory :: MonadIO m => DebianT m () -- .install files, .init files, etc.
 inputAtomsFromDirectory =
     do findFiles
        doFiles ("./debian/cabalInstall")
     where
       -- Find regular files in the debian/ or in debian/source/format/ and
       -- add them to the debianization.
-      findFiles :: MonadIO m => DebT m ()
+      findFiles :: MonadIO m => DebianT m ()
       findFiles =
           liftIO (getDirectoryContents' ("debian")) >>=
           return . (++ ["source/format"]) >>=
           liftIO . filterM (doesFileExist . (("debian") </>)) >>= \ names ->
           mapM_ (inputAtoms ("debian")) names
-      doFiles :: MonadIO m => FilePath -> DebT m ()
+      doFiles :: MonadIO m => FilePath -> DebianT m ()
       doFiles tmp =
           do sums <- liftIO $ getDirectoryContents' tmp `catchIOError` (\ _ -> return [])
              paths <- liftIO $ mapM (\ sum -> getDirectoryContents' (tmp </> sum) >>= return . map (sum </>)) sums >>= return . filter ((/= '~') . last) . concat
@@ -203,7 +203,7 @@ inputAtomsFromDirectory =
 -- This may mean using a specialized parser from the debian package
 -- (e.g. parseChangeLog), and some files (like control) are ignored
 -- here, though I don't recall why at the moment.
-inputAtoms :: MonadIO m => FilePath -> FilePath -> DebT m ()
+inputAtoms :: MonadIO m => FilePath -> FilePath -> DebianT m ()
 inputAtoms _ path | elem path ["control"] = return ()
 inputAtoms debian name@"source/format" = liftIO (readFile (debian </> name)) >>= \ text -> either (warning +=) ((sourceFormat ~=) . Just) (readSourceFormat text)
 inputAtoms debian name@"watch" = liftIO (readFile (debian </> name)) >>= \ text -> watch ~= Just text
@@ -233,7 +233,7 @@ inputAtoms debian name =
       _ -> trace ("Ignored: " ++ debian </> name) (return ())
 
 -- | Read a line from a debian .links file
-readLink :: Monad m => BinPkgName -> Text -> DebT m ()
+readLink :: Monad m => BinPkgName -> Text -> DebianT m ()
 readLink p line =
     case words line of
       [a, b] -> link p (unpack a) (unpack b)
@@ -241,14 +241,14 @@ readLink p line =
       _ -> trace ("Unexpected value passed to readLink: " ++ show line) (return ())
 
 -- | Read a line from a debian .install file
-readInstall :: Monad m => BinPkgName -> Text -> DebT m ()
+readInstall :: Monad m => BinPkgName -> Text -> DebianT m ()
 readInstall p line =
     case break isSpace line of
       (_, b) | null b -> error $ "readInstall: syntax error in .install file for " ++ show p ++ ": " ++ show line
       (a, b) -> install p (unpack (strip a)) (unpack (strip b))
 
 -- | Read a line from a debian .dirs file
-readDir :: Monad m => BinPkgName -> Text -> DebT m ()
+readDir :: Monad m => BinPkgName -> Text -> DebianT m ()
 readDir p line = installDir p (unpack line)
 
 -- chroot :: NFData a => FilePath -> IO a -> IO a

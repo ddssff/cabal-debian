@@ -20,7 +20,7 @@ import Control.Monad.State (get)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Algorithm.Diff.Context (contextDiff)
 import Data.Algorithm.Diff.Pretty (prettyDiff)
-import Data.Lens.Lazy (getL, access)
+import Data.Lens.Lazy (getL)
 import Data.Map as Map (elems, toList)
 import Data.Maybe (fromMaybe)
 import Data.Text as Text (split, Text, unpack)
@@ -28,10 +28,11 @@ import Debian.Changes (ChangeLog(..), ChangeLogEntry(..))
 import Debian.Debianize.InputCabalPackageDescription (validate, dryRun)
 import Debian.Debianize.Files (debianizationFileMap)
 import Debian.Debianize.Input (inputDebianization)
-import Debian.Debianize.Monad (DebT, Atoms, evalDebT)
+import Debian.Debianize.Monad (DebianT, evalDebianT)
 import Debian.Debianize.Options (putEnvironmentArgs)
 import Debian.Debianize.Prelude (indent, replaceFile, zipMaps)
 import qualified Debian.Debianize.Types as T
+import Debian.Debianize.Types.Atoms hiding (executable)
 import Debian.Debianize.Types.BinaryDebDescription as B (package, canonical)
 import qualified Debian.Debianize.Types.SourceDebDescription as S (source)
 import Debian.Pretty (ppPrint, ppDisplay)
@@ -70,23 +71,23 @@ runDebianizeScript args =
 
 -- | Depending on the options in @atoms@, either validate, describe,
 -- or write the generated debianization.
-doDebianizeAction :: (MonadIO m, Functor m) => DebT m ()
+doDebianizeAction :: (MonadIO m, Functor m) => DebianT m ()
 doDebianizeAction =
     do new <- get
        case () of
          _ | getL (validate . T.flags) new ->
-               do access T.packageDescription >>= inputDebianization
+               do inputDebianization
                   old <- get
                   return $ validateDebianization old new
          _ | getL (dryRun . T.flags) new ->
-               do access T.packageDescription >>= inputDebianization
+               do inputDebianization
                   old <- get
                   diff <- liftIO $ compareDebianization old new
                   liftIO $ putStr ("Debianization (dry run):\n" ++ diff)
          _ -> writeDebianization
 
 -- | Write the files of the debianization @d@ to ./debian
-writeDebianization :: (MonadIO m, Functor m) => DebT m ()
+writeDebianization :: (MonadIO m, Functor m) => DebianT m ()
 writeDebianization =
     do files <- debianizationFileMap
        liftIO $ mapM_ (uncurry doFile) (Map.toList files)
@@ -98,16 +99,16 @@ writeDebianization =
 
 -- | Return a string describing the debianization - a list of file
 -- names and their contents in a somewhat human readable format.
-describeDebianization :: (MonadIO m, Functor m) => DebT m String
+describeDebianization :: (MonadIO m, Functor m) => DebianT m String
 describeDebianization =
     debianizationFileMap >>= return . concatMap (\ (path, text) -> path ++ ": " ++ indent " > " (unpack text)) . Map.toList
 
 -- | Compare the old and new debianizations, returning a string
 -- describing the differences.
-compareDebianization :: Atoms -> Atoms -> IO String
+compareDebianization :: DebInfo -> DebInfo -> IO String
 compareDebianization old new =
-    do oldFiles <- evalDebT debianizationFileMap (canonical old)
-       newFiles <- evalDebT debianizationFileMap (canonical new)
+    do oldFiles <- evalDebianT debianizationFileMap (canonical old)
+       newFiles <- evalDebianT debianizationFileMap (canonical new)
        return $ concat $ Map.elems $ zipMaps doFile oldFiles newFiles
     where
       doFile :: FilePath -> Maybe Text -> Maybe Text -> Maybe String
@@ -124,7 +125,7 @@ compareDebianization old new =
 -- the names of the source and binary packages.  Some debian packages
 -- come with a skeleton debianization that needs to be filled in, this
 -- can be used to make sure the debianization we produce is usable.
-validateDebianization :: Atoms -> Atoms -> ()
+validateDebianization :: DebInfo -> DebInfo -> ()
 validateDebianization old new =
     case () of
       _ | oldVersion /= newVersion -> throw (userError ("Version mismatch, expected " ++ ppDisplay oldVersion ++ ", found " ++ ppDisplay newVersion))

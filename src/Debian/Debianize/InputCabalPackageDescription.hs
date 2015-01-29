@@ -5,13 +5,13 @@ module Debian.Debianize.InputCabalPackageDescription
     , EnvSet(..)
     , DebType(..)
     , DebAction(..)
-    , defaultFlags
-    , flagOptions
+    , newFlags
     , verbosity, dryRun, validate, debAction, cabalFlagAssignments, compilerFlavor, buildEnv, setBuildEnv
     , inputCabalization
     , inputCabalization'
     ) where
 
+import Control.Applicative ((<$>))
 import Control.Category ((.))
 import Control.Exception (bracket)
 import Control.Monad (when)
@@ -39,8 +39,9 @@ import qualified Distribution.System as Cabal (buildOS)
 import Distribution.Verbosity (Verbosity)
 import Prelude hiding (readFile, lines, break, null, log, sum, (.))
 -- import qualified Prelude (lines)
-import System.Console.GetOpt (OptDescr(Option), ArgDescr(ReqArg, NoArg))
+import System.Console.GetOpt (OptDescr(Option), ArgDescr(ReqArg, NoArg), ArgOrder(Permute), getOpt)
 import System.Directory (doesFileExist, getCurrentDirectory)
+import System.Environment (getArgs)
 import System.Exit (ExitCode(..))
 import System.FilePath ((</>))
 import System.Posix.Files (setFileCreationMask)
@@ -106,6 +107,11 @@ defaultFlags =
     , cabalFlagAssignments_ = mempty
     , buildEnv_ = EnvSet {cleanOS = "/", dependOS = "/", buildOS = "/"}
     }
+
+newFlags :: IO Flags
+newFlags = do
+  (fns, _, _) <- getOpt Permute flagOptions <$> getArgs
+  return $ foldr ($) defaultFlags fns
 
 flagOptions :: [OptDescr (Flags -> Flags)]
 flagOptions =

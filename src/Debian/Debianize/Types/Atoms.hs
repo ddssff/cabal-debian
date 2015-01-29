@@ -15,17 +15,15 @@ module Debian.Debianize.Types.Atoms
     , PackageInfo(..)
     ) -} where
 
-import Control.Applicative ((<$>))
 import Control.Monad.State (StateT)
 import Data.Generics (Data, Typeable)
 import Data.Lens.Lazy (Lens, lens, (%=))
-import Data.Lens.Template (nameMakeLens)
 import Data.Map as Map (Map)
 import Data.Monoid (Monoid(..))
 import Data.Set as Set (Set, insert)
 import Data.Text (Text)
 import Debian.Changes (ChangeLog)
-import Debian.Debianize.InputCabalPackageDescription (inputCabalization, Flags, flagOptions, defaultFlags)
+import Debian.Debianize.InputCabalPackageDescription (inputCabalization, Flags, newFlags)
 import Debian.Debianize.Types.CopyrightDescription
 import Debian.Debianize.Types.BinaryDebDescription (Canonical(canonical))
 import qualified Debian.Debianize.Types.SourceDebDescription as S
@@ -37,8 +35,6 @@ import Debian.Version (DebianVersion)
 import Distribution.Package (PackageName)
 import Distribution.PackageDescription as Cabal (PackageDescription)
 import Prelude hiding (init, init, log, log, (.))
-import System.Console.GetOpt (getOpt, ArgOrder(Permute))
-import System.Environment (getArgs)
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr)
 
 -- This enormous record is a mistake - instead it should be an Atom
@@ -74,14 +70,10 @@ data Atoms
       -- the --builddir option of runhaskell Setup appends the "/build"
       -- to the value it receives, so, yes, try not to get confused.
       -- FIXME: make this FilePath or Maybe FilePath
-      , flags_ :: Flags
-      -- ^ Information regarding mode of operation - verbosity, dry-run, usage, etc
       , debianNameMap_ :: Map PackageName VersionSplits
       -- ^ Mapping from cabal package name and version to debian source
       -- package name.  This allows different ranges of cabal versions to
       -- map to different debian source package names.
-      , control_ :: S.SourceDebDescription
-      -- ^ The parsed contents of the control file
       , sourcePackageName_ :: Maybe SrcPkgName
       -- ^ Name to give to the debian source package.  If not supplied
       -- the name is constructed from the cabal package name.  Note that
@@ -110,28 +102,11 @@ data Atoms
       -- only one.  If this is not explicitly set, it is obtained from the
       -- cabal file, and if it is not there then from the environment.  As a
       -- last resort, there is a hard coded string in here somewhere.
-      , sourceFormat_ :: Maybe SourceFormat
-      -- ^ Write debian/source/format
-      , watch_ :: Maybe Text
-      -- ^ Write debian/watch
-      , intermediateFiles_ :: Set (FilePath, Text)
-      -- ^ Put this text into a file with the given name in the debianization.
-      , rulesHead_ :: Maybe Text
-      , rulesSettings_ :: [Text]
-      , rulesIncludes_ :: [Text]
-      -- ^ The header of the debian/rules file.  The remainder is assembled
-      -- from DebRulesFragment values in the atom list.
-      , rulesFragments_ :: Set Text
-      -- ^ A Fragment of debian/rules
-      , warning_ :: Set Text
-      -- ^ A warning to be reported later
       , utilsPackageNameBase_ :: Maybe String
       -- ^ Name of a package that will get left-over data files and executables.
       -- If there are more than one, each package will get those files.
       , xDescription_ :: Maybe Text
       -- ^ The text for the X-Description field of the Source package stanza.
-      , changelog_ :: Maybe ChangeLog
-      -- ^ The changelog, first entry contains the source package name and version
       , comments_ :: Maybe [[Text]]
       -- ^ Each element is a comment to be added to the changelog, where the
       -- element's text elements are the lines of the comment.
@@ -153,24 +128,8 @@ data Atoms
       -- cabal package.  Example: @EpochMapping (PackageName "HTTP") 1@.
       , packageInfo_ :: Map PackageName PackageInfo
       -- ^ Supply some info about a cabal package.
-      , compat_ :: Maybe Int
-      -- ^ The debhelper compatibility level, from debian/compat.
-      -- , copyright_ :: Maybe (Either CopyrightDescription Text)
-      , copyright_ :: PackageDescription -> IO CopyrightDescription
-      -- ^ Copyright and license information.  This function takes a list of FilePath like
-      -- the licenseFiles field of the PackageDescription and returns a CopyrightDescription.
       , apacheSite_ :: Map BinPkgName (String, FilePath, Text)
       -- ^ Have Apache configure a site using PACKAGE, DOMAIN, LOGDIR, and APACHECONFIGFILE
-      , logrotateStanza_ :: Map BinPkgName (Set Text)
-      -- ^ Add a stanza of a logrotate file to the binary package
-      , postInst_ :: Map BinPkgName Text
-      -- ^ Script to run after install, should contain #DEBHELPER# line before exit 0
-      , postRm_ :: Map BinPkgName Text
-      -- ^ Script to run after remove, should contain #DEBHELPER# line before exit 0
-      , preInst_ :: Map BinPkgName Text
-      -- ^ Script to run before install, should contain #DEBHELPER# line before exit 0
-      , preRm_ :: Map BinPkgName Text
-      -- ^ Script to run before remove, should contain #DEBHELPER# line before exit 0
       , sourceArchitectures_ :: Maybe PackageArchitectures
       -- ^ Set the Architecture field of the source package
       , binaryArchitectures_ :: Map BinPkgName PackageArchitectures
@@ -183,10 +142,6 @@ data Atoms
       -- ^ Set the Section field of the source package
       , binarySections_ :: Map BinPkgName Section
       -- ^ Set the Section field of a binary package
-      , atomSet_ :: Set Atom
-      -- ^ set of items describing file installation requests
-      , installInit_ :: Map BinPkgName Text
-      -- ^ Add an init.d file to the binary package
       , executable_ :: Map BinPkgName InstallFile
       -- ^ Create a binary package to hold a cabal executable
       , serverInfo_ :: Map BinPkgName Server
@@ -202,9 +157,60 @@ data Atoms
       -- ^ The result of reading a cabal configuration file.
       , official_ :: Bool
       -- ^ Whether this packaging is created by the Debian Haskell Group
+      , debInfo_ :: DebInfo
+      -- ^ Information required to represent a non-cabal debianization.
+      } deriving (Show, Data, Typeable)
+
+-- | Information required to represent a non-cabal debianization.
+data DebInfo
+    = DebInfo
+      { flags_ :: Flags
+      -- ^ Information regarding mode of operation - verbosity, dry-run, usage, etc
+      , warning_ :: Set Text
+      -- ^ A warning to be reported later
+      , sourceFormat_ :: Maybe SourceFormat
+      -- ^ Write debian/source/format
+      , watch_ :: Maybe Text
+      -- ^ Write debian/watch
+      , rulesHead_ :: Maybe Text
+      , rulesSettings_ :: [Text]
+      , rulesIncludes_ :: [Text]
+      -- ^ The header of the debian/rules file.  The remainder is assembled
+      -- from DebRulesFragment values in the atom list.
+      , rulesFragments_ :: Set Text
+      -- ^ A Fragment of debian/rules
+      , copyright_ :: PackageDescription -> IO CopyrightDescription
+      -- ^ Copyright and license information.  This function takes a list of FilePath like
+      -- the licenseFiles field of the PackageDescription and returns a CopyrightDescription.
+      , control_ :: S.SourceDebDescription
+      -- ^ The parsed contents of the control file
+      , intermediateFiles_ :: Set (FilePath, Text)
+      -- ^ Put this text into a file with the given name in the debianization.
+      , compat_ :: Maybe Int
+      -- ^ The debhelper compatibility level, from debian/compat.
+      -- , copyright_ :: Maybe (Either CopyrightDescription Text)
+      , changelog_ :: Maybe ChangeLog
+      -- ^ The changelog, first entry contains the source package name and version
+      , installInit_ :: Map BinPkgName Text
+      -- ^ Add an init.d file to the binary package
+      , logrotateStanza_ :: Map BinPkgName (Set Text)
+      -- ^ Add a stanza of a logrotate file to the binary package
+      , postInst_ :: Map BinPkgName Text
+      -- ^ Script to run after install, should contain #DEBHELPER# line before exit 0
+      , postRm_ :: Map BinPkgName Text
+      -- ^ Script to run after remove, should contain #DEBHELPER# line before exit 0
+      , preInst_ :: Map BinPkgName Text
+      -- ^ Script to run before install, should contain #DEBHELPER# line before exit 0
+      , preRm_ :: Map BinPkgName Text
+      -- ^ Script to run before remove, should contain #DEBHELPER# line before exit 0
+      , atomSet_ :: Set Atom
+      -- ^ set of items describing file installation requests
       } deriving (Show, Data, Typeable)
 
 instance Canonical Atoms where
+    canonical x = x {debInfo_ = canonical (debInfo_ x)}
+
+instance Canonical DebInfo where
     canonical x = x {control_ = canonical (control_ x)}
 
 data Atom
@@ -226,14 +232,11 @@ data Atom
       -- ^ Create a directory in the binary package
     deriving (Show, Eq, Ord, Data, Typeable)
 
-type Atoms' = Set Atom
-
 -- | Look for --buildenvdir in the command line arguments to get the
 -- changeroot path, use "/" if not present.
 newAtoms :: IO Atoms
 newAtoms = do
-  (fns, _, _) <- getOpt Permute flagOptions <$> getArgs
-  let flags' = foldr ($) defaultFlags fns
+  flags' <- newFlags
   pkgDesc <- inputCabalization flags'
   return $ makeAtoms flags' pkgDesc
 
@@ -245,25 +248,15 @@ makeAtoms fs pkgDesc =
       , omitProfVersionDeps_ = False
       , omitLTDeps_ = False
       , buildDir_ = Nothing
-      , flags_ = fs
       , debianNameMap_ = mempty
-      , control_ = S.newSourceDebDescription
       , sourcePackageName_ = Nothing
       , overrideDebianNameBase_ = Nothing
       , revision_ = Nothing
       , debVersion_ = Nothing
       , maintainerOption_ = Nothing
       , uploadersOption_ = []
-      , sourceFormat_ = Nothing
-      , watch_ = Nothing
-      , intermediateFiles_ = mempty
-      , rulesHead_ = Nothing
-      , rulesSettings_ = mempty
-      , rulesIncludes_ = mempty
-      , rulesFragments_ = mempty
-      , warning_ = mempty
+      , debInfo_ = makeDebInfo fs
       , utilsPackageNameBase_ = Nothing
-      , changelog_ = Nothing
       , xDescription_ = Nothing
       , comments_ = Nothing
       , missingDependencies_ = mempty
@@ -271,22 +264,13 @@ makeAtoms fs pkgDesc =
       , execMap_ = mempty
       , epochMap_ = mempty
       , packageInfo_ = mempty
-      , compat_ = Nothing
-      , copyright_ = defaultCopyrightDescription newCopyrightDescription
       , apacheSite_ = mempty
-      , logrotateStanza_ = mempty
-      , postInst_ = mempty
-      , postRm_ = mempty
-      , preInst_ = mempty
-      , preRm_ = mempty
       , sourceArchitectures_ = Nothing
       , binaryArchitectures_ = mempty
       , sourcePriority_ = Nothing
       , binaryPriorities_ = mempty
       , sourceSection_ = Nothing
       , binarySections_ = mempty
-      , atomSet_ = mempty
-      , installInit_ = mempty
       , executable_ = mempty
       , serverInfo_ = mempty
       , website_ = mempty
@@ -295,6 +279,31 @@ makeAtoms fs pkgDesc =
       , packageDescription_ = pkgDesc
       , official_ = False
       }
+
+makeDebInfo :: Flags -> DebInfo
+makeDebInfo fs =
+    DebInfo
+    { flags_ = fs
+    , warning_ = mempty
+    , sourceFormat_ = Nothing
+    , watch_ = Nothing
+    , rulesHead_ = Nothing
+    , rulesSettings_ = mempty
+    , rulesIncludes_ = mempty
+    , rulesFragments_ = mempty
+    , copyright_ = defaultCopyrightDescription newCopyrightDescription
+    , control_ = S.newSourceDebDescription
+    , intermediateFiles_ = mempty
+    , compat_ = Nothing
+    , changelog_ = Nothing
+    , installInit_ = mempty
+    , logrotateStanza_ = mempty
+    , postInst_ = mempty
+    , postRm_ = mempty
+    , preInst_ = mempty
+    , preRm_ = mempty
+    , atomSet_ = mempty
+    }
 
 data PackageInfo = PackageInfo { cabalName :: PackageName
                                , devDeb :: Maybe (BinPkgName, DebianVersion)
@@ -343,12 +352,14 @@ $(nameMakeLens ''Atoms (\ fname -> case splitAt (max 0 (length fname - 1)) fname
                                      _ -> Nothing))
 #else
 -- | Obsolete record containing verbosity, dryRun, validate, and debAction.
-flags :: Lens Atoms Flags
+flags :: Lens DebInfo Flags
 flags = lens flags_ (\ b a -> a {flags_ = b})
 
--- | Unused
-warning :: Lens Atoms (Set Text)
+warning :: Lens DebInfo (Set Text)
 warning = lens warning_ (\ a b -> b {warning_ = a})
+
+debInfo :: Lens Atoms DebInfo
+debInfo = lens debInfo_ (\ a b -> b {debInfo_ = a})
 
 -- | The build directory.  This can be set by an argument to the @Setup@ script.
 -- When @Setup@ is run manually it is just @dist@, when it is run by
@@ -467,7 +478,7 @@ official :: Lens Atoms Bool
 official = lens official_ (\ b a -> a {official_ = b})
 
 -- | The copyright information from the cabal file
-copyright :: Lens Atoms (PackageDescription -> IO CopyrightDescription)
+copyright :: Lens DebInfo (PackageDescription -> IO CopyrightDescription)
 copyright = lens copyright_ (\ a b -> b {copyright_ = a})
 
 {-
@@ -493,53 +504,53 @@ extraDevDeps :: Lens Atoms Relations
 extraDevDeps = lens extraDevDeps_ (\ a b -> b {extraDevDeps_ = a})
 
 -- | The rules file header
-rulesHead :: Lens Atoms (Maybe Text)
+rulesHead :: Lens DebInfo (Maybe Text)
 rulesHead = lens rulesHead_ (\ a b -> b {rulesHead_ = a})
 
 -- | The rules file assignments
-rulesSettings :: Lens Atoms [Text]
+rulesSettings :: Lens DebInfo [Text]
 rulesSettings = lens rulesSettings_ (\ a b -> b {rulesSettings_ = a})
 
 -- | The rules file include directives
-rulesIncludes :: Lens Atoms [Text]
+rulesIncludes :: Lens DebInfo [Text]
 rulesIncludes = lens rulesIncludes_ (\ a b -> b {rulesIncludes_ = a})
 
 -- | Additional fragments of the rules file
-rulesFragments :: Lens Atoms (Set Text)
+rulesFragments :: Lens DebInfo (Set Text)
 rulesFragments = lens rulesFragments_ (\ a b -> b {rulesFragments_ = a})
 
 -- | Map of @debian/postinst@ scripts
-postInst :: Lens Atoms (Map BinPkgName Text)
+postInst :: Lens DebInfo (Map BinPkgName Text)
 postInst = lens postInst_ (\ a b -> b {postInst_ = a})
 
 -- | Map of @debian/postrm@ scripts
-postRm :: Lens Atoms (Map BinPkgName Text)
+postRm :: Lens DebInfo (Map BinPkgName Text)
 postRm = lens postRm_ (\ a b -> b {postRm_ = a})
 
 -- | Map of @debian/preinst@ scripts
-preInst :: Lens Atoms (Map BinPkgName Text)
+preInst :: Lens DebInfo (Map BinPkgName Text)
 preInst = lens preInst_ (\ a b -> b {preInst_ = a})
 
 -- | Map of @debian/prerm@ scripts
-preRm :: Lens Atoms (Map BinPkgName Text)
+preRm :: Lens DebInfo (Map BinPkgName Text)
 preRm = lens preRm_ (\ a b -> b {preRm_ = a})
 
 -- | The @debian/compat@ file, contains the minimum compatible version
 -- of the @debhelper@ package.  If not given the version number of the
 -- installed debhelper package is used.
-compat :: Lens Atoms (Maybe Int)
+compat :: Lens DebInfo (Maybe Int)
 compat = lens compat_ (\ a b -> b {compat_ = a})
 
 -- | The @debian\/source\/format@ file.
-sourceFormat :: Lens Atoms (Maybe SourceFormat)
+sourceFormat :: Lens DebInfo (Maybe SourceFormat)
 sourceFormat = lens sourceFormat_ (\ a b -> b {sourceFormat_ = a})
 
 -- | the @debian\/watch@ file
-watch :: Lens Atoms (Maybe Text)
+watch :: Lens DebInfo (Maybe Text)
 watch = lens watch_ (\ a b -> b {watch_ = a})
 
 -- | the @debian\/changelog@ file
-changelog :: Lens Atoms (Maybe ChangeLog)
+changelog :: Lens DebInfo (Maybe ChangeLog)
 changelog = lens changelog_ (\ a b -> b {changelog_ = a})
 
 xDescription :: Lens Atoms (Maybe Text)
@@ -550,44 +561,44 @@ comments :: Lens Atoms (Maybe [[Text]])
 comments = lens comments_ (\ a b -> b {comments_ = a})
 
 -- | The @debian\/control@ file.  Many of the following lenses access parts of the @SourceDebDescription@.
-control :: Lens Atoms S.SourceDebDescription
+control :: Lens DebInfo S.SourceDebDescription
 control = lens control_ (\ a b -> b {control_ = a})
 
 -- | Add a stanza to the binary package's logrotate script.
-logrotateStanza :: Lens Atoms (Map BinPkgName (Set Text))
+logrotateStanza :: Lens DebInfo (Map BinPkgName (Set Text))
 logrotateStanza = lens logrotateStanza_ (\ a b -> b {logrotateStanza_ = a})
 
 -- | Access the set of new style atoms.
-atomSet :: Lens Atoms (Set Atom)
+atomSet :: Lens DebInfo (Set Atom)
 atomSet = lens atomSet_ (\ a b -> b {atomSet_ = a})
 
 -- | Create an /etc/init.d file in the package
 -- FIXME: change signature to BinPkgName -> Lens Atoms Text
-installInit :: Lens Atoms (Map BinPkgName Text)
+installInit :: Lens DebInfo (Map BinPkgName Text)
 installInit = lens installInit_ (\ a b -> b {installInit_ = a})
 
 -- | Create a file in the debianization.  This is used to implement the file lens above.
 -- FIXME: change signature to BinPkgName -> Lens Atoms (Set (FilePath, Text))
-intermediateFiles :: Lens Atoms (Set (FilePath, Text))
+intermediateFiles :: Lens DebInfo (Set (FilePath, Text))
 intermediateFiles = lens intermediateFiles_ (\ a b -> b {intermediateFiles_ = a})
 #endif
 
 -- We need (%=_)
-link :: Monad m => BinPkgName -> FilePath -> FilePath -> StateT Atoms m ()
+link :: Monad m => BinPkgName -> FilePath -> FilePath -> StateT DebInfo m ()
 link b from dest = atomSet %= (Set.insert $ Link b from dest) >> return ()
-install :: Monad m => BinPkgName -> FilePath -> FilePath -> StateT Atoms m ()
+install :: Monad m => BinPkgName -> FilePath -> FilePath -> StateT DebInfo m ()
 install b from dest = atomSet %= (Set.insert $ Install b from dest) >> return ()
-installTo :: Monad m => BinPkgName -> FilePath -> FilePath -> StateT Atoms m ()
+installTo :: Monad m => BinPkgName -> FilePath -> FilePath -> StateT DebInfo m ()
 installTo b from dest = atomSet %= (Set.insert $ InstallTo b from dest) >> return ()
-installData :: Monad m => BinPkgName -> FilePath -> FilePath -> StateT Atoms m ()
+installData :: Monad m => BinPkgName -> FilePath -> FilePath -> StateT DebInfo m ()
 installData b from dest = atomSet %= (Set.insert $ InstallData b from dest) >> return ()
-file :: Monad m => BinPkgName -> FilePath -> Text -> StateT Atoms m ()
+file :: Monad m => BinPkgName -> FilePath -> Text -> StateT DebInfo m ()
 file b dest content = atomSet %= (Set.insert $ File b dest content) >> return ()
-installCabalExec :: Monad m => BinPkgName -> String -> FilePath -> StateT Atoms m ()
+installCabalExec :: Monad m => BinPkgName -> String -> FilePath -> StateT DebInfo m ()
 installCabalExec b name dest = atomSet %= (Set.insert $ InstallCabalExec b name dest) >> return ()
-installCabalExecTo :: Monad m => BinPkgName -> String -> FilePath -> StateT Atoms m ()
+installCabalExecTo :: Monad m => BinPkgName -> String -> FilePath -> StateT DebInfo m ()
 installCabalExecTo b name dest = atomSet %= (Set.insert $ InstallCabalExecTo b name dest) >> return ()
-installDir :: Monad m => BinPkgName -> FilePath -> StateT Atoms m ()
+installDir :: Monad m => BinPkgName -> FilePath -> StateT DebInfo m ()
 installDir b dir = atomSet %= (Set.insert $ InstallDir b dir) >> return ()
 
 {-

@@ -22,7 +22,7 @@ import Debian.Debianize.DebianName (mkPkgName, mkPkgName')
 import Debian.Debianize.InputCabalPackageDescription (EnvSet(dependOS), buildEnv, compilerFlavor)
 import Debian.Debianize.Monad as Monad (Atoms, DebT)
 import qualified Debian.Debianize.Types as T (buildDepends, buildDependsIndep, debianNameMap, epochMap, execMap, extraLibMap, missingDependencies, noDocumentationLibrary, noProfilingLibrary, omitProfVersionDeps)
-import Debian.Debianize.Types.Atoms (flags)
+import Debian.Debianize.Types.Atoms (flags, debInfo)
 import qualified Debian.Debianize.Types.BinaryDebDescription as B (PackageType(Development, Documentation, Profiling))
 import Debian.Debianize.VersionSplits (packageRangesFromVersionSplits)
 import Debian.Orphans ()
@@ -82,13 +82,13 @@ allBuildDepends buildDepends' buildTools' pkgconfigDepends' extraLibs' =
 -- the rules for building haskell packages.
 debianBuildDeps :: (MonadIO m, Functor m) => PackageDescription -> DebT m D.Relations
 debianBuildDeps pkgDesc =
-    do hc <- access (compilerFlavor . flags)
+    do hc <- access (compilerFlavor . flags . debInfo)
        let hcs = singleton hc -- vestigial
        let hcTypePairs =
                fold union empty $
                   Set.map (\ hc' -> Set.map (hc',) $ hcPackageTypes hc') hcs
        cDeps <- cabalDeps hcTypePairs
-       bDeps <- access T.buildDepends
+       bDeps <- access (T.buildDepends . debInfo)
        prof <- not <$> access T.noProfilingLibrary
        let xs = nub $ [[D.Rel (D.BinPkgName "debhelper") (Just (D.GRE (parseDebianVersion ("7.0" :: String)))) Nothing],
                        [D.Rel (D.BinPkgName "haskell-devscripts") (Just (D.GRE (parseDebianVersion ("0.8" :: String)))) Nothing],
@@ -122,10 +122,10 @@ debianBuildDeps pkgDesc =
 
 debianBuildDepsIndep :: (MonadIO m, Functor m) => PackageDescription -> DebT m D.Relations
 debianBuildDepsIndep pkgDesc =
-    do hc <- access (compilerFlavor . flags)
+    do hc <- access (compilerFlavor . flags . debInfo)
        let hcs = singleton hc -- vestigial
-       doc <- get >>= return . not . getL T.noDocumentationLibrary
-       bDeps <- get >>= return . getL T.buildDependsIndep
+       doc <- not <$> access T.noDocumentationLibrary
+       bDeps <- access (T.buildDependsIndep . debInfo)
        cDeps <- cabalDeps
        let xs = nub $ if doc
                       then (if member GHC hcs then [anyrel "ghc-doc"] else []) ++
@@ -158,7 +158,7 @@ debianBuildDepsIndep pkgDesc =
 -- dependencies, so we have access to all the cross references.
 docDependencies :: (MonadIO m, Functor m) => Dependency_ -> DebT m D.Relations
 docDependencies (BuildDepends (Dependency name ranges)) =
-    do hc <- access (compilerFlavor . flags)
+    do hc <- access (compilerFlavor . flags . debInfo)
        let hcs = singleton hc -- vestigial
        omitProfDeps <- access T.omitProfVersionDeps
        concat <$> mapM (\ hc' -> dependencies hc' B.Documentation name ranges omitProfDeps) (toList hcs)
@@ -305,7 +305,7 @@ doBundled typ name hc rels =
       doRel rel@(D.Rel dname req _) = do
         -- gver <- access ghcVersion
         splits <- access T.debianNameMap
-        root <- access (buildEnv . flags) >>= return . dependOS
+        root <- access (buildEnv . flags . debInfo) >>= return . dependOS
         -- Look at what version of the package is provided by the compiler.
         atoms <- get
         -- What version of this package (if any) does the compiler provide?

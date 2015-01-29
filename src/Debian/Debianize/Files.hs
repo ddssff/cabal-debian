@@ -6,6 +6,7 @@ module Debian.Debianize.Files
     ) where
 
 import Control.Applicative ((<$>))
+import Control.Category ((.))
 import Control.Monad.Trans (lift)
 import Control.Monad.Writer (WriterT, execWriterT, tell)
 import Debian.Control.Common ()
@@ -18,7 +19,7 @@ import Data.Monoid ((<>), mempty)
 import Data.Set as Set (toList, member, fold)
 import Data.Text as Text (Text, pack, unpack, lines, unlines, null, intercalate, dropWhile, dropWhileEnd, strip)
 import Debian.Control (Control'(Control, unControl), Paragraph'(Paragraph), Field'(Field))
-import Debian.Debianize.Monad (DebT)
+import Debian.Debianize.Monad (DebianT)
 import Debian.Debianize.Prelude (showDeps')
 import qualified Debian.Debianize.Types.Atoms as T
 import qualified Debian.Debianize.Types.BinaryDebDescription as B
@@ -27,12 +28,12 @@ import qualified Debian.Debianize.Types.SourceDebDescription as S
 import Debian.Pretty (PP(..), ppDisplay, ppPrint, ppDisplay')
 import Debian.Relation (Relations, BinPkgName(BinPkgName))
 import Distribution.PackageDescription (PackageDescription)
-import Prelude hiding (init, unlines, writeFile, log, dropWhile)
+import Prelude hiding (init, unlines, writeFile, log, dropWhile, (.))
 --import System.Directory (getCurrentDirectory)
 import System.FilePath ((</>))
 import Text.PrettyPrint.HughesPJClass (Pretty(pPrint), text, empty)
 
-type FilesT m = WriterT [(FilePath, Text)] (DebT m)
+type FilesT m = WriterT [(FilePath, Text)] (DebianT m)
 
 instance Pretty (PP Bool) where
     pPrint = text . show . unPP
@@ -44,7 +45,7 @@ instance Pretty (PP Bool) where
 -- the Debianization produced by finalizeDebianization in the unit
 -- tests.)
 
-debianizationFileMap :: (Monad m, Functor m) => DebT m (Map FilePath Text)
+debianizationFileMap :: (Monad m, Functor m) => DebianT m (Map FilePath Text)
 debianizationFileMap =
     fmap (Map.fromListWithKey (\ k a b -> error $ "Multiple values for " ++ k ++ ":\n  " ++ show a ++ "\n" ++ show b)) $ execWriterT $
     do -- here <- liftIO getCurrentDirectory
@@ -78,7 +79,7 @@ intermediates = Set.toList <$> (lift $ access T.intermediateFiles)
 
 installs :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
 installs =
-    (Map.toList . Map.map unlines . Set.fold doAtom mempty) <$> (lift $ access T.atomSet)
+    (Map.toList . Map.map unlines . Set.fold doAtom mempty) <$> (lift $ access (T.atomSet))
     where
       doAtom (T.Install b from dest) mp = Map.insertWith (++) (pathf b) [pack (from <> " " <> dest)] mp
       doAtom _ mp = mp
@@ -140,10 +141,10 @@ prermFiles =
 
 rules :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
 rules =
-    do Just rh <- lift (access T.rulesHead)
-       rassignments <- lift (access T.rulesSettings) >>= return . intercalate "\n"
-       rincludes <- lift (access T.rulesIncludes) >>= return . intercalate "\n"
-       rl <- (reverse . Set.toList) <$> lift (access T.rulesFragments)
+    do Just rh <- lift (access (T.rulesHead))
+       rassignments <- lift (access (T.rulesSettings)) >>= return . intercalate "\n"
+       rincludes <- lift (access (T.rulesIncludes)) >>= return . intercalate "\n"
+       rl <- (reverse . Set.toList) <$> lift (access (T.rulesFragments))
        return [("debian/rules", intercalate "\n\n" (filter (not . Text.null) (List.map strip (rh : rassignments : rincludes : rl))) <> "\n")]
 
 changelog :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
@@ -163,7 +164,7 @@ compat =
 
 copyright :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
 copyright =
-    do copyrt <- lift $ access T.copyright
+    do copyrt <- lift $ access (T.copyright)
        return [("debian/copyright", ppDisplay' copyrt)]
 
 instance Pretty (PP (PackageDescription -> IO CopyrightDescription)) where

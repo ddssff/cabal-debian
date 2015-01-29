@@ -46,7 +46,7 @@ module Debian.Debianize.Prelude
 
 import Control.Applicative ((<$>))
 import Control.Category ((.))
-import Control.Exception as E (catch, try, bracket, IOException)
+import Control.Exception as E (catch, try, bracket, throw)
 import Control.Monad (when)
 import Control.Monad.Reader (ReaderT, ask)
 import Control.Monad.State (MonadState, StateT, get, put)
@@ -70,12 +70,12 @@ import Debian.Version.String (parseDebianVersion)
 import qualified Debian.Relation as D
 import Distribution.Package (PackageIdentifier(..), PackageName(..))
 import Distribution.Verbosity (Verbosity, intToVerbosity)
+import GHC.IO.Exception
 import Prelude hiding (map, lookup, (.))
 import System.Directory (doesFileExist, doesDirectoryExist, removeFile, renameFile, removeDirectory, getDirectoryContents, getCurrentDirectory, setCurrentDirectory)
-import System.Exit(ExitCode(ExitSuccess, ExitFailure))
 import System.FilePath ((</>), dropExtension)
 import System.IO (IOMode (ReadMode), withFile, openFile, hSetBinaryMode)
-import System.IO.Error (isDoesNotExistError, catchIOError)
+import System.IO.Error -- (isDoesNotExistError, catchIOError)
 import System.Process (readProcessWithExitCode, showCommandForUser)
 import Text.PrettyPrint.HughesPJClass as PP (Pretty(pPrint), text)
 
@@ -199,13 +199,22 @@ showDeps' xss = show $ mconcat $ intersperse (text "\n ") $
 
 -- | From Darcs.Utils - set the working directory and run an IO operation.
 withCurrentDirectory :: FilePath -> IO a -> IO a
-withCurrentDirectory name m =
+withCurrentDirectory path m =
     E.bracket
-        (do cwd <- getCurrentDirectory
-            setCurrentDirectory name
-            return cwd)
-        (\oldwd -> setCurrentDirectory oldwd {- `catchall` return () -})
-        (const m)
+        (do oldwd <- getCurrentDirectory
+            let newwd = oldwd </> path
+            setCurrentDirectory' newwd
+            return oldwd)
+        (\oldwd -> setCurrentDirectory' oldwd {- `catchall` return () -})
+        (\_oldwd -> m)
+
+setCurrentDirectory' :: FilePath -> IO ()
+setCurrentDirectory' dir =
+    try (setCurrentDirectory dir) >>= either handle return
+    where
+      handle e@(IOError {ioe_type = NoSuchThing}) = throw $ e {ioe_description = ioe_description e ++ ": " ++ show dir}
+      handle e@(IOError {ioe_type = InappropriateType}) = throw $ e {ioe_description = ioe_description e ++ ": " ++ show dir}
+      handle e@(IOError {ioe_type = typ}) = throw $ e {ioe_description = ioe_description e ++ " unexpected ioe_type: " ++ show typ}
 
 {-
 catchall :: IO a -> IO a -> IO a

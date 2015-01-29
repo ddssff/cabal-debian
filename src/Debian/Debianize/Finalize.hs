@@ -19,7 +19,7 @@ import Data.List as List (intercalate, map, nub, unlines)
 import Data.Map as Map (delete, elems, lookup, Map, toList, insertWith)
 import Data.Maybe (fromMaybe, isJust, isNothing)
 import Data.Monoid ((<>), mempty)
-import Data.Set as Set (difference, filter, fromList, map, null, Set, singleton, toList, union, unions, fold)
+import Data.Set as Set (difference, filter, fromList, map, null, Set, singleton, toList, union, unions, fold, insert)
 import Data.Set.Extra as Set (mapM_)
 import Data.Text as Text (Text, pack, unlines, unpack, intercalate)
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(..))
@@ -29,11 +29,11 @@ import Debian.Debianize.DebianName (debianName, debianNameBase)
 import Debian.Debianize.Goodies (backupAtoms, describe, execAtoms, serverAtoms, siteAtoms, watchAtom)
 import Debian.Debianize.Input (dataDir, inputChangeLog)
 import Debian.Debianize.InputCabalPackageDescription (verbosity, compilerFlavor)
-import Debian.Debianize.Monad as Monad (DebT)
+import Debian.Debianize.Monad as Monad (DebT, liftCabal)
 import Debian.Debianize.Options (compileCommandlineArgs, compileEnvironmentArgs)
 import Debian.Debianize.Prelude ((%=), (+=), (~=), (~?=))
-import qualified Debian.Debianize.Types as T (apacheSite, backups, binaryArchitectures, binaryPackages, binarySection, breaks, buildDepends, buildDependsIndep, buildDir, builtUsing, changelog, comments, compat, conflicts, debianDescription, debVersion, depends, epochMap, executable, extraDevDeps, extraLibMap, file, install, installCabalExec, installData, installDir, installTo, intermediateFiles, link, maintainerOption, uploadersOption, noDocumentationLibrary, noProfilingLibrary, omitProfVersionDeps, packageDescription, packageType, preDepends, provides, recommends, revision, rulesFragments, serverInfo, standardsVersion, source, sourceFormat, sourcePackageName, sourcePriority, sourceSection, suggests, utilsPackageNameBase, watch, website, control, homepage, official, vcsFields, flags)
-import qualified Debian.Debianize.Types.Atoms as A (InstallFile(execName, sourceDir), showAtoms, Atom(..), atomSet, rulesHead, rulesSettings, rulesIncludes)
+import qualified Debian.Debianize.Types as T (apacheSite, backups, binaryArchitectures, binaryPackages, binarySection, breaks, buildDepends, buildDependsIndep, buildDir, builtUsing, changelog, comments, compat, conflicts, debianDescription, debVersion, depends, epochMap, executable, extraDevDeps, extraLibMap, intermediateFiles, maintainerOption, uploadersOption, noDocumentationLibrary, noProfilingLibrary, omitProfVersionDeps, packageDescription, packageType, preDepends, provides, recommends, revision, rulesFragments, serverInfo, standardsVersion, source, sourceFormat, sourcePackageName, sourcePriority, sourceSection, suggests, utilsPackageNameBase, watch, website, control, homepage, official, vcsFields, flags)
+import qualified Debian.Debianize.Types.Atoms as A (InstallFile(execName, sourceDir), showAtoms, Atom(..), atomSet, rulesHead, rulesSettings, rulesIncludes, debInfo, Atom)
 import qualified Debian.Debianize.Types.BinaryDebDescription as B (package, PackageType(Development, Documentation, Exec, Profiling, Source, HaskellSource, Utilities), PackageType)
 import qualified Debian.Debianize.Types.SourceDebDescription as S (xDescription, VersionControlSpec(..), maintainer, uploaders)
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
@@ -68,7 +68,7 @@ debianize customize =
     do compileEnvironmentArgs
        compileCommandlineArgs
        -- inputCabalization -- already done because we're in DebT
-       inputChangeLog
+       liftCabal inputChangeLog
        customize
        finalizeDebianization
 
@@ -78,7 +78,7 @@ finalizeDebianization =
     do date <- liftIO getCurrentLocalRFC822Time
        debhelperCompat <- liftIO getDebhelperCompatLevel
        finalizeDebianization' date debhelperCompat
-       access (verbosity . T.flags) >>= \ vb -> when (vb >= 3) (get >>= liftIO . A.showAtoms)
+       access (verbosity . T.flags . A.debInfo) >>= \ vb -> when (vb >= 3) (get >>= liftIO . A.showAtoms)
 
 -- | Now that we know the build and data directories, we can expand
 -- some atoms into sets of simpler atoms which can eventually be
@@ -91,16 +91,16 @@ finalizeDebianization =
 finalizeDebianization'  :: (MonadIO m, Functor m) => String -> Maybe Int -> DebT m ()
 finalizeDebianization' date debhelperCompat =
     do -- In reality, hcs must be a singleton or many things won't work.  But some day...
-       hc <- access (compilerFlavor . T.flags)
+       hc <- access (compilerFlavor . T.flags . A.debInfo)
        finalizeSourceName B.HaskellSource
        checkOfficialSettings hc
        addExtraLibDependencies hc
        pkgDesc <- access T.packageDescription
-       T.watch ~?= Just (watchAtom (pkgName $ Cabal.package $ pkgDesc))
-       T.sourceSection ~?= Just (MainSection "haskell")
-       T.sourcePriority ~?= Just Extra
-       T.sourceFormat ~?= Just Quilt3
-       T.compat ~?= debhelperCompat
+       (T.watch . A.debInfo) ~?= Just (watchAtom (pkgName $ Cabal.package $ pkgDesc))
+       (T.sourceSection . A.debInfo) ~?= Just (MainSection "haskell")
+       (T.sourcePriority . A.debInfo) ~?= Just Extra
+       (T.sourceFormat . A.debInfo) ~?= Just Quilt3
+       (T.compat . A.debInfo) ~?= debhelperCompat
        finalizeChangelog date
        finalizeControl
        finalizeRules
@@ -162,7 +162,7 @@ debianVersion =
                                         Just "-" -> Nothing
                                         Just ('-':r) -> Just r
                                         Just _ -> error "The Debian revision needs to start with a dash"
-                fmt <- access T.sourceFormat
+                fmt <- access (T.sourceFormat . A.debInfo)
                 -- If no revision number has been set and the format
                 -- is not Native3 we need to set it (see
                 -- https://github.com/ddssff/cabal-debian/issues/16)
@@ -210,7 +210,7 @@ finalizeMaintainer = do
       cabalMaintainerString' = cabalAuthorString <> " <" <> cabalMaintainerString <> ">"
       cabalMaintainerString'' = cabalAuthorString <> " " <> cabalMaintainerString
   changelogSignature <-
-      do log <- get >>= return . getL T.changelog
+      do log <- access (T.changelog . A.debInfo)
          case log of
            Just (ChangeLog (entry : _)) ->
                case (parseMaintainer (logWho entry)) of
@@ -219,31 +219,31 @@ finalizeMaintainer = do
            _ -> return Nothing
   case o of
     True -> do
-      (S.maintainer . T.control) ~= Just haskellMaintainer
-      (S.uploaders . T.control) %= whenEmpty (maybe [] (: []) currentUser)
+      (S.maintainer . T.control . A.debInfo) ~= Just haskellMaintainer
+      (S.uploaders . T.control . A.debInfo) %= whenEmpty (maybe [] (: []) currentUser)
     False -> do
-      (S.maintainer . T.control) ~?= maintainerOption
-      (S.maintainer . T.control) ~?= (either (const Nothing) Just $ parseMaintainer cabalMaintainerString)
-      (S.maintainer . T.control) ~?= (either (const Nothing) Just $ parseMaintainer cabalMaintainerString')
-      (S.maintainer . T.control) ~?= (either (const Nothing) Just $ parseMaintainer cabalMaintainerString'')
+      (S.maintainer . T.control . A.debInfo) ~?= maintainerOption
+      (S.maintainer . T.control . A.debInfo) ~?= (either (const Nothing) Just $ parseMaintainer cabalMaintainerString)
+      (S.maintainer . T.control . A.debInfo) ~?= (either (const Nothing) Just $ parseMaintainer cabalMaintainerString')
+      (S.maintainer . T.control . A.debInfo) ~?= (either (const Nothing) Just $ parseMaintainer cabalMaintainerString'')
       -- Sometimes the maintainer is just an email, if it matches the author's email we can use it
-      (S.maintainer . T.control) ~?= (case parseMaintainer cabalAuthorString of
+      (S.maintainer . T.control . A.debInfo) ~?= (case parseMaintainer cabalAuthorString of
                                         Right x | nameAddr_addr x == cabalMaintainerString -> Just x
                                         _ -> Nothing)
       -- Sometimes the maintainer is just an email, try combining it with the author's name
-      (S.maintainer . T.control) ~?= (case parseMaintainer cabalAuthorString of
+      (S.maintainer . T.control . A.debInfo) ~?= (case parseMaintainer cabalAuthorString of
                                         Right (NameAddr {nameAddr_name = Just name}) -> either (const Nothing) Just (parseMaintainer (name ++ " <" ++ cabalMaintainerString ++ ">"))
                                         _ -> Nothing)
-      (S.maintainer . T.control) ~?= currentUser
-      (S.maintainer . T.control) ~?= changelogSignature
-      x <- access (S.maintainer . T.control)
+      (S.maintainer . T.control . A.debInfo) ~?= currentUser
+      (S.maintainer . T.control . A.debInfo) ~?= changelogSignature
+      x <- access (S.maintainer . T.control . A.debInfo)
       when (isNothing x) 
            (do liftIO $ putStrLn ("Unable to construct a debian maintainer, using nobody <nobody@nowhere>. Cabal maintainer strings tried:\n " ++
                                   show cabalMaintainerString ++ ", " ++ show cabalMaintainerString' ++ ", " ++ show cabalMaintainerString'' ++
                                   ", currentUser: " ++ show currentUser)
                return ())
-      (S.maintainer . T.control) ~?= (either (const Nothing) Just $ parseMaintainer "nobody <nobody@nowhere>")
-      (S.uploaders . T.control) %= whenEmpty uploadersOption
+      (S.maintainer . T.control . A.debInfo) ~?= (either (const Nothing) Just $ parseMaintainer "nobody <nobody@nowhere>")
+      (S.uploaders . T.control . A.debInfo) %= whenEmpty uploadersOption
 
 -- | If l is the empty list return d, otherwise return l.
 whenEmpty :: [a] -> [a] -> [a]
@@ -254,9 +254,9 @@ finalizeControl :: (MonadIO m, Functor m) => DebT m ()
 finalizeControl =
     do finalizeMaintainer
        Just src <- access T.sourcePackageName
-       T.source ~= Just src
+       (T.source . A.debInfo) ~= Just src
        desc' <- describe
-       (S.xDescription . T.control) ~?= Just desc'
+       (S.xDescription . T.control . A.debInfo) ~?= Just desc'
        -- control %= (\ y -> y { D.source = Just src, D.maintainer = Just maint })
 
 -- | Make sure there is a changelog entry with the version number and
@@ -268,11 +268,11 @@ finalizeChangelog date =
     do finalizeMaintainer
        ver <- debianVersion
        src <- access T.sourcePackageName
-       Just debianMaintainer <- access (S.maintainer . T.control)
+       Just debianMaintainer <- access (S.maintainer . T.control . A.debInfo)
        -- pkgDesc <- access T.packageDescription >>= return . maybe Nothing (either Nothing Just . parseMaintainer . Cabal.maintainer)
        cmts <- access T.comments
-       T.changelog %= fmap (dropFutureEntries ver)
-       T.changelog %= fixLog src ver cmts debianMaintainer
+       (T.changelog . A.debInfo) %= fmap (dropFutureEntries ver)
+       (T.changelog . A.debInfo) %= fixLog src ver cmts debianMaintainer
     where
       -- Ensure that the package name is correct in the first log entry.
       fixLog src ver cmts _maint (Just (ChangeLog (entry : older))) | logVersion entry == ver =
@@ -299,8 +299,8 @@ addExtraLibDependencies hc =
     do pkgDesc <- access T.packageDescription
        devName <- debianName B.Development hc
        libMap <- access T.extraLibMap
-       binNames <- List.map (getL B.package) <$> access T.binaryPackages
-       when (any (== devName) binNames) (T.depends devName %= \ deps -> deps ++ g pkgDesc libMap)
+       binNames <- List.map (getL B.package) <$> access (T.binaryPackages . A.debInfo)
+       when (any (== devName) binNames) ((T.depends devName . A.debInfo) %= \ deps -> deps ++ g pkgDesc libMap)
     where
       g :: PackageDescription -> Map String Relations -> Relations
       g pkgDesc libMap = concatMap (devDep libMap) (nub $ concatMap Cabal.extraLibs $ Cabal.allBuildInfo $ pkgDesc)
@@ -320,12 +320,12 @@ officialSettings =
     do pkgDesc <- access T.packageDescription
        let PackageName cabal = pkgName (Cabal.package pkgDesc)
 
-       T.standardsVersion ~?= Just (parseStandardsVersion "3.9.5")
-       T.homepage ~?= Just ("http://hackage.haskell.org/package/" <> pack cabal)
+       (T.standardsVersion . A.debInfo) ~?= Just (parseStandardsVersion "3.9.5")
+       (T.homepage . A.debInfo) ~?= Just ("http://hackage.haskell.org/package/" <> pack cabal)
        T.omitProfVersionDeps ~= True
        SrcPkgName src <- access T.sourcePackageName >>= maybe (error "officialSettings: no sourcePackageName") return
 
-       T.vcsFields %= Set.union (Set.fromList
+       (T.vcsFields . A.debInfo) %= Set.union (Set.fromList
           [ S.VCSBrowser $ "http://darcs.debian.org/cgi-bin/darcsweb.cgi?r=pkg-haskell/" <> pack src
           , S.VCSDarcs  $ "http://darcs.debian.org/pkg-haskell/" <> pack src
           ])
@@ -335,33 +335,33 @@ putBuildDeps :: (MonadIO m, Functor m) => PackageDescription -> DebT m ()
 putBuildDeps pkgDesc =
     do deps <- debianBuildDeps pkgDesc
        depsIndep <- debianBuildDepsIndep pkgDesc
-       T.buildDepends ~= deps
-       T.buildDependsIndep ~= depsIndep
+       (T.buildDepends . A.debInfo) ~= deps
+       (T.buildDependsIndep . A.debInfo) ~= depsIndep
 
 cabalExecBinaryPackage :: Monad m => BinPkgName -> DebT m ()
 cabalExecBinaryPackage b =
-    do T.packageType b ~?= Just B.Exec
-       T.binaryArchitectures b ~?= Just Any
-       T.binarySection b ~?= Just (MainSection "misc")
-       T.debianDescription b ~?= Just desc -- yeah, this same line is all over the place.
+    do (T.packageType b . A.debInfo) ~?= Just B.Exec
+       (T.binaryArchitectures b . A.debInfo) ~?= Just Any
+       (T.binarySection b . A.debInfo) ~?= Just (MainSection "misc")
+       (T.debianDescription b . A.debInfo) ~?= Just desc -- yeah, this same line is all over the place.
        binaryPackageRelations b B.Exec
     where
 
 binaryPackageRelations :: Monad m => BinPkgName -> B.PackageType -> DebT m ()
 binaryPackageRelations b typ =
     do edds <- access T.extraDevDeps
-       T.depends b %= \ rels ->
+       (T.depends b . A.debInfo) %= \ rels ->
           [anyrel "${haskell:Depends}", anyrel "${misc:Depends}"] ++
           [anyrel "${shlibs:Depends}" | typ `notElem` [B.Profiling, B.Documentation] ] ++
           edds ++ rels
-       T.recommends b %= \ rels -> [anyrel "${haskell:Recommends}"] ++ rels
-       T.suggests b %= \ rels -> [anyrel "${haskell:Suggests}"] ++ rels
-       T.preDepends b ~= []
-       T.breaks b ~= []
-       T.conflicts b %= \ rels -> [anyrel "${haskell:Conflicts}"] ++ rels
-       T.provides b %= \ rels -> (if typ /= B.Documentation then [anyrel "${haskell:Provides}"] else []) ++ rels
+       (T.recommends b . A.debInfo) %= \ rels -> [anyrel "${haskell:Recommends}"] ++ rels
+       (T.suggests b . A.debInfo) %= \ rels -> [anyrel "${haskell:Suggests}"] ++ rels
+       (T.preDepends b . A.debInfo) ~= []
+       (T.breaks b . A.debInfo) ~= []
+       (T.conflicts b . A.debInfo) %= \ rels -> [anyrel "${haskell:Conflicts}"] ++ rels
+       (T.provides b . A.debInfo) %= \ rels -> (if typ /= B.Documentation then [anyrel "${haskell:Provides}"] else []) ++ rels
        -- T.replaces b %= \ rels -> [anyrel "${haskell:Replaces}"] ++ rels
-       T.builtUsing b ~= []
+       (T.builtUsing b . A.debInfo) ~= []
 
 -- | Add the library paragraphs for a particular compiler flavor.
 librarySpecs :: (Monad m, Functor m) => PackageDescription -> CompilerFlavor -> DebT m ()
@@ -377,20 +377,20 @@ docSpecsParagraph :: (Monad m, Functor m) => CompilerFlavor -> DebT m ()
 docSpecsParagraph hc =
     do b <- debianName B.Documentation hc
        binaryPackageRelations b B.Documentation
-       T.packageType b ~?= Just B.Documentation
-       T.packageType b ~?= Just B.Documentation
-       T.binaryArchitectures b ~= Just All
-       T.binarySection b ~?= Just (MainSection "doc")
-       T.debianDescription b ~?= Just desc
+       (T.packageType b . A.debInfo) ~?= Just B.Documentation
+       (T.packageType b . A.debInfo) ~?= Just B.Documentation
+       (T.binaryArchitectures b . A.debInfo) ~= Just All
+       (T.binarySection b . A.debInfo) ~?= Just (MainSection "doc")
+       (T.debianDescription b . A.debInfo) ~?= Just desc
 
 librarySpec :: (Monad m, Functor m) => PackageArchitectures -> B.PackageType -> CompilerFlavor -> DebT m ()
 librarySpec arch typ hc =
     do b <- debianName typ hc
        binaryPackageRelations b typ
-       T.packageType b ~?= Just typ
-       T.packageType b ~?= Just typ
-       T.binaryArchitectures b ~?= Just arch
-       T.debianDescription b ~?= Just desc
+       (T.packageType b . A.debInfo) ~?= Just typ
+       (T.packageType b . A.debInfo) ~?= Just typ
+       (T.binaryArchitectures b . A.debInfo) ~?= Just arch
+       (T.debianDescription b . A.debInfo) ~?= Just desc
 
 -- | This is the standard value for the Description field of a binary
 -- package control file stanza.
@@ -416,12 +416,12 @@ makeUtilsPackage pkgDesc hc =
                                            A.Install b from _ -> Map.insertWith Set.union b (singleton from) r
                                            A.InstallTo b from _ -> Map.insertWith Set.union b (singleton from) r
                                            A.InstallData b from _ -> Map.insertWith Set.union b (singleton from) r
-                                           _ -> r) mempty <$> access A.atomSet :: DebT m (Map BinPkgName (Set FilePath))
+                                           _ -> r) mempty <$> access (A.atomSet . A.debInfo) :: DebT m (Map BinPkgName (Set FilePath))
        installedExecMap <- Set.fold (\ x r ->
                                          case x of
                                            A.InstallCabalExec b name _ -> Map.insertWith Set.union b (singleton name) r
                                            A.InstallCabalExecTo b name _ -> Map.insertWith Set.union b (singleton name) r
-                                           _ -> r) mempty <$> access A.atomSet :: DebT m (Map BinPkgName (Set String))
+                                           _ -> r) mempty <$> access (A.atomSet . A.debInfo) :: DebT m (Map BinPkgName (Set String))
 
        -- The names of cabal executables that go into eponymous debs
        insExecPkg <- access T.executable >>= return . Set.map ename . Set.fromList . elems
@@ -453,15 +453,15 @@ makeUtilsPackage pkgDesc hc =
            utilsExecMissing = Set.difference utilsExec installedExec
        -- If any files belong in the utils packages, make sure they exist
        when (not (Set.null utilsData && Set.null utilsExec)) $ do
-         T.debianDescription b ~?= Just desc
+         (T.debianDescription b . A.debInfo) ~?= Just desc
          -- This is really for all binary debs except the libraries - I'm not sure why
-         T.rulesFragments += (pack ("build" </> ppDisplay b ++ ":: build-ghc-stamp\n"))
-         T.binaryArchitectures b ~?= Just (if Set.null utilsExec then All else Any)
-         T.binarySection b ~?= Just (MainSection "misc")
+         (T.rulesFragments . A.debInfo)+= (pack ("build" </> ppDisplay b ++ ":: build-ghc-stamp\n"))
+         (T.binaryArchitectures b . A.debInfo) ~?= Just (if Set.null utilsExec then All else Any)
+         (T.binarySection b . A.debInfo) ~?= Just (MainSection "misc")
          binaryPackageRelations b B.Utilities
        -- Add the unassigned files to the utils packages
-       Set.mapM_ (uncurry (T.installData b)) utilsDataMissing
-       Set.mapM_ (\ name -> T.installCabalExec b name "usr/bin") utilsExecMissing
+       Set.mapM_ (\ (foo, bar) -> (A.atomSet . A.debInfo) %= (Set.insert $ A.InstallData b foo bar)) utilsDataMissing
+       Set.mapM_ (\ name -> (A.atomSet . A.debInfo) %= (Set.insert $ A.InstallCabalExec b name "usr/bin")) utilsExecMissing
     where
       ename i =
           case A.sourceDir i of
@@ -470,7 +470,7 @@ makeUtilsPackage pkgDesc hc =
 
 expandAtoms :: MonadIO m => DebT m ()
 expandAtoms =
-    do hc <- access (compilerFlavor . T.flags)
+    do hc <- access (compilerFlavor . T.flags . A.debInfo)
        builddir <- access T.buildDir >>= return . fromMaybe (case hc of
                                                                GHC -> "dist-ghc/build"
 #if MIN_VERSION_Cabal(1,21,0)
@@ -495,22 +495,23 @@ expandAtoms =
              List.mapM_ expandApacheSite (Map.toList mp)
           where
             expandApacheSite (b, (dom, log, text)) =
-                do T.link b ("/etc/apache2/sites-available/" ++ dom) ("/etc/apache2/sites-enabled/" ++ dom)
-                   T.installDir b log
-                   T.file b ("/etc/apache2/sites-available" </> dom) text
+                do (A.atomSet . A.debInfo) %= (Set.insert $ A.Link b ("/etc/apache2/sites-available/" ++ dom) ("/etc/apache2/sites-enabled/" ++ dom))
+                   (A.atomSet . A.debInfo) %= (Set.insert $ A.InstallDir b log)
+                   (A.atomSet . A.debInfo) %= (Set.insert $ A.File b ("/etc/apache2/sites-available" </> dom) text)
 
       -- Turn A.InstallCabalExec into A.Install
       expandInstallCabalExecs :: Monad m => FilePath -> DebT m ()
       expandInstallCabalExecs builddir = do
-        hc <- access (compilerFlavor . T.flags)
-        access A.atomSet >>= Set.mapM_ (doAtom hc)
+        hc <- access (compilerFlavor . T.flags . A.debInfo)
+        access (A.atomSet . A.debInfo) >>= Set.mapM_ (doAtom hc)
           where
-            doAtom GHC (A.InstallCabalExec b name dest) = T.install b (builddir </> name </> name) dest
+            doAtom :: Monad m => CompilerFlavor -> A.Atom -> DebT m ()
+            doAtom GHC (A.InstallCabalExec b name dest) = (A.atomSet . A.debInfo) %= (Set.insert $ A.Install b (builddir </> name </> name) dest)
             -- A GHCJS executable is a directory with files, copy them
             -- all into place.
 #if MIN_VERSION_Cabal(1,21,0)
             doAtom GHCJS (A.InstallCabalExec b name dest) =
-                T.rulesFragments +=
+                (T.rulesFragments . A.debInfo) +=
                      (Text.unlines
                         [ pack ("binary-fixup" </> ppDisplay b) <> "::"
                         , pack ("\t(cd " <> builddir </> name <> " && find " <> name <.> "jsexe" <> " -type f) |\\\n" <>
@@ -521,11 +522,13 @@ expandAtoms =
       -- Turn A.InstallCabalExecTo into a make rule
       expandInstallCabalExecTo :: Monad m => FilePath -> DebT m ()
       expandInstallCabalExecTo builddir = do
-        hc <- access (compilerFlavor . T.flags)
-        access A.atomSet >>= Set.mapM_ (doAtom hc)
+        hc <- access (compilerFlavor . T.flags . A.debInfo)
+        access (A.atomSet . A.debInfo) >>= Set.mapM_ (doAtom hc)
           where
+            doAtom :: Monad m => CompilerFlavor -> A.Atom -> DebT m ()
             doAtom GHC (A.InstallCabalExecTo b name dest) =
-                T.rulesFragments += (Text.unlines
+                (T.rulesFragments . A.debInfo) +=
+                                     (Text.unlines
                                        [ pack ("binary-fixup" </> ppDisplay b) <> "::"
                                        , "\tinstall -Dps " <> pack (builddir </> name </> name) <> " "
                                                            <> pack ("debian" </> ppDisplay b </> makeRelative "/" dest) ])
@@ -535,35 +538,39 @@ expandAtoms =
       -- Turn A.InstallData into either an Install or an InstallTo
       expandInstallData :: Monad m => FilePath -> DebT m ()
       expandInstallData dDir =
-          access A.atomSet >>= List.mapM_ doAtom . Set.toList
+          access (A.atomSet . A.debInfo) >>= List.mapM_ doAtom . Set.toList
           where
+            doAtom :: Monad m => A.Atom -> DebT m ()
             doAtom (A.InstallData b from dest) =
                 if takeFileName from == takeFileName dest
-                then T.install b from (dDir </> makeRelative "/" (takeDirectory dest))
-                else T.installTo b from (dDir </> makeRelative "/" dest)
+                then (A.atomSet . A.debInfo) %= (Set.insert $ A.Install b from (dDir </> makeRelative "/" (takeDirectory dest)))
+                else (A.atomSet . A.debInfo) %= (Set.insert $ A.InstallTo b from (dDir </> makeRelative "/" dest))
             doAtom _ = return ()
 
       -- Turn A.InstallTo into a make rule
       expandInstallTo :: Monad m => DebT m ()
       expandInstallTo =
-          access A.atomSet >>= List.mapM_ doAtom . Set.toList
+          access (A.atomSet . A.debInfo) >>= List.mapM_ doAtom . Set.toList
           where
+            doAtom :: Monad m => A.Atom -> DebT m ()
             doAtom (A.InstallTo b from dest) =
-                T.rulesFragments += (Text.unlines [ pack ("binary-fixup" </> ppDisplay b) <> "::"
+                (T.rulesFragments . A.debInfo) +=
+                                    (Text.unlines [ pack ("binary-fixup" </> ppDisplay b) <> "::"
                                                   , "\tinstall -Dp " <> pack from <> " " <> pack ("debian" </> ppDisplay b </> makeRelative "/" dest) ])
             doAtom _ = return ()
 
       -- Turn A.File into an intermediateFile and an A.Install
       expandFile :: Monad m => DebT m ()
       expandFile =
-          access A.atomSet >>= List.mapM_ doAtom . Set.toList
+          access (A.atomSet . A.debInfo) >>= List.mapM_ doAtom . Set.toList
           where
+            doAtom :: Monad m => A.Atom -> DebT m ()
             doAtom (A.File b path text) =
                 do let (destDir', destName') = splitFileName path
                        tmpDir = "debian/cabalInstall" </> show (md5 (fromString (unpack text)))
                        tmpPath = tmpDir </> destName'
-                   T.intermediateFiles += (tmpPath, text)
-                   T.install b tmpPath destDir'
+                   (T.intermediateFiles . A.debInfo) += (tmpPath, text)
+                   (A.atomSet . A.debInfo) %= (Set.insert $ A.Install b tmpPath destDir')
             doAtom _ = return ()
 
       expandWebsite :: Monad m => DebT m ()
@@ -590,12 +597,12 @@ expandAtoms =
 finalizeRules :: (Monad m) => DebT m ()
 finalizeRules =
     do DebBase b <- debianNameBase
-       compiler <- access (compilerFlavor . T.flags)
-       A.rulesHead ~?= Just "#!/usr/bin/make -f"
-       A.rulesSettings %= (++ ["DEB_CABAL_PACKAGE = " <> pack b])
-       A.rulesSettings %= (++ (["DEB_DEFAULT_COMPILER = " <> pack (List.map toLower (show compiler))]))
-       A.rulesIncludes %= (++ ["include /usr/share/cdbs/1/rules/debhelper.mk",
-                               "include /usr/share/cdbs/1/class/hlibrary.mk"])
+       compiler <- access (compilerFlavor . T.flags . A.debInfo)
+       (A.rulesHead . A.debInfo) ~?= Just "#!/usr/bin/make -f"
+       (A.rulesSettings . A.debInfo) %= (++ ["DEB_CABAL_PACKAGE = " <> pack b])
+       (A.rulesSettings . A.debInfo) %= (++ (["DEB_DEFAULT_COMPILER = " <> pack (List.map toLower (show compiler))]))
+       (A.rulesIncludes . A.debInfo) %= (++ ["include /usr/share/cdbs/1/rules/debhelper.mk",
+                                             "include /usr/share/cdbs/1/class/hlibrary.mk"])
 
 data Dependency_
   = BuildDepends Dependency

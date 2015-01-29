@@ -1,7 +1,7 @@
 -- | This module holds a long list of lenses that access the Atoms
 -- record, the record that holds the input data from which the
 -- debianization is to be constructed.
-{-# LANGUAGE CPP, DeriveDataTypeable #-}
+{-# LANGUAGE CPP, DeriveDataTypeable, TemplateHaskell #-}
 {-# OPTIONS_GHC -Wall #-}
 module Debian.Debianize.Types.Atoms
 {-    ( Atoms
@@ -19,6 +19,7 @@ import Control.Applicative ((<$>))
 import Control.Monad.State (StateT)
 import Data.Generics (Data, Typeable)
 import Data.Lens.Lazy (Lens, lens, (%=))
+import Data.Lens.Template (nameMakeLens)
 import Data.Map as Map (Map)
 import Data.Monoid (Monoid(..))
 import Data.Set as Set (Set, insert)
@@ -336,6 +337,11 @@ data InstallFile
 showAtoms :: Atoms -> IO ()
 showAtoms x = putStrLn ("\nTop: " ++ show x ++ "\n")
 
+#if 0
+$(nameMakeLens ''Atoms (\ fname -> case splitAt (max 0 (length fname - 1)) fname of
+                                     (pre, "_") -> Just pre
+                                     _ -> Nothing))
+#else
 -- | Obsolete record containing verbosity, dryRun, validate, and debAction.
 flags :: Lens Atoms Flags
 flags = lens flags_ (\ b a -> a {flags_ = b})
@@ -555,6 +561,17 @@ logrotateStanza = lens logrotateStanza_ (\ a b -> b {logrotateStanza_ = a})
 atomSet :: Lens Atoms (Set Atom)
 atomSet = lens atomSet_ (\ a b -> b {atomSet_ = a})
 
+-- | Create an /etc/init.d file in the package
+-- FIXME: change signature to BinPkgName -> Lens Atoms Text
+installInit :: Lens Atoms (Map BinPkgName Text)
+installInit = lens installInit_ (\ a b -> b {installInit_ = a})
+
+-- | Create a file in the debianization.  This is used to implement the file lens above.
+-- FIXME: change signature to BinPkgName -> Lens Atoms (Set (FilePath, Text))
+intermediateFiles :: Lens Atoms (Set (FilePath, Text))
+intermediateFiles = lens intermediateFiles_ (\ a b -> b {intermediateFiles_ = a})
+#endif
+
 -- We need (%=_)
 link :: Monad m => BinPkgName -> FilePath -> FilePath -> StateT Atoms m ()
 link b from dest = atomSet %= (Set.insert $ Link b from dest) >> return ()
@@ -572,16 +589,6 @@ installCabalExecTo :: Monad m => BinPkgName -> String -> FilePath -> StateT Atom
 installCabalExecTo b name dest = atomSet %= (Set.insert $ InstallCabalExecTo b name dest) >> return ()
 installDir :: Monad m => BinPkgName -> FilePath -> StateT Atoms m ()
 installDir b dir = atomSet %= (Set.insert $ InstallDir b dir) >> return ()
-
--- | Create an /etc/init.d file in the package
--- FIXME: change signature to BinPkgName -> Lens Atoms Text
-installInit :: Lens Atoms (Map BinPkgName Text)
-installInit = lens installInit_ (\ a b -> b {installInit_ = a})
-
--- | Create a file in the debianization.  This is used to implement the file lens above.
--- FIXME: change signature to BinPkgName -> Lens Atoms (Set (FilePath, Text))
-intermediateFiles :: Lens Atoms (Set (FilePath, Text))
-intermediateFiles = lens intermediateFiles_ (\ a b -> b {intermediateFiles_ = a})
 
 {-
 compilerFlavor :: Monad m => StateT Atoms m CompilerFlavor

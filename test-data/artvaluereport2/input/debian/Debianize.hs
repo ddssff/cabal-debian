@@ -31,8 +31,8 @@ import Prelude hiding ((.))
 -- copyFirstLogEntry.
 main :: IO ()
 main =
-    do log <- withCurrentDirectory "test-data/artvaluereport2/input" $ newAtoms >>= evalCabalT (liftCabal inputChangeLog >> access (changelog . debInfo))
-       new <- withCurrentDirectory "test-data/artvaluereport2/input" $ newAtoms >>= execCabalT (debianize (debianDefaultAtoms >> customize log))
+    do log <- withCurrentDirectory "test-data/artvaluereport2/input" $ newFlags >>= newAtoms >>= evalCabalT (liftCabal inputChangeLog >> access (changelog . debInfo))
+       new <- withCurrentDirectory "test-data/artvaluereport2/input" $ newFlags >>= newAtoms >>= execCabalT (debianize (debianDefaultAtoms >> customize log))
        old <- withCurrentDirectory "test-data/artvaluereport2/output" $ newFlags >>= execDebianT inputDebianization . makeDebInfo
        -- The newest log entry gets modified when the Debianization is
        -- generated, it won't match so drop it for the comparison.

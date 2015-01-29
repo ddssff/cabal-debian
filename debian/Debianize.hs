@@ -44,12 +44,12 @@ main =
        -- This is both a debianization script and a unit test - it
        -- makes sure the debianization generated matches the one
        -- checked into version control.
-       log <- newAtoms >>= evalCabalT (liftCabal inputChangeLog >> access (changelog . debInfo))
+       log <- newFlags >>= newAtoms >>= evalCabalT (liftCabal inputChangeLog >> access (changelog . debInfo))
        old <- newFlags >>= execDebianT inputDebianization . makeDebInfo
-       new <- newAtoms >>= execCabalT (debianize (do debianDefaultAtoms
-                                                     (changelog . debInfo) ~?= log
-                                                     customize
-                                                     copyFirstLogEntry old))
+       new <- newFlags >>= newAtoms >>= execCabalT (debianize (do debianDefaultAtoms
+                                                                  (changelog . debInfo) ~?= log
+                                                                  customize
+                                                                  copyFirstLogEntry old))
        diff <- compareDebianization old (getL debInfo new)
        case diff of
          "" -> return ()

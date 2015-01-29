@@ -61,7 +61,7 @@ defaultAtoms =
 
 -- | Force the compiler version to 7.6 to get predictable outputs
 testAtoms :: IO Atoms
-testAtoms = ghc763 <$> T.newAtoms
+testAtoms = newFlags >>= newAtoms >>= return . ghc763
     where
       ghc763 :: Atoms -> Atoms
       ghc763 atoms = setL (compilerFlavor . T.flags . T.debInfo) GHC atoms
@@ -593,7 +593,7 @@ test8 label =
                       outTop = "test-data/artvaluereport-data/output"
                   (old :: DebInfo) <- withCurrentDirectory outTop $ newFlags >>= execDebianT inputDebianization . makeDebInfo
                   let log = getL T.changelog old
-                  new <- withCurrentDirectory inTop $ newAtoms >>= execCabalT (debianize (defaultAtoms >> customize log))
+                  new <- withCurrentDirectory inTop $ newFlags >>= newAtoms >>= execCabalT (debianize (defaultAtoms >> customize log))
                   diff <- diffDebianizations old (getL debInfo new)
                   assertEqual label [] diff
              )
@@ -611,7 +611,7 @@ test9 label =
     TestLabel label $
     TestCase (do let inTop = "test-data/alex/input"
                      outTop = "test-data/alex/output"
-                 new <- withCurrentDirectory inTop $ newAtoms >>= execCabalT (debianize (defaultAtoms >> customize))
+                 new <- withCurrentDirectory inTop $ newFlags >>= newAtoms >>= execCabalT (debianize (defaultAtoms >> customize))
                  let Just (ChangeLog (entry : _)) = getL (T.changelog . debInfo) new
                  old <- withCurrentDirectory outTop $ newFlags >>= execDebianT (inputDebianization >> copyChangelogDate (logDate entry)) . makeDebInfo
                  diff <- diffDebianizations old (getL debInfo new)
@@ -647,7 +647,7 @@ test10 label =
     TestLabel label $
     TestCase (do let inTop = "test-data/archive/input"
                      outTop = "test-data/archive/output"
-                 new <- withCurrentDirectory inTop $ newAtoms >>= execCabalT (debianize (defaultAtoms >> customize))
+                 new <- withCurrentDirectory inTop $ newFlags >>= newAtoms >>= execCabalT (debianize (defaultAtoms >> customize))
                  let Just (ChangeLog (entry : _)) = getL (T.changelog . debInfo) new
                  old <- withCurrentDirectory outTop $ newFlags >>= execDebianT (inputDebianization >> copyChangelogDate (logDate entry)) . makeDebInfo
                  diff <- diffDebianizations old (getL debInfo new)

@@ -23,7 +23,7 @@ import Data.Monoid (Monoid(..))
 import Data.Set as Set (Set, insert)
 import Data.Text (Text)
 import Debian.Changes (ChangeLog)
-import Debian.Debianize.InputCabalPackageDescription (inputCabalization, Flags, newFlags)
+import Debian.Debianize.InputCabalPackageDescription (inputCabalization, Flags)
 import Debian.Debianize.Types.CopyrightDescription
 import Debian.Debianize.Types.BinaryDebDescription (Canonical(canonical))
 import qualified Debian.Debianize.Types.SourceDebDescription as S
@@ -232,11 +232,8 @@ data Atom
       -- ^ Create a directory in the binary package
     deriving (Show, Eq, Ord, Data, Typeable)
 
--- | Look for --buildenvdir in the command line arguments to get the
--- changeroot path, use "/" if not present.
-newAtoms :: IO Atoms
-newAtoms = do
-  flags' <- newFlags
+newAtoms :: Flags -> IO Atoms
+newAtoms flags' = do
   pkgDesc <- inputCabalization flags'
   return $ makeAtoms flags' pkgDesc
 

@@ -12,7 +12,7 @@ import Data.Lens.Lazy (access)
 import Data.List as List (unlines)
 import Debian.Debianize.Details (debianDefaultAtoms)
 import Debian.Debianize.Finalize (debianize)
-import Debian.Debianize.InputCabalPackageDescription (DebAction(Debianize, SubstVar, Usage), debAction)
+import Debian.Debianize.InputCabalPackageDescription (DebAction(Debianize, SubstVar, Usage), debAction, newFlags)
 import Debian.Debianize.Monad (CabalT, evalCabalT, liftCabal)
 import Debian.Debianize.Options (options)
 import Debian.Debianize.Output (doDebianizeAction)
@@ -30,7 +30,7 @@ cabalDebianMain :: (MonadIO m, Functor m) => CabalT m () -> m ()
 cabalDebianMain init =
     -- This picks up the options required to decide what action we are
     -- taking.  Much of this will be repeated in the call to debianize.
-    do atoms <- liftIO $ newAtoms
+    do atoms <- liftIO $ newFlags >>= newAtoms
        evalCabalT (do debianize init
                       action <- access (debAction . flags . debInfo)
                       finish action) atoms

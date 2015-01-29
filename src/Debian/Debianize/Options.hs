@@ -9,10 +9,12 @@ module Debian.Debianize.Options
     ) where
 
 import Control.Category ((.))
+import Control.Monad.State (StateT)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Char (isDigit, ord)
-import Data.Lens.Lazy (Lens)
+import Data.Lens.Lazy (Lens, focus)
 import Debian.Debianize.Goodies (doExecutable)
+import Debian.Debianize.InputCabalPackageDescription (Flags, flagOptions)
 import Debian.Debianize.Monad (CabalT, DebianT)
 import Debian.Debianize.Prelude (maybeRead, (+=), (~=), (%=), (++=), (+++=))
 import Debian.Debianize.Types
@@ -21,7 +23,7 @@ import Debian.Debianize.Types
      sourceFormat, buildDepends, buildDependsIndep, extraDevDeps, depends, conflicts, replaces, provides,
      recommends, suggests, extraLibMap, debVersion, revision, epochMap, execMap, utilsPackageNameBase,
      standardsVersion, official, sourceSection)
-import Debian.Debianize.Types.Atoms (InstallFile(..), debInfo, DebInfo)
+import Debian.Debianize.Types.Atoms (InstallFile(..), debInfo, DebInfo, Atoms, flags)
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
 import Debian.Orphans ()
 import Debian.Policy (SourceFormat(Quilt3, Native3), parseMaintainer, parseStandardsVersion)
@@ -182,7 +184,15 @@ options =
              (unlines [ "Subdirectory where cabal does its build, dist/build by default, dist-ghc when"
                       , "run by haskell-devscripts.  The build subdirectory is added to match the"
                       , "behavior of the --builddir option in the Setup script."])
-    ]
+    ] ++ map liftOpt flagOptions
+
+liftOpt :: Monad m => OptDescr (StateT Flags m ()) -> OptDescr (StateT Atoms m ())
+liftOpt (Option chrs strs desc doc) = Option chrs strs (liftDesc desc) doc
+
+liftDesc :: Monad m => ArgDescr (StateT Flags m ()) -> ArgDescr (StateT Atoms m ())
+liftDesc (NoArg x) = NoArg (focus (flags . debInfo) x)
+liftDesc (ReqArg f s) = ReqArg (\ p -> focus (flags . debInfo) (f p)) s
+liftDesc (OptArg f s) = OptArg (\ mp -> focus (flags . debInfo) (f mp)) s
 
 anyrel :: BinPkgName -> Relation
 anyrel x = Rel x Nothing Nothing

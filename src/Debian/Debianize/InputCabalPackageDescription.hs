@@ -9,19 +9,21 @@ module Debian.Debianize.InputCabalPackageDescription
     , verbosity, dryRun, validate, debAction, cabalFlagAssignments, compilerFlavor, buildEnv, setBuildEnv
     , inputCabalization
     , inputCabalization'
+    , flagOptions
     ) where
 
 import Control.Applicative ((<$>))
 import Control.Category ((.))
 import Control.Exception (bracket)
 import Control.Monad (when)
+import Control.Monad.State (StateT, execStateT)
 import Control.Monad.Trans (MonadIO)
 import Data.Char (toUpper, toLower)
 import Data.Generics (Data, Typeable)
 import Data.Lens.Common (Lens, lens)
 import Data.Monoid (Monoid(..))
-import Data.Set as Set (Set, toList, insert)
-import Debian.Debianize.Prelude (intToVerbosity', read')
+import Data.Set as Set (Set, toList, fromList, union)
+import Debian.Debianize.Prelude (intToVerbosity', read', (~=), (%=))
 import Debian.GHC (newestAvailableCompilerId)
 import Debian.Orphans ()
 import Distribution.Compiler (CompilerId, CompilerFlavor(..))
@@ -111,37 +113,38 @@ defaultFlags =
 newFlags :: IO Flags
 newFlags = do
   (fns, _, _) <- getOpt Permute flagOptions <$> getArgs
-  return $ foldr ($) defaultFlags fns
+  execStateT (sequence fns) defaultFlags
 
-flagOptions :: [OptDescr (Flags -> Flags)]
+flagOptions :: MonadIO m => [OptDescr (StateT Flags m ())]
 flagOptions =
-    [ Option "v" ["verbose"] (ReqArg (\ s p -> p {verbosity_ = read' (\ s' -> error $ "verbose: " ++ show s') s}) "number")
+    [ Option "v" ["verbose"] (ReqArg (\ s -> verbosity ~= (read' (\ s' -> error $ "verbose: " ++ show s') s :: Int)) "number")
              "Change the amount of progress messages generated",
-      Option "n" ["dry-run", "compare"] (NoArg (\ p -> p {dryRun_ = True}))
+      Option "n" ["dry-run", "compare"] (NoArg (dryRun ~= True))
              "Just compare the existing debianization to the one we would generate.",
-      Option "h?" ["help"] (NoArg (\ p -> p {debAction_ = Usage}))
+      Option "h?" ["help"] (NoArg (debAction ~= Usage))
              "Show this help text",
-      Option "" ["ghc"] (NoArg (\ p -> p {compilerFlavor_ = GHC})) "Generate packages for GHC - same as --with-compiler GHC",
+      Option "" ["ghc"] (NoArg (compilerFlavor ~= GHC)) "Generate packages for GHC - same as --with-compiler GHC",
 #if MIN_VERSION_Cabal(1,21,0)
-      Option "" ["ghcjs"] (NoArg (\ p -> p {compilerFlavor_ = GHCJS})) "Generate packages for GHCJS - same as --with-compiler GHCJS",
+      Option "" ["ghcjs"] (NoArg (compilerFlavor ~= GHCJS)) "Generate packages for GHCJS - same as --with-compiler GHCJS",
 #endif
-      Option "" ["hugs"] (NoArg (\ p -> p {compilerFlavor_ = Hugs})) "Generate packages for Hugs - same as --with-compiler GHC",
-      Option "" ["with-compiler"] (ReqArg (\ s p -> maybe (error $ "Invalid compiler id: " ++ show s)
-                                                          (\ hc -> p {compilerFlavor_ = hc})
-                                                          (readMaybe (map toUpper s) :: Maybe CompilerFlavor)) "COMPILER")
+      Option "" ["hugs"] (NoArg (compilerFlavor ~= Hugs)) "Generate packages for Hugs - same as --with-compiler GHC",
+      Option "" ["with-compiler"] (ReqArg (\ s -> maybe (error $ "Invalid compiler id: " ++ show s)
+                                                        (\ hc -> compilerFlavor ~= hc)
+                                                        (readMaybe (map toUpper s) :: Maybe CompilerFlavor)) "COMPILER")
              (unlines [ "Generate packages for this CompilerFlavor" ]),
-      Option "f" ["flags"] (ReqArg (\ fs p -> foldl (\ p' x -> p' {cabalFlagAssignments_ = Set.insert x (cabalFlagAssignments_ p')}) p (flagList fs)) "FLAGS")
+      Option "f" ["flags"] (ReqArg (\ fs -> cabalFlagAssignments %= (Set.union (Set.fromList (flagList fs)))) "FLAGS")
+      -- Option "f" ["flags"] (ReqArg (\ fs p -> foldl (\ p' x -> p' {cabalFlagAssignments_ = Set.insert x (cabalFlagAssignments_ p')}) p (flagList fs)) "FLAGS")
              (unlines [ "Flags to pass to the finalizePackageDescription function in"
                       , "Distribution.PackageDescription.Configuration when loading the cabal file."]),
-      Option "" ["debianize"] (NoArg (\ p -> p {debAction_ = Debianize}))
+      Option "" ["debianize"] (NoArg (debAction ~= Debianize))
              "Deprecated - formerly used to get what is now the normal benavior.",
-      Option "" ["substvar"] (ReqArg (\ name p -> p {debAction_ = (SubstVar (read' (\ s -> error $ "substvar: " ++ show s) name))}) "Doc, Prof, or Dev")
+      Option "" ["substvar"] (ReqArg (\ name -> debAction ~= (SubstVar (read' (\ s -> error $ "substvar: " ++ show s) name))) "Doc, Prof, or Dev")
              (unlines [ "With this option no debianization is generated.  Instead, the list"
                       , "of dependencies required for the dev, prof or doc package (depending"
                       , "on the argument) is printed to standard output.  These can be added"
                       , "to the appropriate substvars file.  (This is an option whose use case"
                       , "is lost in the mists of time.)"]),
-      Option "buildenvdir" [] (ReqArg (\ s p -> p {buildEnv_ = EnvSet {cleanOS = s </> "clean", dependOS = s </> "depend", buildOS = s </> "build"}}) "PATH")
+      Option "buildenvdir" [] (ReqArg (\ s -> buildEnv ~= EnvSet {cleanOS = s </> "clean", dependOS = s </> "depend", buildOS = s </> "build"}) "PATH")
              "Directory containing the three build environments, clean, depend, and build."
       ]
 

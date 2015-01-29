@@ -1,3 +1,19 @@
+haskell-cabal-debian (4.21) unstable; urgency=low
+
+  * Split the enormous Atoms record into three layers - the innermost is
+    Flags, which contains information obtained from the command line
+    arguments.  Flags is also the argument to the inputCabalization
+    function, which inputs a Cabal PackageDescription.  The Flags record
+    is embedded in a DebInfo, which holds information related to the
+    Debianization only.  The DebInfo and the PackageDescription are used
+    to build the old Atoms record.  DebInfo is the state value of the
+    DebianT monad, while Atoms is the state value of the CabalT monad.
+
+    The point of all this is to ensure that a PackageDescription exists
+    before we start converting the Cabalization to a Debianization.
+
+ -- David Fox <dsf@seereason.com>  Thu, 29 Jan 2015 12:29:52 -0800
+
 haskell-cabal-debian (4.20.2) unstable; urgency=low
 
   * Do not lowercase the package name when constructing the data file

@@ -8,28 +8,25 @@ module Debian.Debianize.Options
     , withEnvironmentArgs
     ) where
 
-import Control.Monad.State (get, put)
 import Control.Monad.Trans (MonadIO, liftIO)
-import Data.Char (toLower, toUpper, isDigit, ord)
+import Data.Char (isDigit, ord)
 import Data.Lens.Lazy (Lens)
 import Debian.Debianize.Goodies (doExecutable)
 import Debian.Debianize.Monad (DebT)
-import Debian.Debianize.Prelude (read', maybeRead, (+=), (~=), (%=), (++=), (+++=))
+import Debian.Debianize.Prelude (maybeRead, (+=), (~=), (%=), (++=), (+++=))
 import Debian.Debianize.Types
-    (verbosity, dryRun, debAction, noDocumentationLibrary, noProfilingLibrary,
-     missingDependencies, sourcePackageName, overrideDebianNameBase, cabalFlagAssignments, maintainerOption, uploadersOption, buildDir, omitProfVersionDeps, omitLTDeps,
+    (noDocumentationLibrary, noProfilingLibrary,
+     missingDependencies, sourcePackageName, overrideDebianNameBase, maintainerOption, uploadersOption, buildDir, omitProfVersionDeps, omitLTDeps,
      sourceFormat, buildDepends, buildDependsIndep, extraDevDeps, depends, conflicts, replaces, provides,
      recommends, suggests, extraLibMap, debVersion, revision, epochMap, execMap, utilsPackageNameBase,
      standardsVersion, official, sourceSection)
-import Debian.Debianize.Types.Atoms (Atoms, EnvSet(..), InstallFile(..), DebAction(..), setBuildEnv, compilerFlavor)
+import Debian.Debianize.Types.Atoms (Atoms, InstallFile(..))
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
 import Debian.Orphans ()
 import Debian.Policy (SourceFormat(Quilt3, Native3), parseMaintainer, parseStandardsVersion)
 import Debian.Relation (BinPkgName(..), SrcPkgName(..), Relations, Relation(..))
 import Debian.Relation.String (parseRelations)
 import Debian.Version (parseDebianVersion)
-import Distribution.Compiler (CompilerFlavor(..))
-import Distribution.PackageDescription (FlagName(..))
 import Distribution.Package (PackageName(..))
 import Prelude hiding (readFile, lines, null, log, sum)
 import System.Console.GetOpt (ArgDescr(..), OptDescr(..), ArgOrder(RequireOrder), getOpt')
@@ -37,7 +34,6 @@ import System.Environment (getArgs, getEnv)
 import System.FilePath ((</>), splitFileName)
 import System.IO.Error (tryIOError)
 import System.Posix.Env (setEnv)
-import Text.Read (readMaybe)
 import Text.Regex.TDFA ((=~))
 
 -- | Apply a list of command line arguments to the monadic state.
@@ -74,13 +70,7 @@ putEnvironmentArgs fs = setEnv "CABALDEBIAN" (show fs) True
 -- | Options that modify other atoms.
 options :: MonadIO m => [OptDescr (DebT m ())]
 options =
-    [ Option "v" ["verbose"] (ReqArg (\ s -> verbosity ~= (read' (\ s' -> error $ "verbose: " ++ show s') s)) "n")
-             "Change the amount of progress messages generated",
-      Option "n" ["dry-run", "compare"] (NoArg (dryRun ~= True))
-             "Just compare the existing debianization to the one we would generate.",
-      Option "h?" ["help"] (NoArg (debAction ~= Usage))
-             "Show this help text",
-      Option "" ["executable"] (ReqArg (\ path -> executableOption path (\ bin e -> doExecutable bin e)) "SOURCEPATH or SOURCEPATH:DESTDIR")
+    [ Option "" ["executable"] (ReqArg (\ path -> executableOption path (\ bin e -> doExecutable bin e)) "SOURCEPATH or SOURCEPATH:DESTDIR")
              (unlines [ "Create an individual binary package to hold this executable.  Other executables "
                       , " and data files are gathered into a single utils package named 'haskell-packagename-utils'."]),
       Option "" ["default-package"] (ReqArg (\ name -> utilsPackageNameBase ~= Just name) "NAME")
@@ -190,36 +180,7 @@ options =
       Option "" ["builddir"] (ReqArg (\ s -> buildDir ~= Just (s </> "build")) "PATH")
              (unlines [ "Subdirectory where cabal does its build, dist/build by default, dist-ghc when"
                       , "run by haskell-devscripts.  The build subdirectory is added to match the"
-                      , "behavior of the --builddir option in the Setup script."]),
-
-      let f :: MonadIO m => String -> DebT m ()
-          f s = get >>= setBuildEnv (EnvSet {cleanOS = s </> "clean", dependOS = s </> "depend", buildOS = s </> "build"}) >>= put in
-      Option "" ["buildenvdir"] (ReqArg f "PATH")
-             (unlines [ "Directory containing the build environment for which the debianization will"
-                      , "be generated.  This determines which compiler will be available, which in turn"
-                      , "determines which basic libraries can be provided by the compiler.  This can be"
-                      , "set to /, but it must be set."]),
-      Option "" ["ghc"] (NoArg (compilerFlavor ~= GHC)) "Generate packages for GHC - same as --with-compiler GHC",
-#if MIN_VERSION_Cabal(1,21,0)
-      Option "" ["ghcjs"] (NoArg (compilerFlavor ~= GHCJS)) "Generate packages for GHCJS - same as --with-compiler GHCJS",
-#endif
-      Option "" ["hugs"] (NoArg (compilerFlavor ~= Hugs)) "Generate packages for Hugs - same as --with-compiler GHC",
-      Option "" ["with-compiler"] (ReqArg (\ s -> maybe (error $ "Invalid compiler id: " ++ show s)
-                                                        (\ hc -> compilerFlavor ~= hc)
-                                                        (readMaybe (map toUpper s) :: Maybe CompilerFlavor)) "COMPILER")
-             (unlines [ "Generate packages for this CompilerFlavor" ]),
-      Option "f" ["flags"] (ReqArg (\ fs -> mapM_ (cabalFlagAssignments +=) (flagList fs)) "FLAGS")
-             (unlines [ "Flags to pass to the finalizePackageDescription function in"
-                      , "Distribution.PackageDescription.Configuration when loading the cabal file."]),
-
-      Option "" ["debianize"] (NoArg (debAction ~= Debianize))
-             "Deprecated - formerly used to get what is now the normal benavior.",
-      Option "" ["substvar"] (ReqArg (\ name -> debAction ~= (SubstVar (read' (\ s -> error $ "substvar: " ++ show s) name))) "Doc, Prof, or Dev")
-             (unlines [ "With this option no debianization is generated.  Instead, the list"
-                      , "of dependencies required for the dev, prof or doc package (depending"
-                      , "on the argument) is printed to standard output.  These can be added"
-                      , "to the appropriate substvars file.  (This is an option whose use case"
-                      , "is lost in the mists of time.)"])
+                      , "behavior of the --builddir option in the Setup script."])
     ]
 
 anyrel :: BinPkgName -> Relation
@@ -253,12 +214,6 @@ parseDeps arg =
           case s =~ "^[ \t:]*([^ \t:]+)[ \t]*:[ \t]*(.+)[ \t]*" :: (String, String, String, [String]) of
             (_, _, _, [x, y]) -> (BinPkgName x, anyrel (BinPkgName y))
             _ -> error $ "Invalid dependency: " ++ show s
-
--- Lifted from Distribution.Simple.Setup, since it's not exported.
-flagList :: String -> [(FlagName, Bool)]
-flagList = map tagWithValue . words
-  where tagWithValue ('-':name) = (FlagName (map toLower name), False)
-        tagWithValue name       = (FlagName (map toLower name), True)
 
 rels :: String -> Relations
 rels s =

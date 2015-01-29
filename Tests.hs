@@ -24,7 +24,7 @@ import Debian.Debianize.Files (debianizationFileMap)
 import Debian.Debianize.Finalize (debianize, finalizeDebianization)
 import Debian.Debianize.Goodies (doBackups, doExecutable, doServer, doWebsite, tightDependencyFixup)
 import Debian.Debianize.Input (inputChangeLog, inputDebianization)
-import Debian.Debianize.InputCabalPackageDescription (inputCabalization)
+import Debian.Debianize.InputCabalPackageDescription (compilerFlavor, EnvSet(EnvSet))
 import Debian.Debianize.Monad (DebT, evalDebT, execDebM, execDebT)
 import Debian.Debianize.Prelude ((%=), (++=), (+=), (~=), withCurrentDirectory)
 import Debian.Debianize.Types as T
@@ -64,7 +64,7 @@ testAtoms :: IO Atoms
 testAtoms = ghc763 <$> T.newAtoms
     where
       ghc763 :: Atoms -> Atoms
-      ghc763 atoms = setL T.compilerFlavor GHC atoms
+      ghc763 atoms = setL (compilerFlavor . T.flags) GHC atoms
 
 -- | Create a Debianization based on a changelog entry and a license
 -- value.  Uses the currently installed versions of debhelper and
@@ -89,7 +89,7 @@ tests = TestLabel "Debianization Tests" (TestList [-- 1 and 2 do not input a cab
                                                    -- debianize without a cabal package.
                                                    {- test1 "test1",
                                                    test2 "test2", -}
-                                                   test3 "test3",
+                                                   -- test3 "test3", -- not a cabal package
                                                    test4 "test4 - test-data/clckwrks-dot-com",
                                                    test5 "test5 - test-data/creativeprompts",
                                                    test6 "test6 - test-data/artvaluereport2",
@@ -102,10 +102,9 @@ tests = TestLabel "Debianization Tests" (TestList [-- 1 and 2 do not input a cab
 issue23 :: String -> Test
 issue23 label =
     TestLabel label $
-    TestCase (do atoms <- testAtoms
-                 actual <- withCurrentDirectory "test-data/alex/input" $
-                           evalDebT (do inputCabalization
-                                        T.changelog ~= Just (ChangeLog [testEntry])
+    TestCase (withCurrentDirectory "test-data/alex/input" $
+              do atoms <- testAtoms
+                 actual <- evalDebT (do T.changelog ~= Just (ChangeLog [testEntry])
                                         T.compat ~= Just 9
                                         T.official ~= True
                                         Map.toList <$> debianizationFileMap) atoms
@@ -221,10 +220,10 @@ testEntry =
 test3 :: String -> Test
 test3 label =
     TestLabel label $
-    TestCase (do let top = "test-data/haskell-devscripts"
-                     envset = EnvSet "/" "/" "/"
-                 atoms <- testAtoms
-                 deb <- withCurrentDirectory top (execDebT (inputDebianization envset) atoms)
+    TestCase (let top = "test-data/haskell-devscripts" in
+              withCurrentDirectory top $
+              do atoms <- testAtoms
+                 deb <- (execDebT (access packageDescription >>= inputDebianization) atoms)
                  diff <- diffDebianizations (testDeb2 atoms) deb
                  assertEqual label [] diff)
     where
@@ -382,13 +381,14 @@ test3 label =
 test4 :: String -> Test
 test4 label =
     TestLabel label $
-    TestCase (do let inTop = "test-data/clckwrks-dot-com/input"
-                     outTop = "test-data/clckwrks-dot-com/output"
-                     envset = EnvSet "/" "/" "/"
-                 atoms <- testAtoms
-                 old <- withCurrentDirectory outTop (execDebT (inputDebianization envset) atoms)
+    TestCase (do let outTop = "test-data/clckwrks-dot-com/output"
+                 let inTop = "test-data/clckwrks-dot-com/input"
+                 atoms <- withCurrentDirectory inTop $ testAtoms
+                 old <- withCurrentDirectory outTop $ do
+                          execDebT (access packageDescription >>= inputDebianization) atoms
                  let log = getL T.changelog old
-                 new <- withCurrentDirectory inTop (execDebT (debianize (defaultAtoms >> customize log)) atoms)
+                 new <- withCurrentDirectory inTop $ do
+                          execDebT (debianize (defaultAtoms >> customize log)) atoms
                  diff <- diffDebianizations old ({-copyFirstLogEntry old-} new)
                  assertEqual label [] diff)
     where
@@ -492,8 +492,8 @@ test5 label =
     TestCase (do let inTop = "test-data/creativeprompts/input"
                      outTop = "test-data/creativeprompts/output"
                      envset = EnvSet "/" "/" "/"
-                 atoms <- testAtoms
-                 old <- withCurrentDirectory outTop (execDebT (inputDebianization envset) atoms)
+                 atoms <- withCurrentDirectory inTop testAtoms
+                 old <- withCurrentDirectory outTop (execDebT (access packageDescription >>= inputDebianization) atoms)
                  let standards = getL T.standardsVersion old
                      level = getL T.compat old
                  new <- withCurrentDirectory inTop (execDebT (debianize (defaultAtoms >> customize old level standards)) atoms)
@@ -575,7 +575,7 @@ test5 label =
 test6 :: String -> Test
 test6 label =
     TestLabel label $
-    TestCase (do result <- readProcessWithExitCode "runhaskell" ["-isrc", "-DMIN_VERSION_Cabal(a,b,c)=1", "test-data/artvaluereport2/input/debian/Debianize.hs"] ""
+    TestCase (do result <- withCurrentDirectory "test-data/artvaluereport2/input" $ readProcessWithExitCode "runhaskell" ["-i../../../src", "-DMIN_VERSION_Cabal(a,b,c)=1", "debian/Debianize.hs"] ""
                  assertEqual label (ExitSuccess, "", "") result)
 
 test7 :: String -> Test
@@ -591,7 +591,7 @@ test8 label =
                       outTop = "test-data/artvaluereport-data/output"
                       envset = EnvSet "/" "/" "/"
                   atoms <- testAtoms
-                  old <- withCurrentDirectory outTop (execDebT (inputDebianization envset) atoms)
+                  old <- withCurrentDirectory outTop (execDebT (access packageDescription >>= inputDebianization) atoms)
                   log <- withCurrentDirectory inTop (evalDebT (inputChangeLog >> access T.changelog) atoms)
                   new <- withCurrentDirectory inTop (execDebT (debianize (defaultAtoms >> customize log)) atoms)
                   diff <- diffDebianizations old new
@@ -615,7 +615,7 @@ test9 label =
                  atoms <- testAtoms
                  new <- withCurrentDirectory inTop (execDebT (debianize (defaultAtoms >> customize)) atoms)
                  let Just (ChangeLog (entry : _)) = getL T.changelog new
-                 old <- withCurrentDirectory outTop (execDebT (inputDebianization envset >> copyChangelogDate (logDate entry)) atoms)
+                 old <- withCurrentDirectory inTop (execDebT (access packageDescription >>= inputDebianization >> copyChangelogDate (logDate entry)) atoms)
                  diff <- diffDebianizations old new
                  assertEqual label [] diff)
     where
@@ -653,7 +653,7 @@ test10 label =
                  atoms <- testAtoms
                  new <- withCurrentDirectory inTop (execDebT (debianize (defaultAtoms >> customize)) atoms)
                  let Just (ChangeLog (entry : _)) = getL T.changelog new
-                 old <- withCurrentDirectory outTop (execDebT (inputDebianization envset >> copyChangelogDate (logDate entry)) atoms)
+                 old <- withCurrentDirectory outTop (execDebT (access packageDescription >>= inputDebianization >> copyChangelogDate (logDate entry)) atoms)
                  diff <- diffDebianizations old new
                  assertEqual label [] diff)
     where

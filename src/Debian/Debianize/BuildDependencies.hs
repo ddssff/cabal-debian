@@ -6,6 +6,7 @@ module Debian.Debianize.BuildDependencies
     ) where
 
 import Control.Applicative ((<$>))
+import Control.Category ((.))
 import Control.Monad.State (MonadState(get))
 import Control.Monad.Trans (MonadIO)
 import Data.Char (isSpace, toLower)
@@ -18,9 +19,10 @@ import Data.Set as Set (Set, member, toList, fromList, map, fold, union, empty, 
 import Data.Version (showVersion, Version)
 import Debian.Debianize.Bundled (builtIn)
 import Debian.Debianize.DebianName (mkPkgName, mkPkgName')
+import Debian.Debianize.InputCabalPackageDescription (EnvSet(dependOS), buildEnv, compilerFlavor)
 import Debian.Debianize.Monad as Monad (Atoms, DebT)
 import qualified Debian.Debianize.Types as T (buildDepends, buildDependsIndep, debianNameMap, epochMap, execMap, extraLibMap, missingDependencies, noDocumentationLibrary, noProfilingLibrary, omitProfVersionDeps)
-import Debian.Debianize.Types.Atoms (EnvSet(dependOS), buildEnv, compilerFlavor)
+import Debian.Debianize.Types.Atoms (flags)
 import qualified Debian.Debianize.Types.BinaryDebDescription as B (PackageType(Development, Documentation, Profiling))
 import Debian.Debianize.VersionSplits (packageRangesFromVersionSplits)
 import Debian.Orphans ()
@@ -34,7 +36,7 @@ import Distribution.PackageDescription as Cabal (allBuildInfo, BuildInfo(..), Bu
 import qualified Distribution.PackageDescription as Cabal (PackageDescription(buildDepends, executables, package))
 import Distribution.Version (anyVersion, asVersionIntervals, earlierVersion, foldVersionRange', fromVersionIntervals, intersectVersionRanges, isNoVersion, laterVersion, orEarlierVersion, orLaterVersion, toVersionIntervals, unionVersionRanges, VersionRange, withinVersion)
 import Distribution.Version.Invert (invertVersionRange)
-import Prelude hiding (init, log, map, unlines, unlines, writeFile)
+import Prelude hiding (init, log, map, unlines, unlines, writeFile, (.))
 import System.Directory (findExecutable)
 import System.Exit (ExitCode(ExitSuccess))
 import System.IO.Unsafe (unsafePerformIO)
@@ -80,11 +82,11 @@ allBuildDepends buildDepends' buildTools' pkgconfigDepends' extraLibs' =
 -- the rules for building haskell packages.
 debianBuildDeps :: (MonadIO m, Functor m) => PackageDescription -> DebT m D.Relations
 debianBuildDeps pkgDesc =
-    do hc <- access compilerFlavor
+    do hc <- access (compilerFlavor . flags)
        let hcs = singleton hc -- vestigial
        let hcTypePairs =
                fold union empty $
-                  Set.map (\ hc -> Set.map (hc,) $ hcPackageTypes hc) hcs
+                  Set.map (\ hc' -> Set.map (hc',) $ hcPackageTypes hc') hcs
        cDeps <- cabalDeps hcTypePairs
        bDeps <- access T.buildDepends
        prof <- not <$> access T.noProfilingLibrary
@@ -120,7 +122,7 @@ debianBuildDeps pkgDesc =
 
 debianBuildDepsIndep :: (MonadIO m, Functor m) => PackageDescription -> DebT m D.Relations
 debianBuildDepsIndep pkgDesc =
-    do hc <- access compilerFlavor
+    do hc <- access (compilerFlavor . flags)
        let hcs = singleton hc -- vestigial
        doc <- get >>= return . not . getL T.noDocumentationLibrary
        bDeps <- get >>= return . getL T.buildDependsIndep
@@ -156,10 +158,10 @@ debianBuildDepsIndep pkgDesc =
 -- dependencies, so we have access to all the cross references.
 docDependencies :: (MonadIO m, Functor m) => Dependency_ -> DebT m D.Relations
 docDependencies (BuildDepends (Dependency name ranges)) =
-    do hc <- access compilerFlavor
+    do hc <- access (compilerFlavor . flags)
        let hcs = singleton hc -- vestigial
        omitProfDeps <- access T.omitProfVersionDeps
-       concat <$> mapM (\ hc -> dependencies hc B.Documentation name ranges omitProfDeps) (toList hcs)
+       concat <$> mapM (\ hc' -> dependencies hc' B.Documentation name ranges omitProfDeps) (toList hcs)
 docDependencies _ = return []
 
 -- | The Debian build dependencies for a package include the profiling
@@ -303,7 +305,7 @@ doBundled typ name hc rels =
       doRel rel@(D.Rel dname req _) = do
         -- gver <- access ghcVersion
         splits <- access T.debianNameMap
-        root <- access buildEnv >>= return . dependOS
+        root <- access (buildEnv . flags) >>= return . dependOS
         -- Look at what version of the package is provided by the compiler.
         atoms <- get
         -- What version of this package (if any) does the compiler provide?

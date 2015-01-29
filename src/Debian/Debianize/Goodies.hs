@@ -93,7 +93,7 @@ doBackups bin s =
 
 describe :: Monad m => DebT m Text
 describe =
-    do Just p <- access T.packageDescription
+    do p <- access T.packageDescription
        return $
           debianDescriptionBase p {- <> "\n" <>
           case typ of

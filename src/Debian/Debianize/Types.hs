@@ -1,14 +1,8 @@
 {-# LANGUAGE CPP, DeriveDataTypeable #-}
 module Debian.Debianize.Types
     (
-    -- * Modes of operation
-      verbosity
-    , dryRun
-    , debAction
-    , cabalFlagAssignments
-
     -- * Cabal package info
-    , packageDescription
+      packageDescription
 
     -- * Repository info
     , execMap
@@ -102,7 +96,6 @@ module Debian.Debianize.Types
 
     -- * Unknown, obsolete, internal
     , flags
-    , validate
     , warning -- no-op?
     , intermediateFiles
     , packageInfo

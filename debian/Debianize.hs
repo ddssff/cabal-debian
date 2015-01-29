@@ -19,9 +19,9 @@ import Debian.Debianize (inputChangeLog, inputDebianization)
 import Debian.Debianize.Details (debianDefaultAtoms)
 import Debian.Debianize.Finalize (debianize)
 import Debian.Debianize.Types as T
-    (changelog, compat, conflicts, control, depends, debianDescription, homepage,
+    (changelog, compat, conflicts, control, depends, debianDescription, homepage, packageDescription,
      installCabalExec, sourceFormat, standardsVersion, utilsPackageNameBase, copyright, xDescription)
-import Debian.Debianize.Types.Atoms as T (Atoms, newAtoms, EnvSet(EnvSet))
+import Debian.Debianize.Types.Atoms as T (Atoms, newAtoms)
 import Debian.Debianize.Monad (Atoms, DebT, execDebT, evalDebT, execDebM)
 import Debian.Debianize.Output (compareDebianization)
 import Debian.Debianize.Prelude ((~=), (~?=), (%=), (+=), (++=))
@@ -43,7 +43,7 @@ main =
        -- makes sure the debianization generated matches the one
        -- checked into version control.
        log <- newAtoms >>= evalDebT (inputChangeLog >> access changelog)
-       old <- newAtoms >>= execDebT (inputDebianization (T.EnvSet "/" "/" "/"))
+       old <- newAtoms >>= execDebT (access packageDescription >>= inputDebianization)
        new <- newAtoms >>= execDebT (debianize (do debianDefaultAtoms
                                                    changelog ~?= log
                                                    customize

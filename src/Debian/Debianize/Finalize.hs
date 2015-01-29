@@ -28,12 +28,12 @@ import Debian.Debianize.Changelog (dropFutureEntries)
 import Debian.Debianize.DebianName (debianName, debianNameBase)
 import Debian.Debianize.Goodies (backupAtoms, describe, execAtoms, serverAtoms, siteAtoms, watchAtom)
 import Debian.Debianize.Input (dataDir, inputChangeLog)
-import Debian.Debianize.InputCabalPackageDescription (inputCabalization)
+import Debian.Debianize.InputCabalPackageDescription (verbosity, compilerFlavor)
 import Debian.Debianize.Monad as Monad (DebT)
 import Debian.Debianize.Options (compileCommandlineArgs, compileEnvironmentArgs)
 import Debian.Debianize.Prelude ((%=), (+=), (~=), (~?=))
-import qualified Debian.Debianize.Types as T (apacheSite, backups, binaryArchitectures, binaryPackages, binarySection, breaks, buildDepends, buildDependsIndep, buildDir, builtUsing, changelog, comments, compat, conflicts, debianDescription, debVersion, depends, epochMap, executable, extraDevDeps, extraLibMap, file, install, installCabalExec, installData, installDir, installTo, intermediateFiles, link, maintainerOption, uploadersOption, noDocumentationLibrary, noProfilingLibrary, omitProfVersionDeps, packageDescription, packageType, preDepends, provides, recommends, revision, rulesFragments, serverInfo, standardsVersion, source, sourceFormat, sourcePackageName, sourcePriority, sourceSection, suggests, utilsPackageNameBase, verbosity, watch, website, control, homepage, official, vcsFields)
-import qualified Debian.Debianize.Types.Atoms as A (InstallFile(execName, sourceDir), showAtoms, compilerFlavor, Atom(..), atomSet, rulesHead, rulesSettings, rulesIncludes)
+import qualified Debian.Debianize.Types as T (apacheSite, backups, binaryArchitectures, binaryPackages, binarySection, breaks, buildDepends, buildDependsIndep, buildDir, builtUsing, changelog, comments, compat, conflicts, debianDescription, debVersion, depends, epochMap, executable, extraDevDeps, extraLibMap, file, install, installCabalExec, installData, installDir, installTo, intermediateFiles, link, maintainerOption, uploadersOption, noDocumentationLibrary, noProfilingLibrary, omitProfVersionDeps, packageDescription, packageType, preDepends, provides, recommends, revision, rulesFragments, serverInfo, standardsVersion, source, sourceFormat, sourcePackageName, sourcePriority, sourceSection, suggests, utilsPackageNameBase, watch, website, control, homepage, official, vcsFields, flags)
+import qualified Debian.Debianize.Types.Atoms as A (InstallFile(execName, sourceDir), showAtoms, Atom(..), atomSet, rulesHead, rulesSettings, rulesIncludes)
 import qualified Debian.Debianize.Types.BinaryDebDescription as B (package, PackageType(Development, Documentation, Exec, Profiling, Source, HaskellSource, Utilities), PackageType)
 import qualified Debian.Debianize.Types.SourceDebDescription as S (xDescription, VersionControlSpec(..), maintainer, uploaders)
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
@@ -67,7 +67,7 @@ debianize :: (MonadIO m, Functor m) => DebT m () -> DebT m ()
 debianize customize =
     do compileEnvironmentArgs
        compileCommandlineArgs
-       inputCabalization
+       -- inputCabalization -- already done because we're in DebT
        inputChangeLog
        customize
        finalizeDebianization
@@ -78,7 +78,7 @@ finalizeDebianization =
     do date <- liftIO getCurrentLocalRFC822Time
        debhelperCompat <- liftIO getDebhelperCompatLevel
        finalizeDebianization' date debhelperCompat
-       access T.verbosity >>= \ vb -> when (vb >= 3) (get >>= liftIO . A.showAtoms)
+       access (verbosity . T.flags) >>= \ vb -> when (vb >= 3) (get >>= liftIO . A.showAtoms)
 
 -- | Now that we know the build and data directories, we can expand
 -- some atoms into sets of simpler atoms which can eventually be
@@ -91,11 +91,11 @@ finalizeDebianization =
 finalizeDebianization'  :: (MonadIO m, Functor m) => String -> Maybe Int -> DebT m ()
 finalizeDebianization' date debhelperCompat =
     do -- In reality, hcs must be a singleton or many things won't work.  But some day...
-       hc <- access A.compilerFlavor
+       hc <- access (compilerFlavor . T.flags)
        finalizeSourceName B.HaskellSource
        checkOfficialSettings hc
        addExtraLibDependencies hc
-       Just pkgDesc <- access T.packageDescription
+       pkgDesc <- access T.packageDescription
        T.watch ~?= Just (watchAtom (pkgName $ Cabal.package $ pkgDesc))
        T.sourceSection ~?= Just (MainSection "haskell")
        T.sourcePriority ~?= Just Extra
@@ -143,7 +143,7 @@ finalizeDescription bdd =
 -- a version.
 debianVersion :: Monad m => DebT m DebianVersion
 debianVersion =
-    do pkgDesc <- access T.packageDescription >>= maybe (error "debianVersion: no PackageDescription") return
+    do pkgDesc <- access T.packageDescription
        let pkgId = Cabal.package pkgDesc
        epoch <- debianEpoch (pkgName pkgId)
        debVer <- access T.debVersion
@@ -202,7 +202,7 @@ finalizeMaintainer :: MonadIO m => DebT m ()
 finalizeMaintainer = do
   o <- access T.official
   currentUser <- liftIO getCurrentDebianUser
-  Just pkgDesc <- access T.packageDescription
+  pkgDesc <- access T.packageDescription
   maintainerOption <- access T.maintainerOption
   uploadersOption <- access T.uploadersOption
   let cabalAuthorString = takeWhile (\ c -> c /= ',' && c /= '\n') (Cabal.author pkgDesc)
@@ -255,8 +255,8 @@ finalizeControl =
     do finalizeMaintainer
        Just src <- access T.sourcePackageName
        T.source ~= Just src
-       desc <- describe
-       (S.xDescription . T.control) ~?= Just desc
+       desc' <- describe
+       (S.xDescription . T.control) ~?= Just desc'
        -- control %= (\ y -> y { D.source = Just src, D.maintainer = Just maint })
 
 -- | Make sure there is a changelog entry with the version number and
@@ -296,7 +296,7 @@ finalizeChangelog date =
 -- devel package (if there is one.)
 addExtraLibDependencies :: (Monad m, Functor m) => CompilerFlavor -> DebT m ()
 addExtraLibDependencies hc =
-    do pkgDesc <- access T.packageDescription >>= maybe (error "addExtraLibDependencies: no PackageDescription") return
+    do pkgDesc <- access T.packageDescription
        devName <- debianName B.Development hc
        libMap <- access T.extraLibMap
        binNames <- List.map (getL B.package) <$> access T.binaryPackages
@@ -317,7 +317,7 @@ checkOfficialSettings flavor =
 
 officialSettings :: (Monad m, Functor m) => DebT m ()
 officialSettings =
-    do pkgDesc <- access T.packageDescription >>= maybe (error "officialSettings: no PackageDescription") return
+    do pkgDesc <- access T.packageDescription
        let PackageName cabal = pkgName (Cabal.package pkgDesc)
 
        T.standardsVersion ~?= Just (parseStandardsVersion "3.9.5")
@@ -470,7 +470,7 @@ makeUtilsPackage pkgDesc hc =
 
 expandAtoms :: MonadIO m => DebT m ()
 expandAtoms =
-    do hc <- access A.compilerFlavor
+    do hc <- access (compilerFlavor . T.flags)
        builddir <- access T.buildDir >>= return . fromMaybe (case hc of
                                                                GHC -> "dist-ghc/build"
 #if MIN_VERSION_Cabal(1,21,0)
@@ -502,7 +502,7 @@ expandAtoms =
       -- Turn A.InstallCabalExec into A.Install
       expandInstallCabalExecs :: Monad m => FilePath -> DebT m ()
       expandInstallCabalExecs builddir = do
-        hc <- access A.compilerFlavor
+        hc <- access (compilerFlavor . T.flags)
         access A.atomSet >>= Set.mapM_ (doAtom hc)
           where
             doAtom GHC (A.InstallCabalExec b name dest) = T.install b (builddir </> name </> name) dest
@@ -521,7 +521,7 @@ expandAtoms =
       -- Turn A.InstallCabalExecTo into a make rule
       expandInstallCabalExecTo :: Monad m => FilePath -> DebT m ()
       expandInstallCabalExecTo builddir = do
-        hc <- access A.compilerFlavor
+        hc <- access (compilerFlavor . T.flags)
         access A.atomSet >>= Set.mapM_ (doAtom hc)
           where
             doAtom GHC (A.InstallCabalExecTo b name dest) =
@@ -590,7 +590,7 @@ expandAtoms =
 finalizeRules :: (Monad m) => DebT m ()
 finalizeRules =
     do DebBase b <- debianNameBase
-       compiler <- access A.compilerFlavor
+       compiler <- access (compilerFlavor . T.flags)
        A.rulesHead ~?= Just "#!/usr/bin/make -f"
        A.rulesSettings %= (++ ["DEB_CABAL_PACKAGE = " <> pack b])
        A.rulesSettings %= (++ (["DEB_DEFAULT_COMPILER = " <> pack (List.map toLower (show compiler))]))

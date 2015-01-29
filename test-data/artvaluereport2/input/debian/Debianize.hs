@@ -8,9 +8,9 @@ import Debian.Changes (ChangeLog(..))
 import Debian.Debianize (debianize, doBackups, doExecutable, doServer, doWebsite, inputChangeLog, inputDebianization, debianDefaultAtoms)
 import Debian.Debianize.Types as T
     (changelog, binaryArchitectures, buildDependsIndep, changelog, compat, control, depends, debianDescription,
-     installCabalExec, installData, sourcePackageName, homepage, standardsVersion)
+     installCabalExec, installData, sourcePackageName, homepage, standardsVersion, packageDescription)
 import Debian.Debianize.Types.Atoms as T
-    (Atoms, newAtoms, InstallFile(..), Server(..), Site(..), EnvSet(..))
+    (Atoms, newAtoms, InstallFile(..), Server(..), Site(..))
 import Debian.Debianize.Monad (execDebT, evalDebT, DebT, execDebM)
 import Debian.Debianize.Types.SourceDebDescription (SourceDebDescription)
 import Debian.Debianize.Output (compareDebianization)
@@ -29,7 +29,7 @@ main :: IO ()
 main =
     do log <- withCurrentDirectory "test-data/artvaluereport2/input" $ newAtoms >>= evalDebT (inputChangeLog >> access changelog)
        new <- withCurrentDirectory "test-data/artvaluereport2/input" $ newAtoms >>= execDebT (debianize (debianDefaultAtoms >> customize log))
-       old <- withCurrentDirectory "test-data/artvaluereport2/output" $ newAtoms >>= execDebT (inputDebianization (T.EnvSet "/" "/" "/"))
+       old <- withCurrentDirectory "test-data/artvaluereport2/output" $ newAtoms >>= execDebT (access packageDescription >>= inputDebianization)
        -- The newest log entry gets modified when the Debianization is
        -- generated, it won't match so drop it for the comparison.
        compareDebianization old (copyFirstLogEntry old new) >>= putStr

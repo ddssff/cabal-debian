@@ -25,7 +25,7 @@ import Data.Text.IO (readFile)
 --import Data.Version (showVersion, Version(Version))
 import Debian.Changes (parseChangeLog)
 import Debian.Control (Control'(unControl), Paragraph'(..), stripWS, parseControlFromFile, Field, Field'(..), ControlFunctions)
-import qualified Debian.Debianize.Types.Atoms as T (makeAtoms)
+import qualified Debian.Debianize.Types.Atoms as T (makeAtoms, flags)
 import Debian.Debianize.Types.BinaryDebDescription (BinaryDebDescription, newBinaryDebDescription)
 import qualified Debian.Debianize.Types.BinaryDebDescription as B
 import Debian.Debianize.Types.CopyrightDescription (readCopyrightDescription)
@@ -36,7 +36,6 @@ import Debian.Debianize.Types.Atoms
      logrotateStanza, link, install, installDir, intermediateFiles)
 import Debian.Debianize.Monad (DebT)
 import Debian.Debianize.Prelude (getDirectoryContents', readFileMaybe, read', (~=), (~?=), (+=), (++=), (+++=))
-import Debian.Debianize.Types.Atoms (EnvSet)
 import Debian.Orphans ()
 import Debian.Policy (Section(..), parseStandardsVersion, readPriority, readSection, parsePackageArchitectures, parseMaintainer,
                       parseUploaders, readSourceFormat)
@@ -53,11 +52,11 @@ import System.IO.Error (catchIOError, tryIOError)
 -- import System.Unix.Chroot (useEnv)
 -- import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr)
 
-inputDebianization :: MonadIO m => EnvSet -> DebT m ()
-inputDebianization envset =
+inputDebianization :: MonadIO m => Cabal.PackageDescription -> DebT m ()
+inputDebianization pkgDesc =
     do -- Erase any the existing information
-       let atoms = T.makeAtoms envset
-       put atoms
+       fs <- access T.flags
+       put $ T.makeAtoms fs pkgDesc
        (ctl, _) <- inputSourceDebDescription
        inputAtomsFromDirectory
        control ~= ctl
@@ -262,7 +261,7 @@ readDir p line = installDir p (unpack line)
 -- perhaps the path in the cabal_debian_datadir environment variable.
 dataDir :: MonadIO m => DebT m FilePath
 dataDir = do
-  (Just d) <- access packageDescription
+  d <- access packageDescription
   return $ case Cabal.dataDir d of
              [] -> "usr/share" </> (unPackageName $ pkgName $ Cabal.package d)
              x -> x

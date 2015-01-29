@@ -53,7 +53,7 @@ debianName typ cfl =
 debianNameBase :: Monad m => DebT m DebBase
 debianNameBase =
     do nameBase <- access T.overrideDebianNameBase
-       Just pkgDesc <- access packageDescription
+       pkgDesc <- access packageDescription
        let pkgId = Cabal.package pkgDesc
        nameMap <- access T.debianNameMap
        let pname@(PackageName _) = pkgName pkgId

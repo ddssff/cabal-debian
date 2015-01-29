@@ -7,7 +7,7 @@ module Debian.Debianize.SubstVars
     ( substvars
     ) where
 
-import Control.Applicative ((<$>))
+import Control.Category ((.))
 import Control.Exception (SomeException, try)
 import Control.Monad (foldM)
 import Control.Monad.Reader (ReaderT(runReaderT))
@@ -21,7 +21,7 @@ import Data.Maybe (catMaybes, listToMaybe, fromMaybe)
 import qualified Data.Set as Set (member, Set)
 import Data.Text (pack)
 import Debian.Control (Control'(unControl), ControlFunctions(lookupP, parseControl, stripWS), Field'(Field))
-import Debian.Debianize.InputCabalPackageDescription (inputCabalization)
+import Debian.Debianize.InputCabalPackageDescription (DebType(..), dryRun)
 import Debian.Debianize.Monad (DebT)
 import Debian.Debianize.Prelude ((!), buildDebVersionMap, cond, DebMap, debOfFile, diffFile, dpkgFileMap, replaceFile, showDeps, modifyM)
 import qualified Debian.Debianize.Types.Atoms as T
@@ -39,7 +39,7 @@ import Distribution.Package (Dependency(..), PackageName(PackageName))
 import Distribution.PackageDescription as Cabal (allBuildInfo, buildTools, extraLibs, PackageDescription(..), pkgconfigDepends)
 import Distribution.Simple.Utils (die)
 import Distribution.Text (display)
-import Prelude hiding (unlines)
+import Prelude hiding (unlines, (.))
 import System.Directory (doesDirectoryExist, getDirectoryContents)
 import System.FilePath ((</>))
 
@@ -59,16 +59,15 @@ buildCompilerId = CompilerId GHC (Version [7,6,3] [])
 -- these we can determine the source package name, and from that the
 -- documentation package name.
 substvars :: (MonadIO m, Functor m) =>
-             T.DebType  -- ^ The type of deb we want to write substvars for - Dev, Prof, or Doc
+             DebType  -- ^ The type of deb we want to write substvars for - Dev, Prof, or Doc
           -> DebT m ()
 substvars debType =
-    do inputCabalization
-       debVersions <- liftIO buildDebVersionMap
+    do debVersions <- liftIO buildDebVersionMap
        modifyM (liftIO . libPaths debVersions)
        control <- liftIO $ readFile "debian/control" >>= either (error . show) return . parseControl "debian/control"
        substvars' debType control
 
-substvars' :: (MonadIO m, Functor m) => T.DebType -> Control' String -> DebT m ()
+substvars' :: (MonadIO m, Functor m) => DebType -> Control' String -> DebT m ()
 substvars' debType control =
     get >>= return . getL T.packageInfo >>= \ info ->
     cabalDependencies >>= \ cabalDeps ->
@@ -85,7 +84,7 @@ substvars' debType control =
           do old <- liftIO $ readFile path'
              deps <- debDeps debType control
              new <- addDeps old deps
-             dry <- get >>= return . getL T.dryRun
+             dry <- get >>= return . getL (dryRun . T.flags)
              liftIO (diffFile path' (pack new) >>= maybe (putStrLn ("cabal-debian substvars: No updates found for " ++ show path'))
                                                        (\ diff -> if dry then putStr diff else replaceFile path' new))
       ([], Nothing) -> return ()
@@ -170,7 +169,7 @@ unboxDependency (ExtraLibs _) = Nothing -- Dependency (PackageName d) anyVersion
 
 -- Make a list of the debian devel packages corresponding to cabal packages
 -- which are build dependencies
-debDeps :: (MonadIO m, Functor m) => T.DebType -> Control' String -> DebT m D.Relations
+debDeps :: (MonadIO m, Functor m) => DebType -> Control' String -> DebT m D.Relations
 debDeps debType control =
     do info <- get >>= return . getL T.packageInfo
        cabalDeps <- cabalDependencies
@@ -178,7 +177,7 @@ debDeps debType control =
     where
       interdependencies =
           case debType of
-            T.Prof -> maybe [] (\ name -> [[D.Rel name Nothing Nothing]]) (debNameFromType control T.Dev)
+            Prof -> maybe [] (\ name -> [[D.Rel name Nothing Nothing]]) (debNameFromType control Dev)
             _ -> []
       otherdependencies info cabalDeps =
           catMaybes (map (\ (Dependency name _) ->
@@ -186,14 +185,14 @@ debDeps debType control =
                             Just p -> maybe Nothing
                                             (\ (s, v) -> Just [D.Rel s (Just (D.GRE v)) Nothing])
                                             (case debType of
-                                               T.Dev -> T.devDeb p
-                                               T.Prof -> T.profDeb p
-                                               T.Doc -> T.docDeb p)
+                                               Dev -> T.devDeb p
+                                               Prof -> T.profDeb p
+                                               Doc -> T.docDeb p)
                             Nothing -> Nothing) cabalDeps)
 
 cabalDependencies :: (MonadIO m, Functor m) => DebT m [Dependency]
 cabalDependencies =
-    do pkgDesc <- fromMaybe (error "cabalDependencies") <$> access T.packageDescription
+    do pkgDesc <- access T.packageDescription
        atoms <- get
        return $ catMaybes $ map unboxDependency $
            allBuildDepends atoms
@@ -217,12 +216,12 @@ allBuildDepends atoms buildDepends buildTools pkgconfigDepends extraLibs =
 
 -- | Given a control file and a DebType, look for the binary deb with
 -- the corresponding suffix and return its name.
-debNameFromType :: Control' String -> T.DebType -> Maybe BinPkgName
+debNameFromType :: Control' String -> DebType -> Maybe BinPkgName
 debNameFromType control debType =
     case debType of
-      T.Dev -> fmap BinPkgName $ listToMaybe (filter (isSuffixOf "-dev") debNames)
-      T.Prof -> fmap BinPkgName $ listToMaybe (filter (isSuffixOf "-prof") debNames)
-      T.Doc -> fmap BinPkgName $ listToMaybe (filter (isSuffixOf "-doc") debNames)
+      Dev -> fmap BinPkgName $ listToMaybe (filter (isSuffixOf "-dev") debNames)
+      Prof -> fmap BinPkgName $ listToMaybe (filter (isSuffixOf "-prof") debNames)
+      Doc -> fmap BinPkgName $ listToMaybe (filter (isSuffixOf "-doc") debNames)
     where
       debNames = map (\ (Field (_, s)) -> stripWS s) (catMaybes (map (lookupP "Package") (tail (unControl control))))
 

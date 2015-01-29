@@ -20,12 +20,12 @@ import Control.Monad.State (get)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Algorithm.Diff.Context (contextDiff)
 import Data.Algorithm.Diff.Pretty (prettyDiff)
-import Data.Lens.Lazy (getL)
+import Data.Lens.Lazy (getL, access)
 import Data.Map as Map (elems, toList)
 import Data.Maybe (fromMaybe)
 import Data.Text as Text (split, Text, unpack)
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(..))
-import Debian.Debianize.Types.Atoms (EnvSet)
+import Debian.Debianize.InputCabalPackageDescription (validate, dryRun)
 import Debian.Debianize.Files (debianizationFileMap)
 import Debian.Debianize.Input (inputDebianization)
 import Debian.Debianize.Monad (DebT, Atoms, evalDebT)
@@ -70,16 +70,16 @@ runDebianizeScript args =
 
 -- | Depending on the options in @atoms@, either validate, describe,
 -- or write the generated debianization.
-doDebianizeAction :: (MonadIO m, Functor m) => EnvSet -> DebT m ()
-doDebianizeAction envset =
+doDebianizeAction :: (MonadIO m, Functor m) => DebT m ()
+doDebianizeAction =
     do new <- get
        case () of
-         _ | getL T.validate new ->
-               do inputDebianization envset
+         _ | getL (validate . T.flags) new ->
+               do access T.packageDescription >>= inputDebianization
                   old <- get
                   return $ validateDebianization old new
-         _ | getL T.dryRun new ->
-               do inputDebianization envset
+         _ | getL (dryRun . T.flags) new ->
+               do access T.packageDescription >>= inputDebianization
                   old <- get
                   diff <- liftIO $ compareDebianization old new
                   liftIO $ putStr ("Debianization (dry run):\n" ++ diff)

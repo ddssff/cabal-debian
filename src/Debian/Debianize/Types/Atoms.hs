@@ -16,9 +16,7 @@ module Debian.Debianize.Types.Atoms
     ) -} where
 
 import Control.Applicative ((<$>))
-import Control.Category ((.))
 import Control.Monad.State (StateT)
-import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Generics (Data, Typeable)
 import Data.Lens.Lazy (Lens, lens, (%=))
 import Data.Map as Map (Map)
@@ -26,6 +24,7 @@ import Data.Monoid (Monoid(..))
 import Data.Set as Set (Set, insert)
 import Data.Text (Text)
 import Debian.Changes (ChangeLog)
+import Debian.Debianize.InputCabalPackageDescription (inputCabalization, Flags, flagOptions, defaultFlags)
 import Debian.Debianize.Types.CopyrightDescription
 import Debian.Debianize.Types.BinaryDebDescription (Canonical(canonical))
 import qualified Debian.Debianize.Types.SourceDebDescription as S
@@ -34,13 +33,11 @@ import Debian.Orphans ()
 import Debian.Policy (PackageArchitectures, PackagePriority, Section, SourceFormat)
 import Debian.Relation (BinPkgName, Relations, SrcPkgName)
 import Debian.Version (DebianVersion)
-import Distribution.Compiler (CompilerFlavor(GHC))
 import Distribution.Package (PackageName)
-import Distribution.PackageDescription as Cabal (FlagName, PackageDescription)
-import Prelude hiding (init, init, log, log, unlines, (.))
-import System.Console.GetOpt (getOpt, ArgOrder(Permute), OptDescr(Option), ArgDescr(ReqArg))
+import Distribution.PackageDescription as Cabal (PackageDescription)
+import Prelude hiding (init, init, log, log, (.))
+import System.Console.GetOpt (getOpt, ArgOrder(Permute))
 import System.Environment (getArgs)
-import System.FilePath ((</>))
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr)
 
 -- This enormous record is a mistake - instead it should be an Atom
@@ -76,12 +73,6 @@ data Atoms
       -- the --builddir option of runhaskell Setup appends the "/build"
       -- to the value it receives, so, yes, try not to get confused.
       -- FIXME: make this FilePath or Maybe FilePath
-      , buildEnv_ :: EnvSet
-      -- ^ Directory containing the build environment for which the
-      -- debianization will be generated.  This determines which
-      -- compiler will be available, which in turn determines which
-      -- basic libraries can be provided by the compiler.  By default
-      -- all the paths in EnvSet are "/".
       , flags_ :: Flags
       -- ^ Information regarding mode of operation - verbosity, dry-run, usage, etc
       , debianNameMap_ :: Map PackageName VersionSplits
@@ -118,11 +109,6 @@ data Atoms
       -- only one.  If this is not explicitly set, it is obtained from the
       -- cabal file, and if it is not there then from the environment.  As a
       -- last resort, there is a hard coded string in here somewhere.
-      , cabalFlagAssignments_ :: Set (FlagName, Bool)
-      -- ^ Flags to pass to Cabal function finalizePackageDescription,
-      -- this can be used to control the flags in the cabal file.  It
-      -- can be supplied to the cabal-debian binary using the --flags
-      -- option.
       , sourceFormat_ :: Maybe SourceFormat
       -- ^ Write debian/source/format
       , watch_ :: Maybe Text
@@ -196,26 +182,8 @@ data Atoms
       -- ^ Set the Section field of the source package
       , binarySections_ :: Map BinPkgName Section
       -- ^ Set the Section field of a binary package
-#if 0
-      , link_ :: Map BinPkgName (Set (FilePath, FilePath))
-      -- ^ Create a symbolic link in the binary package
-      , install_ :: Map BinPkgName (Set (FilePath, FilePath))
-      -- ^ Install a build file into the binary package
-      , installTo_ :: Map BinPkgName (Set (FilePath, FilePath))
-      -- ^ Install a build file into the binary package at an exact location
-      , installData_ :: Map BinPkgName (Set (FilePath, FilePath))
-      -- ^ DHInstallTo somewhere relative to DataDir (see above)
-      , file_ :: Map BinPkgName (Set (FilePath, Text))
-      -- ^ Create a file with the given text at the given path
-      , installCabalExec_ :: Map BinPkgName (Set (String, FilePath))
-      -- ^ Install a cabal executable into the binary package
-      , installCabalExecTo_ :: Map BinPkgName (Set (String, FilePath))
-      -- ^ Install a cabal executable into the binary package at an exact location
-      , installDir_ :: Map BinPkgName (Set FilePath)
-      -- ^ Create a directory in the binary package
-#else
       , atomSet_ :: Set Atom
-#endif
+      -- ^ set of items describing file installation requests
       , installInit_ :: Map BinPkgName Text
       -- ^ Add an init.d file to the binary package
       , executable_ :: Map BinPkgName InstallFile
@@ -229,12 +197,8 @@ data Atoms
       , extraDevDeps_ :: Relations
       -- ^ Limited version of Depends, put a dependency on the dev library package.  The only
       -- reason to use this is because we don't yet know the name of the dev library package.
-      , packageDescription_ :: Maybe PackageDescription
+      , packageDescription_ :: PackageDescription
       -- ^ The result of reading a cabal configuration file.
-      , compilerFlavor_ :: {-Set-} CompilerFlavor
-      -- ^ Which compiler should we generate library packages for?  In theory a single
-      -- deb could handle multiple compiler flavors, but the support tools are not ready
-      -- for this as of right now (28 Jan 2015.)
       , official_ :: Bool
       -- ^ Whether this packaging is created by the Debian Haskell Group
       } deriving (Show, Data, Typeable)
@@ -263,33 +227,24 @@ data Atom
 
 type Atoms' = Set Atom
 
-data EnvSet = EnvSet
-    { cleanOS :: FilePath  -- ^ The output of the debootstrap command
-    , dependOS :: FilePath -- ^ An environment with build dependencies installed
-    , buildOS :: FilePath  -- ^ An environment where we have built a package
-    } deriving (Eq, Show, Data, Typeable)
-
 -- | Look for --buildenvdir in the command line arguments to get the
 -- changeroot path, use "/" if not present.
-newAtoms :: MonadIO m => m Atoms
-newAtoms = liftIO $ do
-  (roots, _, _) <- getOpt Permute [Option "buildenvdir" [] (ReqArg id "PATH")
-                                          "Directory containing the build environment"] <$> getArgs
-  let envset = case roots of
-                 (x : _) -> EnvSet {cleanOS = x </> "clean", dependOS = x </> "depend", buildOS = x </> "build"}
-                 _ -> EnvSet {cleanOS = "/", dependOS = "/", buildOS = "/"}
-  return $ makeAtoms envset
+newAtoms :: IO Atoms
+newAtoms = do
+  (fns, _, _) <- getOpt Permute flagOptions <$> getArgs
+  let flags' = foldr ($) defaultFlags fns
+  pkgDesc <- inputCabalization flags'
+  return $ makeAtoms flags' pkgDesc
 
-makeAtoms :: EnvSet -> Atoms
-makeAtoms envset =
+makeAtoms :: Flags -> PackageDescription -> Atoms
+makeAtoms fs pkgDesc =
     Atoms
       { noDocumentationLibrary_ = False
       , noProfilingLibrary_ = False
       , omitProfVersionDeps_ = False
       , omitLTDeps_ = False
       , buildDir_ = Nothing
-      , buildEnv_ = envset
-      , flags_ = defaultFlags
+      , flags_ = fs
       , debianNameMap_ = mempty
       , control_ = S.newSourceDebDescription
       , sourcePackageName_ = Nothing
@@ -298,7 +253,6 @@ makeAtoms envset =
       , debVersion_ = Nothing
       , maintainerOption_ = Nothing
       , uploadersOption_ = []
-      , cabalFlagAssignments_ = mempty
       , sourceFormat_ = Nothing
       , watch_ = Nothing
       , intermediateFiles_ = mempty
@@ -330,56 +284,16 @@ makeAtoms envset =
       , binaryPriorities_ = mempty
       , sourceSection_ = Nothing
       , binarySections_ = mempty
-#if 0
-      , link_ = mempty
-      , install_ = mempty
-      , installTo_ = mempty
-      , installData_ = mempty
-      , file_ = mempty
-      , installCabalExec_ = mempty
-      , installCabalExecTo_ = mempty
-      , installDir_ = mempty
-#else
       , atomSet_ = mempty
-#endif
       , installInit_ = mempty
       , executable_ = mempty
       , serverInfo_ = mempty
       , website_ = mempty
       , backups_ = mempty
       , extraDevDeps_ = mempty
-      , packageDescription_ = Nothing
-      , compilerFlavor_ = GHC
+      , packageDescription_ = pkgDesc
       , official_ = False
       }
-
--- | This record supplies information about the task we want done -
--- debianization, validataion, help message, etc.
-data Flags = Flags
-    {
-    -------------------------
-    -- Modes of Operation ---
-    -------------------------
-      verbosity_ :: Int
-    -- ^ Run with progress messages at the given level of verboseness.
-    , dryRun_ :: Bool
-    -- ^ Don't write any files or create any directories, just explain
-    -- what would have been done.
-    , validate_ :: Bool
-    -- ^ Fail if the debianization already present doesn't match the
-    -- one we are going to generate closely enough that it is safe to
-    -- debianize during the run of dpkg-buildpackage, when Setup
-    -- configure is run.  Specifically, the version number in the top
-    -- changelog entry must match, and the sets of package names in
-    -- the control file must match.
-    , debAction_ :: DebAction
-    -- ^ What to do - Usage, Debianize or Substvar
-    } deriving (Eq, Ord, Show, Data, Typeable)
-
-data DebAction = Usage | Debianize | SubstVar DebType deriving (Read, Show, Eq, Ord, Data, Typeable)
-
--- | A redundant data type, too lazy to expunge.
-data DebType = Dev | Prof | Doc deriving (Eq, Ord, Read, Show, Data, Typeable)
 
 data PackageInfo = PackageInfo { cabalName :: PackageName
                                , devDeb :: Maybe (BinPkgName, DebianVersion)
@@ -419,35 +333,8 @@ data InstallFile
       , destName :: String  -- ^ name to give installed executable
       } deriving (Read, Show, Eq, Ord, Data, Typeable)
 
-defaultFlags :: Flags
-defaultFlags =
-    Flags {
-      verbosity_ = 1
-    , debAction_ = Debianize
-    , dryRun_ = False
-    , validate_ = False
-    }
-
 showAtoms :: Atoms -> IO ()
 showAtoms x = putStrLn ("\nTop: " ++ show x ++ "\n")
-
--- | Set how much progress messages get generated.
-verbosity :: Lens Atoms Int
-verbosity = lens verbosity_ (\ b a -> a {verbosity_ = b}) . flags
-
--- | Don't write anything, just output a description of what would have happened
-dryRun :: Lens Atoms Bool
-dryRun = lens dryRun_ (\ b a -> a {dryRun_ = b}) . flags
-
--- | Make sure the version number and package names of the supplied
--- and generated debianizations match.
-validate :: Lens Atoms Bool
-validate = lens validate_ (\ b a -> a {validate_ = b}) . flags
-
--- | Debianize, SubstVars, or Usage.  I'm no longer sure what SubstVars does, but someone
--- may still be using it.
-debAction :: Lens Atoms DebAction
-debAction = lens debAction_ (\ b a -> a {debAction_ = b}) . flags
 
 -- | Obsolete record containing verbosity, dryRun, validate, and debAction.
 flags :: Lens Atoms Flags
@@ -469,12 +356,6 @@ buildDir = lens buildDir_ (\ b a -> a {buildDir_ = b})
 -- buildEnv :: Lens Atoms (Maybe EnvSet)
 -- buildEnv = lens buildEnv_ (\ b a -> a {buildEnv_ = b})
 
-buildEnv :: Lens Atoms EnvSet
-buildEnv = lens buildEnv_ (\ b a -> a {buildEnv_ = b})
-
-setBuildEnv :: MonadIO m => EnvSet -> Atoms -> m Atoms
-setBuildEnv envset atoms = return $ atoms {buildEnv_ = envset}
-
 -- | Map from cabal Extra-Lib names to debian binary package names.
 extraLibMap :: Lens Atoms (Map String Relations)
 extraLibMap = lens extraLibMap_ (\ a b -> b {extraLibMap_ = a})
@@ -489,12 +370,8 @@ maintainerOption = lens maintainerOption_ (\ a b -> b {maintainerOption_ = a})
 uploadersOption :: Lens Atoms [NameAddr]
 uploadersOption = lens uploadersOption_ (\ a b -> b {uploadersOption_ = a})
 
--- | Cabal flag assignments to use when loading the cabal file.
-cabalFlagAssignments :: Lens Atoms (Set (FlagName, Bool))
-cabalFlagAssignments = lens cabalFlagAssignments_ (\ a b -> b {cabalFlagAssignments_ = a})
-
 -- | The result of loading a .cabal file
-packageDescription :: Lens Atoms (Maybe PackageDescription)
+packageDescription :: Lens Atoms PackageDescription
 packageDescription = lens packageDescription_ (\ a b -> b {packageDescription_ = a})
 
 -- | Map from cabal version number ranges to debian package names.  This is a
@@ -674,47 +551,6 @@ control = lens control_ (\ a b -> b {control_ = a})
 logrotateStanza :: Lens Atoms (Map BinPkgName (Set Text))
 logrotateStanza = lens logrotateStanza_ (\ a b -> b {logrotateStanza_ = a})
 
-#if 0
--- | Add entries to a binary deb's debian/foo.links file.
-link :: Lens Atoms (Map BinPkgName (Set (FilePath, FilePath)))
-link = lens link_ (\ a b -> b {link_ = a})
-
--- | Install files into directories by adding entries to the binary
--- deb's debian/foo.install file.
-install :: Lens Atoms (Map BinPkgName (Set (FilePath, FilePath)))
-install = lens install_ (\ a b -> b {install_ = a})
-
--- | Rename and install files.  This is done by adding rules to debian/rules.
-installTo :: Lens Atoms (Map BinPkgName (Set (FilePath, FilePath)))
-installTo = lens installTo_ (\ a b -> b {installTo_ = a})
-
--- | Install files into the a binary deb's data directory,
--- /usr/share/packagename-version.  This expands to either an install
--- or an installTo.
-installData :: Lens Atoms (Map BinPkgName (Set (FilePath, FilePath)))
-installData = lens installData_ (\ a b -> b {installData_ = a})
-
--- | Create a file in the binary deb with the given text.  This is done by
--- writing the file into the cabalInstall directory and adding an entry
--- to the binary deb's .install file.
-file :: Lens Atoms (Map BinPkgName (Set (FilePath, Text)))
-file = lens file_ (\ a b -> b {file_ = a})
-
--- | Install a cabal executable into a binary deb.
--- FIXME: change signature to BinPkgName -> Lens Atoms (Set (String, FilePath))
-installCabalExec :: Lens Atoms (Map BinPkgName (Set (String, FilePath)))
-installCabalExec = lens installCabalExec_ (\ a b -> b {installCabalExec_ = a})
-
--- | Rename and install a cabal executable
--- FIXME: change signature to BinPkgName -> Lens Atoms (Set (String, FilePath))
-installCabalExecTo :: Lens Atoms (Map BinPkgName (Set (String, FilePath)))
-installCabalExecTo = lens installCabalExecTo_ (\ a b -> b {installCabalExecTo_ = a})
-
--- | Create directories in the package
--- FIXME: change signature to BinPkgName -> Lens Atoms (Set FilePath)
-installDir :: Lens Atoms (Map BinPkgName (Set FilePath))
-installDir = lens installDir_ (\ a b -> b {installDir_ = a})
-#else
 -- | Access the set of new style atoms.
 atomSet :: Lens Atoms (Set Atom)
 atomSet = lens atomSet_ (\ a b -> b {atomSet_ = a})
@@ -736,7 +572,6 @@ installCabalExecTo :: Monad m => BinPkgName -> String -> FilePath -> StateT Atom
 installCabalExecTo b name dest = atomSet %= (Set.insert $ InstallCabalExecTo b name dest) >> return ()
 installDir :: Monad m => BinPkgName -> FilePath -> StateT Atoms m ()
 installDir b dir = atomSet %= (Set.insert $ InstallDir b dir) >> return ()
-#endif
 
 -- | Create an /etc/init.d file in the package
 -- FIXME: change signature to BinPkgName -> Lens Atoms Text
@@ -747,9 +582,6 @@ installInit = lens installInit_ (\ a b -> b {installInit_ = a})
 -- FIXME: change signature to BinPkgName -> Lens Atoms (Set (FilePath, Text))
 intermediateFiles :: Lens Atoms (Set (FilePath, Text))
 intermediateFiles = lens intermediateFiles_ (\ a b -> b {intermediateFiles_ = a})
-
-compilerFlavor :: Lens Atoms CompilerFlavor
-compilerFlavor = lens compilerFlavor_ (\ a b -> b {compilerFlavor_ = a})
 
 {-
 compilerFlavor :: Monad m => StateT Atoms m CompilerFlavor

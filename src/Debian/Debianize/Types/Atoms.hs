@@ -170,7 +170,7 @@ data Atoms
       -- ^ Script to run before install, should contain #DEBHELPER# line before exit 0
       , preRm_ :: Map BinPkgName Text
       -- ^ Script to run before remove, should contain #DEBHELPER# line before exit 0
-      , sourceArchitecture_ :: Maybe PackageArchitectures
+      , sourceArchitectures_ :: Maybe PackageArchitectures
       -- ^ Set the Architecture field of the source package
       , binaryArchitectures_ :: Map BinPkgName PackageArchitectures
       -- ^ Set the Architecture field of a binary package
@@ -278,7 +278,7 @@ makeAtoms fs pkgDesc =
       , postRm_ = mempty
       , preInst_ = mempty
       , preRm_ = mempty
-      , sourceArchitecture_ = Nothing
+      , sourceArchitectures_ = Nothing
       , binaryArchitectures_ = mempty
       , sourcePriority_ = Nothing
       , binaryPriorities_ = mempty
@@ -477,7 +477,7 @@ licenseFile = lens licenseFile_ (\ a b -> b {licenseFile_ = a})
 -- | The architectures supported by this source package - @Any@,
 -- @All@, or some list of specific architectures.
 sourceArchitectures :: Lens Atoms (Maybe PackageArchitectures)
-sourceArchitectures = lens sourceArchitecture_ (\ a b -> b {sourceArchitecture_ = a})
+sourceArchitectures = lens sourceArchitectures_ (\ a b -> b {sourceArchitectures_ = a})
 
 -- | Extra install dependencies for the devel library.  Redundant
 -- with depends, but kept for backwards compatibility.  Also, I

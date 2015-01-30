@@ -7,7 +7,7 @@ module Debian.Debianize.Finalize
 
 import Control.Applicative ((<$>))
 import Control.Category ((.))
-import Control.Monad (when)
+import Control.Monad (when, unless)
 import Control.Monad as List (mapM_)
 import Control.Monad.State (get, modify)
 import Control.Monad.Trans (liftIO, MonadIO)
@@ -15,7 +15,7 @@ import Data.ByteString.Lazy.UTF8 (fromString)
 import Data.Char (toLower)
 import Data.Digest.Pure.MD5 (md5)
 import Data.Lens.Lazy (access, getL)
-import Data.List as List (intercalate, map, nub, unlines)
+import Data.List as List (intercalate, map, nub, unlines, null)
 import Data.Map as Map (delete, elems, lookup, Map, toList, insertWith)
 import Data.Maybe (fromMaybe, isJust, isNothing)
 import Data.Monoid ((<>), mempty)
@@ -33,7 +33,7 @@ import Debian.Debianize.Monad as Monad (CabalT, liftCabal)
 import Debian.Debianize.Options (compileCommandlineArgs, compileEnvironmentArgs)
 import Debian.Debianize.Prelude ((%=), (+=), (~=), (~?=))
 import qualified Debian.Debianize.Types as T (apacheSite, backups, binaryArchitectures, binaryPackages, binarySection, breaks, buildDepends, buildDependsIndep, buildDir, builtUsing, changelog, comments, compat, conflicts, debianDescription, debVersion, depends, epochMap, executable, extraDevDeps, extraLibMap, intermediateFiles, maintainerOption, uploadersOption, noDocumentationLibrary, noProfilingLibrary, omitProfVersionDeps, packageDescription, packageType, preDepends, provides, recommends, revision, rulesFragments, serverInfo, standardsVersion, source, sourceFormat, sourcePackageName, sourcePriority, sourceSection, suggests, utilsPackageNameBase, watch, website, control, homepage, official, vcsFields, flags)
-import qualified Debian.Debianize.Types.Atoms as A (InstallFile(execName, sourceDir), showAtoms, Atom(..), atomSet, rulesHead, rulesSettings, rulesIncludes, debInfo, Atom)
+import qualified Debian.Debianize.Types.Atoms as A (InstallFile(execName, sourceDir), showAtoms, Atom(..), atomSet, rulesHead, rulesSettings, rulesIncludes, debInfo, Atom, debInfo)
 import qualified Debian.Debianize.Types.BinaryDebDescription as B (package, PackageType(Development, Documentation, Exec, Profiling, Source, HaskellSource, Utilities), PackageType)
 import qualified Debian.Debianize.Types.SourceDebDescription as S (xDescription, VersionControlSpec(..), maintainer, uploaders)
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
@@ -597,13 +597,15 @@ expandAtoms =
              List.mapM_ (\ (b, f) -> modify (execAtoms b f)) (Map.toList mp)
 
 -- | Add the normal default values to the rules files.
-finalizeRules :: (Monad m) => CabalT m ()
+finalizeRules :: (Monad m, Functor m) => CabalT m ()
 finalizeRules =
     do DebBase b <- debianNameBase
        compiler <- access (compilerFlavor . T.flags . A.debInfo)
        (A.rulesHead . A.debInfo) ~?= Just "#!/usr/bin/make -f"
        (A.rulesSettings . A.debInfo) %= (++ ["DEB_CABAL_PACKAGE = " <> pack b])
        (A.rulesSettings . A.debInfo) %= (++ (["DEB_DEFAULT_COMPILER = " <> pack (List.map toLower (show compiler))]))
+       flags <- (flagString . Set.toList) <$> access (cabalFlagAssignments . T.flags . A.debInfo)
+       unless (List.null flags) ((A.rulesSettings . A.debInfo) %= (++ ["DEB_SETUP_GHC6_CONFIGURE_ARGS = " <> pack flags]))
        (A.rulesIncludes . A.debInfo) %= (++ ["include /usr/share/cdbs/1/rules/debhelper.mk",
                                              "include /usr/share/cdbs/1/class/hlibrary.mk"])
 
@@ -625,3 +627,6 @@ flagList :: String -> [(FlagName, Bool)]
 flagList = List.map tagWithValue . words
   where tagWithValue ('-':name) = (FlagName (List.map toLower name), False)
         tagWithValue name       = (FlagName (List.map toLower name), True)
+
+flagString :: [(FlagName, Bool)] -> String
+flagString = List.intercalate " " . List.map (\ (FlagName s, sense) -> "-f" ++ (if sense then "" else "-") ++ s)

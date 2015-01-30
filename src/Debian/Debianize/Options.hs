@@ -42,7 +42,7 @@ import Text.Regex.TDFA ((=~))
 -- | Apply a list of command line arguments to the monadic state.
 compileArgs :: MonadIO m => [String] -> CabalT m ()
 compileArgs args =
-    case getOpt' RequireOrder (options ++ map liftOpt flagOptions) args of
+    case getOpt' RequireOrder options args of
       (os, [], [], []) -> sequence_ os
       (_, non, unk, errs) -> error ("Errors: " ++ show errs ++
                                     ", Unrecognized: " ++ show unk ++

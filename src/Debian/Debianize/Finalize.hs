@@ -28,7 +28,7 @@ import Debian.Debianize.Changelog (dropFutureEntries)
 import Debian.Debianize.DebianName (debianName, debianNameBase)
 import Debian.Debianize.Goodies (backupAtoms, describe, execAtoms, serverAtoms, siteAtoms, watchAtom)
 import Debian.Debianize.Input (dataDir, inputChangeLog)
-import Debian.Debianize.InputCabalPackageDescription (verbosity, compilerFlavor)
+import Debian.Debianize.InputCabalPackageDescription (verbosity, compilerFlavor, cabalFlagAssignments)
 import Debian.Debianize.Monad as Monad (CabalT, liftCabal)
 import Debian.Debianize.Options (compileCommandlineArgs, compileEnvironmentArgs)
 import Debian.Debianize.Prelude ((%=), (+=), (~=), (~?=))
@@ -50,7 +50,7 @@ import Distribution.Compiler (CompilerFlavor(GHC))
 import Distribution.Compiler (CompilerFlavor(GHCJS))
 #endif
 import Distribution.Package (Dependency(..), PackageIdentifier(..), PackageName(PackageName))
-import Distribution.PackageDescription (PackageDescription)
+import Distribution.PackageDescription (PackageDescription, FlagName(FlagName))
 import Distribution.PackageDescription as Cabal (allBuildInfo, BuildInfo(buildable, extraLibs), Executable(buildInfo, exeName), maintainer, author)
 import qualified Distribution.PackageDescription as Cabal (PackageDescription(dataDir, dataFiles, executables, library, package))
 import Prelude hiding (init, log, map, unlines, unlines, writeFile, (.))
@@ -471,6 +471,9 @@ makeUtilsPackage pkgDesc hc =
 expandAtoms :: MonadIO m => CabalT m ()
 expandAtoms =
     do hc <- access (compilerFlavor . T.flags . A.debInfo)
+       case hc of
+         GHC -> (cabalFlagAssignments . T.flags . A.debInfo) %= (Set.union (Set.fromList (flagList "--ghc")))
+         GHCJS -> (cabalFlagAssignments . T.flags . A.debInfo) %= (Set.union (Set.fromList (flagList "--ghcjs")))
        builddir <- access T.buildDir >>= return . fromMaybe (case hc of
                                                                GHC -> "dist-ghc/build"
 #if MIN_VERSION_Cabal(1,21,0)
@@ -616,3 +619,9 @@ anyrel x = anyrel' (D.BinPkgName x)
 
 anyrel' :: D.BinPkgName -> [D.Relation]
 anyrel' x = [D.Rel x Nothing Nothing]
+
+-- Lifted from Distribution.Simple.Setup, since it's not exported.
+flagList :: String -> [(FlagName, Bool)]
+flagList = List.map tagWithValue . words
+  where tagWithValue ('-':name) = (FlagName (List.map toLower name), False)
+        tagWithValue name       = (FlagName (List.map toLower name), True)

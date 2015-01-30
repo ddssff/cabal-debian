@@ -144,8 +144,10 @@ flagOptions =
                       , "on the argument) is printed to standard output.  These can be added"
                       , "to the appropriate substvars file.  (This is an option whose use case"
                       , "is lost in the mists of time.)"]),
-      Option "buildenvdir" [] (ReqArg (\ s -> buildEnv ~= EnvSet {cleanOS = s </> "clean", dependOS = s </> "depend", buildOS = s </> "build"}) "PATH")
-             "Directory containing the three build environments, clean, depend, and build."
+      Option "" ["buildenvdir"] (ReqArg (\ s -> buildEnv ~= EnvSet {cleanOS = s </> "clean", dependOS = s </> "depend", buildOS = s </> "build"}) "PATH")
+             "Directory containing the three build environments, clean, depend, and build.",
+      Option "f" ["cabal-flags"] (ReqArg (\ s -> cabalFlagAssignments %= (Set.union (fromList (flagList s)))) "FLAG FLAG ...")
+             "Flags to pass to cabal configure with the --flags= option "
       ]
 
 -- | Set how much progress messages get generated.

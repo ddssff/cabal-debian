@@ -1,3 +1,10 @@
+haskell-cabal-debian (4.21.1) unstable; urgency=low
+
+  * Fix --buildenvdir command line option.
+  * Add an option for cabal flags
+
+ -- David Fox <dsf@seereason.com>  Fri, 30 Jan 2015 13:46:08 -0800
+
 haskell-cabal-debian (4.21) unstable; urgency=low
 
   * Split the enormous Atoms record into three layers - the innermost is

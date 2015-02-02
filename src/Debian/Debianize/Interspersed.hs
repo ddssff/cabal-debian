@@ -7,7 +7,7 @@ module Debian.Debianize.Interspersed
     ( Interspersed(..)
     ) where
 
-import Debug.Trace
+import Debug.Trace (trace)
 
 -- | A class of Bs insterspersed with Cs.  It is used when converting
 -- the cabal dependencies to debian, where the "around" type is the

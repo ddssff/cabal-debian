@@ -7,12 +7,12 @@ module Debian.Debianize.Details
     ) where
 
 import Data.Version (Version(Version))
-import Debian.Relation (Relation(Rel), BinPkgName(BinPkgName))
-import Debian.Debianize.DebianName (mapCabal, {-remapCabal,-} splitCabal)
-import Debian.Debianize.Types.Atoms as T (epochMap, execMap)
+import Debian.Debianize.DebianName (mapCabal, splitCabal)
 import Debian.Debianize.Monad (CabalT)
 import Debian.Debianize.Prelude ((++=))
+import Debian.Debianize.Types.Atoms as T (epochMap, execMap)
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
+import Debian.Relation (BinPkgName(BinPkgName), Relation(Rel))
 import Distribution.Package (PackageName(PackageName))
 
 -- | Update the Atoms value in the CabalT state with some details about

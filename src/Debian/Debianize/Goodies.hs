@@ -20,24 +20,24 @@ module Debian.Debianize.Goodies
 
 import Control.Category ((.))
 import Data.Char (isSpace)
-import Data.Lens.Lazy (modL, access)
-import Data.List as List (map, intersperse, intercalate, dropWhileEnd)
+import Data.Lens.Lazy (access, modL)
+import Data.List as List (dropWhileEnd, intercalate, intersperse, map)
 import Data.Map as Map (insertWith)
 import Data.Maybe (fromMaybe)
 import Data.Monoid ((<>))
-import Data.Set as Set (insert, union, singleton)
-import Data.Text as Text (Text, pack, unlines)
+import Data.Set as Set (insert, singleton, union)
+import Data.Text as Text (pack, Text, unlines)
 import Debian.Debianize.Monad (Atoms, CabalT, DebianT, execCabalM)
-import Debian.Debianize.Prelude (stripWith, (%=), (+=), (++=), (+++=))
-import qualified Debian.Debianize.Types as T
-import qualified Debian.Debianize.Types.Atoms as T
+import Debian.Debianize.Prelude ((%=), (+++=), (++=), (+=), stripWith)
+import qualified Debian.Debianize.Types as T (backups, depends, executable, installInit, logrotateStanza, packageDescription, postInst, rulesFragments, serverInfo, website)
+import qualified Debian.Debianize.Types.Atoms as T (Atom(File, Install, InstallCabalExec, InstallCabalExecTo, InstallDir, InstallTo, Link), atomSet, debInfo, InstallFile(..), Server(hostname, installFile, port, retry, serverFlags), Site(domain, server, serverAdmin))
 import Debian.Orphans ()
+import Debian.Policy (apacheAccessLog, apacheErrorLog, apacheLogDirectory, databaseDirectory, serverAccessLog, serverAppLog)
 import Debian.Pretty (ppDisplay, ppDisplay')
-import Debian.Policy (apacheLogDirectory, apacheErrorLog, apacheAccessLog, databaseDirectory, serverAppLog, serverAccessLog)
 import Debian.Relation (BinPkgName(BinPkgName), Relation(Rel))
 import Distribution.Package (PackageName(PackageName))
 import Distribution.PackageDescription as Cabal (PackageDescription(package, synopsis, description))
-import Prelude hiding (writeFile, init, unlines, log, map, (.))
+import Prelude hiding ((.), init, log, map, unlines, writeFile)
 import System.FilePath ((</>))
 
 showCommand :: String -> [String] -> String

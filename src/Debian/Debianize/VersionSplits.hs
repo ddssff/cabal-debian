@@ -16,16 +16,16 @@ module Debian.Debianize.VersionSplits
     ) where
 
 import Data.Generics (Data, Typeable)
-import Data.Map as Map (Map, mapMaybeWithKey, elems)
-import Data.Set as Set (Set, toList, fromList)
-import Data.Version (Version(Version), showVersion)
-import Debian.Debianize.Interspersed (Interspersed(leftmost, pairs, foldInverted), foldTriples)
+import Data.Map as Map (elems, Map, mapMaybeWithKey)
+import Data.Set as Set (fromList, Set, toList)
+import Data.Version (showVersion, Version(Version))
+import Debian.Debianize.Interspersed (foldTriples, Interspersed(leftmost, pairs, foldInverted))
 import Debian.Orphans ()
-import qualified Debian.Relation as D
+import qualified Debian.Relation as D (VersionReq(..))
 import Debian.Version (DebianVersion, parseDebianVersion)
 import Distribution.Package (PackageIdentifier(..), PackageName(..))
-import Distribution.Version (VersionRange, anyVersion, intersectVersionRanges, earlierVersion, orLaterVersion)
-import Prelude hiding (init, unlines, log)
+import Distribution.Version (anyVersion, earlierVersion, intersectVersionRanges, orLaterVersion, VersionRange)
+import Prelude hiding (init, log, unlines)
 
 -- | The base of a debian binary package name, the string that appears
 -- between "libghc-" and "-dev".

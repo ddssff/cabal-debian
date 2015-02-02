@@ -115,17 +115,17 @@ module Debian.Debianize.Types
     ) where
 
 import Control.Category ((.))
-import Data.Lens.Lazy (Lens, iso, getL)
+import Data.Lens.Lazy (getL, iso, Lens)
 import Data.Set as Set (Set)
 import Data.Text (Text)
-import Debian.Debianize.Prelude (maybeLens, listElemLens)
-import Debian.Debianize.Types.Atoms
-import qualified Debian.Debianize.Types.BinaryDebDescription as B
-import qualified Debian.Debianize.Types.SourceDebDescription as S
+import Debian.Debianize.Prelude (listElemLens, maybeLens)
+import Debian.Debianize.Types.Atoms (apacheSite, backups, buildDir, changelog, comments, compat, control, copyright, debianNameMap, DebInfo, debVersion, epochMap, execMap, executable, extraDevDeps, extraLibMap, file, flags, install, installCabalExec, installCabalExecTo, installData, installDir, installInit, installTo, intermediateFiles, link, logrotateStanza, maintainerOption, missingDependencies, noDocumentationLibrary, noProfilingLibrary, official, omitLTDeps, omitProfVersionDeps, overrideDebianNameBase, packageDescription, packageInfo, postInst, postRm, preInst, preRm, revision, rulesFragments, rulesHead, rulesIncludes, rulesSettings, serverInfo, sourceArchitectures, sourceFormat, sourcePackageName, uploadersOption, utilsPackageNameBase, warning, watch, website, xDescription)
+import qualified Debian.Debianize.Types.BinaryDebDescription as B (architecture, BinaryDebDescription, binaryPriority, binarySection, breaks, builtUsing, conflicts, depends, description, essential, newBinaryDebDescription, package, packageType, PackageType, preDepends, provides, recommends, relations, replaces, suggests)
+import qualified Debian.Debianize.Types.SourceDebDescription as S (binaryPackages, buildConflicts, buildConflictsIndep, buildDepends, buildDependsIndep, changedBy, dmUploadAllowed, homepage, maintainer, priority, section, source, standardsVersion, uploaders, vcsFields, VersionControlSpec, XField, xFields)
 import Debian.Orphans ()
 import Debian.Policy (PackageArchitectures, PackagePriority, Section, StandardsVersion)
 import Debian.Relation (BinPkgName, Relations, SrcPkgName)
-import Prelude hiding (init, init, log, log, unlines, (.))
+import Prelude hiding ((.), init, init, log, log, unlines)
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr)
 
 -- | Not exported - <http://www.debian.org/doc/debian-policy/ch-controlfields.html#s-f-Package>

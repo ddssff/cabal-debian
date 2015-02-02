@@ -17,24 +17,24 @@ module Debian.Debianize.Types.Atoms
 
 import Control.Monad.State (StateT)
 import Data.Generics (Data, Typeable)
-import Data.Lens.Lazy (Lens, lens, (%=))
+import Data.Lens.Lazy ((%=), lens, Lens)
 import Data.Map as Map (Map)
 import Data.Monoid (Monoid(..))
-import Data.Set as Set (Set, insert)
+import Data.Set as Set (insert, Set)
 import Data.Text (Text)
 import Debian.Changes (ChangeLog)
-import Debian.Debianize.InputCabalPackageDescription (inputCabalization, Flags)
-import Debian.Debianize.Types.CopyrightDescription
+import Debian.Debianize.InputCabalPackageDescription (Flags, inputCabalization)
 import Debian.Debianize.Types.BinaryDebDescription (Canonical(canonical))
-import qualified Debian.Debianize.Types.SourceDebDescription as S
-import Debian.Debianize.VersionSplits (VersionSplits, DebBase)
+import Debian.Debianize.Types.CopyrightDescription (CopyrightDescription, defaultCopyrightDescription, newCopyrightDescription)
+import qualified Debian.Debianize.Types.SourceDebDescription as S (newSourceDebDescription, SourceDebDescription)
+import Debian.Debianize.VersionSplits (DebBase, VersionSplits)
 import Debian.Orphans ()
 import Debian.Policy (PackageArchitectures, PackagePriority, Section, SourceFormat)
 import Debian.Relation (BinPkgName, Relations, SrcPkgName)
 import Debian.Version (DebianVersion)
 import Distribution.Package (PackageName)
 import Distribution.PackageDescription as Cabal (PackageDescription)
-import Prelude hiding (init, init, log, log, (.))
+import Prelude hiding ((.), init, init, log, log)
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr)
 
 -- This enormous record is a mistake - instead it should be an Atom

@@ -190,6 +190,7 @@ Library
    Debian.Debianize.Bundled
    Debian.Debianize.Changelog
    Debian.Debianize.DebianName
+   Debian.Debianize.DebInfo
    Debian.Debianize.Details
    Debian.Debianize.Files
    Debian.Debianize.Finalize

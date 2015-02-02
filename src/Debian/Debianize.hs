@@ -147,20 +147,22 @@ module Debian.Debianize
     -- * TBD
 
     , module Debian.Debianize.Types
+    , module Debian.Debianize.DebInfo
     , module Debian.Debianize.Types.Atoms
     , module Debian.Policy
     ) where
 
-import Debian.Debianize.DebianName
-import Debian.Debianize.Details
-import Debian.Debianize.Finalize
-import Debian.Debianize.Goodies
-import Debian.Debianize.Input
-import Debian.Debianize.Monad
-import Debian.Debianize.Prelude
-import Debian.Debianize.Types
-import Debian.Debianize.Types.Atoms
-import Debian.Debianize.Options
-import Debian.Debianize.Output
-import Debian.Debianize.SubstVars
-import Debian.Policy
+import Debian.Debianize.DebInfo (Atom(..), atomSet, changelog, compat, control, copyright, DebInfo(..), file, flags, install, installCabalExec, installCabalExecTo, installData, installDir, installInit, installTo, intermediateFiles, link, logrotateStanza, makeDebInfo, postInst, postRm, preInst, preRm, rulesFragments, rulesHead, rulesIncludes, rulesSettings, sourceFormat, warning, watch)
+import Debian.Debianize.DebianName (mapCabal, splitCabal)
+import Debian.Debianize.Details (debianDefaultAtoms)
+import Debian.Debianize.Finalize (debianize, finalizeDebianization)
+import Debian.Debianize.Goodies (doBackups, doExecutable, doServer, doWebsite, tightDependencyFixup)
+import Debian.Debianize.Input (inputChangeLog, inputDebianization, inputDebianizationFile)
+import Debian.Debianize.Monad (Atoms, CabalM, CabalT, evalCabalM, evalCabalT, execCabalM, execCabalT, runCabalM, runCabalT)
+import Debian.Debianize.Options (compileArgs)
+import Debian.Debianize.Output (compareDebianization, describeDebianization, doDebianizeAction, runDebianizeScript, validateDebianization, writeDebianization)
+import Debian.Debianize.Prelude ((%=), (+++=), (++=), (+=), buildDebVersionMap, debOfFile, dpkgFileMap, withCurrentDirectory, (~=), (~?=))
+import Debian.Debianize.SubstVars (substvars)
+import Debian.Debianize.Types (apacheSite, backups, binaryArchitectures, binaryPackages, binaryPriority, binarySection, breaks, buildConflicts, buildConflictsIndep, buildDepends, buildDependsIndep, buildDir, builtUsing, changedBy, changelog, comments, compat, conflicts, control, copyright, debianDescription, debianMaintainer, debianNameMap, debianUploaders, debVersion, depends, dmUploadAllowed, epochMap, essential, execMap, executable, extraDevDeps, extraLibMap, file, flags, homepage, install, installCabalExec, installCabalExecTo, installData, installDir, installInit, installTo, intermediateFiles, link, logrotateStanza, maintainerOption, missingDependencies, noDocumentationLibrary, noProfilingLibrary, official, omitLTDeps, omitProfVersionDeps, overrideDebianNameBase, packageDescription, packageInfo, packageType, postInst, postRm, preDepends, preInst, preRm, provides, recommends, replaces, revision, rulesFragments, rulesHead, rulesIncludes, rulesSettings, serverInfo, source, sourceArchitectures, sourceFormat, sourcePackageName, sourcePriority, sourceSection, standardsVersion, suggests, uploaders, uploadersOption, utilsPackageNameBase, vcsFields, warning, watch, website, xDescription, xFields)
+import Debian.Debianize.Types.Atoms (apacheSite, Atoms(..), backups, buildDir, comments, debianNameMap, debInfo, debVersion, epochMap, execMap, executable, extraDevDeps, extraLibMap, InstallFile(..), maintainerOption, makeAtoms, missingDependencies, newAtoms, noDocumentationLibrary, noProfilingLibrary, official, omitLTDeps, omitProfVersionDeps, overrideDebianNameBase, packageDescription, packageInfo, PackageInfo(..), revision, Server(..), serverInfo, showAtoms, Site(..), sourceArchitectures, sourcePackageName, uploadersOption, utilsPackageNameBase, website, xDescription)
+import Debian.Policy (accessLogBaseName, apacheAccessLog, apacheErrorLog, apacheLogDirectory, appLogBaseName, Area(..), databaseDirectory, debianPackageVersion, errorLogBaseName, fromCabalLicense, getCurrentDebianUser, getDebhelperCompatLevel, getDebianStandardsVersion, haskellMaintainer, License(..), PackageArchitectures(..), PackagePriority(..), parseMaintainer, parsePackageArchitectures, parseStandardsVersion, parseUploaders, readLicense, readPriority, readSection, readSourceFormat, Section(..), serverAccessLog, serverAppLog, serverLogDirectory, SourceFormat(..), StandardsVersion(..), toCabalLicense)

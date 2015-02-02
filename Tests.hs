@@ -20,6 +20,7 @@ import Data.Text as Text (intercalate, split, Text, unlines, unpack)
 import Data.Version (Version(Version))
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(..), parseEntry)
 import Debian.Debianize.DebianName (mapCabal, splitCabal)
+import qualified Debian.Debianize.DebInfo as DI
 import Debian.Debianize.Files (debianizationFileMap)
 import Debian.Debianize.Finalize (debianize, finalizeDebianization)
 import Debian.Debianize.Goodies (doBackups, doExecutable, doServer, doWebsite, tightDependencyFixup)
@@ -495,7 +496,7 @@ test5 label =
     TestCase (do let inTop = "test-data/creativeprompts/input"
                      outTop = "test-data/creativeprompts/output"
                  atoms <- withCurrentDirectory inTop testAtoms
-                 old <- withCurrentDirectory outTop $ newFlags >>= execDebianT inputDebianization . makeDebInfo
+                 old <- withCurrentDirectory outTop $ newFlags >>= execDebianT inputDebianization . DI.makeDebInfo
                  let standards = getL T.standardsVersion old
                      level = getL T.compat old
                  new <- withCurrentDirectory inTop (execCabalT (debianize (defaultAtoms >> customize old level standards)) atoms)
@@ -591,7 +592,7 @@ test8 label =
     TestLabel label $
     TestCase ( do let inTop = "test-data/artvaluereport-data/input"
                       outTop = "test-data/artvaluereport-data/output"
-                  (old :: DebInfo) <- withCurrentDirectory outTop $ newFlags >>= execDebianT inputDebianization . makeDebInfo
+                  (old :: DI.DebInfo) <- withCurrentDirectory outTop $ newFlags >>= execDebianT inputDebianization . DI.makeDebInfo
                   let log = getL T.changelog old
                   new <- withCurrentDirectory inTop $ newFlags >>= newAtoms >>= execCabalT (debianize (defaultAtoms >> customize log))
                   diff <- diffDebianizations old (getL debInfo new)
@@ -613,13 +614,13 @@ test9 label =
                      outTop = "test-data/alex/output"
                  new <- withCurrentDirectory inTop $ newFlags >>= newAtoms >>= execCabalT (debianize (defaultAtoms >> customize))
                  let Just (ChangeLog (entry : _)) = getL (T.changelog . debInfo) new
-                 old <- withCurrentDirectory outTop $ newFlags >>= execDebianT (inputDebianization >> copyChangelogDate (logDate entry)) . makeDebInfo
+                 old <- withCurrentDirectory outTop $ newFlags >>= execDebianT (inputDebianization >> copyChangelogDate (logDate entry)) . DI.makeDebInfo
                  diff <- diffDebianizations old (getL debInfo new)
                  assertEqual label [] diff)
     where
       customize =
           do newDebianization' (Just 7) (Just (StandardsVersion 3 9 3 Nothing))
-             mapM_ (\ name -> (T.atomSet . debInfo) %= (Set.insert $ T.InstallData (BinPkgName "alex") name name))
+             mapM_ (\ name -> (DI.atomSet . debInfo) %= (Set.insert $ DI.InstallData (BinPkgName "alex") name name))
                    [ "AlexTemplate"
                    , "AlexTemplate-debug"
                    , "AlexTemplate-ghc"
@@ -649,7 +650,7 @@ test10 label =
                      outTop = "test-data/archive/output"
                  new <- withCurrentDirectory inTop $ newFlags >>= newAtoms >>= execCabalT (debianize (defaultAtoms >> customize))
                  let Just (ChangeLog (entry : _)) = getL (T.changelog . debInfo) new
-                 old <- withCurrentDirectory outTop $ newFlags >>= execDebianT (inputDebianization >> copyChangelogDate (logDate entry)) . makeDebInfo
+                 old <- withCurrentDirectory outTop $ newFlags >>= execDebianT (inputDebianization >> copyChangelogDate (logDate entry)) . DI.makeDebInfo
                  diff <- diffDebianizations old (getL debInfo new)
                  assertEqual label [] diff)
     where
@@ -662,7 +663,7 @@ test10 label =
              (T.depends (BinPkgName "seereason-darcs-backups") . debInfo) %= (++ [[Rel (BinPkgName "anacron") Nothing Nothing]])
              (T.sourceSection . debInfo) ~= Just (MainSection "haskell")
              T.utilsPackageNameBase ~= Just "seereason-darcs-backups"
-             (T.atomSet . debInfo) %= (Set.insert $ T.InstallCabalExec (BinPkgName "seereason-darcs-backups") "seereason-darcs-backups" "/etc/cron.hourly")
+             (DI.atomSet . debInfo) %= (Set.insert $ DI.InstallCabalExec (BinPkgName "seereason-darcs-backups") "seereason-darcs-backups" "/etc/cron.hourly")
 
 copyChangelogDate :: Monad m => String -> DebianT m ()
 copyChangelogDate date =
@@ -684,7 +685,7 @@ diffMaps old new =
       combine1 k a b = if a == b then Unchanged k a else Modified k a b
       combine2 _ _ _ = Nothing
 
-diffDebianizations :: DebInfo -> DebInfo -> IO String -- [Change FilePath T.Text]
+diffDebianizations :: DI.DebInfo -> DI.DebInfo -> IO String -- [Change FilePath T.Text]
 diffDebianizations old new =
     do old' <- evalDebianT (sortBinaryDebs >> debianizationFileMap) old
        new' <- evalDebianT (sortBinaryDebs >> debianizationFileMap) new

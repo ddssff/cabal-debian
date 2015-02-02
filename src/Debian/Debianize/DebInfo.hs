@@ -5,13 +5,8 @@
 {-# OPTIONS_GHC -Wall #-}
 module Debian.Debianize.DebInfo
 
-    ( DebInfo(DebInfo, atomSet_, changelog_, compat_, control_,
-        copyright_, flags_, installInit_, intermediateFiles_,
-        logrotateStanza_, postInst_, postRm_, preInst_, preRm_,
-        rulesFragments_, rulesHead_, rulesIncludes_, rulesSettings_,
-        sourceFormat_, warning_, watch_)
-    , Atom(File, Install, InstallCabalExec, InstallCabalExecTo,
-     InstallData, InstallDir, InstallTo, Link)
+    ( DebInfo
+    , Atom(File, Install, InstallCabalExec, InstallCabalExecTo, InstallData, InstallDir, InstallTo, Link)
     , makeDebInfo
     , flags
     , warning
@@ -45,7 +40,9 @@ module Debian.Debianize.DebInfo
 
 import Control.Monad.State (StateT)
 import Data.Generics (Data, Typeable)
-import Data.Lens.Lazy ((%=), lens, Lens)
+import Data.Lens.Lazy ((%=))
+import Data.Lens.Template (nameMakeLens)
+import Data.List (init)
 import Data.Map as Map (Map)
 import Data.Monoid (Monoid(..))
 import Data.Set as Set (insert, Set)
@@ -71,14 +68,15 @@ data DebInfo
       , sourceFormat_ :: Maybe SourceFormat
       -- ^ Write debian/source/format
       , watch_ :: Maybe Text
-      -- ^ Write debian/watch
+      -- ^ the @debian\/watch@ file
       , rulesHead_ :: Maybe Text
+      -- ^ The rules file header
       , rulesSettings_ :: [Text]
+      -- ^ The rules file assignments
       , rulesIncludes_ :: [Text]
-      -- ^ The header of the debian/rules file.  The remainder is assembled
-      -- from DebRulesFragment values in the atom list.
+      -- ^ The rules file include directives
       , rulesFragments_ :: Set Text
-      -- ^ A Fragment of debian/rules
+      -- ^ Additional fragments of the rules file
       , copyright_ :: PackageDescription -> IO CopyrightDescription
       -- ^ Copyright and license information.  This function takes a list of FilePath like
       -- the licenseFiles field of the PackageDescription and returns a CopyrightDescription.
@@ -96,13 +94,17 @@ data DebInfo
       , logrotateStanza_ :: Map BinPkgName (Set Text)
       -- ^ Add a stanza of a logrotate file to the binary package
       , postInst_ :: Map BinPkgName Text
-      -- ^ Script to run after install, should contain #DEBHELPER# line before exit 0
+      -- ^ Map of @debian/postinst@ scripts - to be run after install,
+      -- should contain #DEBHELPER# line before exit 0
       , postRm_ :: Map BinPkgName Text
-      -- ^ Script to run after remove, should contain #DEBHELPER# line before exit 0
+      -- ^ Map of @debian/postrm@ scripts - scripts to run after
+      -- remove, should contain #DEBHELPER# line before exit 0
       , preInst_ :: Map BinPkgName Text
-      -- ^ Script to run before install, should contain #DEBHELPER# line before exit 0
+      -- ^ Map of @debian/preinst@ scripts - to be run before install,
+      -- should contain #DEBHELPER# line before exit 0
       , preRm_ :: Map BinPkgName Text
-      -- ^ Script to run before remove, should contain #DEBHELPER# line before exit 0
+      -- ^ Map of @debian/prerm@ scripts - to be run before remove,
+      -- should contain #DEBHELPER# line before exit 0
       , atomSet_ :: Set Atom
       -- ^ set of items describing file installation requests
       } deriving (Show, Data, Typeable)
@@ -151,91 +153,13 @@ makeDebInfo fs =
     , atomSet_ = mempty
     }
 
--- | Obsolete record containing verbosity, dryRun, validate, and debAction.
-flags :: Lens DebInfo Flags
-flags = lens flags_ (\ b a -> a {flags_ = b})
-
-warning :: Lens DebInfo (Set Text)
-warning = lens warning_ (\ a b -> b {warning_ = a})
-
--- | The copyright information from the cabal file
-copyright :: Lens DebInfo (PackageDescription -> IO CopyrightDescription)
-copyright = lens copyright_ (\ a b -> b {copyright_ = a})
-
--- | The rules file header
-rulesHead :: Lens DebInfo (Maybe Text)
-rulesHead = lens rulesHead_ (\ a b -> b {rulesHead_ = a})
-
--- | The rules file assignments
-rulesSettings :: Lens DebInfo [Text]
-rulesSettings = lens rulesSettings_ (\ a b -> b {rulesSettings_ = a})
-
--- | The rules file include directives
-rulesIncludes :: Lens DebInfo [Text]
-rulesIncludes = lens rulesIncludes_ (\ a b -> b {rulesIncludes_ = a})
-
--- | Additional fragments of the rules file
-rulesFragments :: Lens DebInfo (Set Text)
-rulesFragments = lens rulesFragments_ (\ a b -> b {rulesFragments_ = a})
-
--- | Map of @debian/postinst@ scripts
-postInst :: Lens DebInfo (Map BinPkgName Text)
-postInst = lens postInst_ (\ a b -> b {postInst_ = a})
-
--- | Map of @debian/postrm@ scripts
-postRm :: Lens DebInfo (Map BinPkgName Text)
-postRm = lens postRm_ (\ a b -> b {postRm_ = a})
-
--- | Map of @debian/preinst@ scripts
-preInst :: Lens DebInfo (Map BinPkgName Text)
-preInst = lens preInst_ (\ a b -> b {preInst_ = a})
-
--- | Map of @debian/prerm@ scripts
-preRm :: Lens DebInfo (Map BinPkgName Text)
-preRm = lens preRm_ (\ a b -> b {preRm_ = a})
-
--- | The @debian\/source\/format@ file.
-sourceFormat :: Lens DebInfo (Maybe SourceFormat)
-sourceFormat = lens sourceFormat_ (\ a b -> b {sourceFormat_ = a})
-
--- | the @debian\/watch@ file
-watch :: Lens DebInfo (Maybe Text)
-watch = lens watch_ (\ a b -> b {watch_ = a})
-
--- | the @debian\/changelog@ file
-changelog :: Lens DebInfo (Maybe ChangeLog)
-changelog = lens changelog_ (\ a b -> b {changelog_ = a})
-
--- | The @debian\/control@ file.  Many of the following lenses access parts of the @SourceDebDescription@.
-control :: Lens DebInfo S.SourceDebDescription
-control = lens control_ (\ a b -> b {control_ = a})
-
 instance Canonical DebInfo where
     canonical x = x {control_ = canonical (control_ x)}
 
--- | Add a stanza to the binary package's logrotate script.
-logrotateStanza :: Lens DebInfo (Map BinPkgName (Set Text))
-logrotateStanza = lens logrotateStanza_ (\ a b -> b {logrotateStanza_ = a})
-
--- | Access the set of new style atoms.
-atomSet :: Lens DebInfo (Set Atom)
-atomSet = lens atomSet_ (\ a b -> b {atomSet_ = a})
-
--- | Create an /etc/init.d file in the package
--- FIXME: change signature to BinPkgName -> Lens Atoms Text
-installInit :: Lens DebInfo (Map BinPkgName Text)
-installInit = lens installInit_ (\ a b -> b {installInit_ = a})
-
--- | Create a file in the debianization.  This is used to implement the file lens above.
--- FIXME: change signature to BinPkgName -> Lens Atoms (Set (FilePath, Text))
-intermediateFiles :: Lens DebInfo (Set (FilePath, Text))
-intermediateFiles = lens intermediateFiles_ (\ a b -> b {intermediateFiles_ = a})
-
--- | The @debian/compat@ file, contains the minimum compatible version
--- of the @debhelper@ package.  If not given the version number of the
--- installed debhelper package is used.
-compat :: Lens DebInfo (Maybe Int)
-compat = lens compat_ (\ a b -> b {compat_ = a})
+$(let f s = case s of
+              (_ : _) | last s == '_' -> Just (init s)
+              _ -> Nothing in
+  nameMakeLens ''DebInfo f)
 
 -- We need (%=_)
 link :: Monad m => BinPkgName -> FilePath -> FilePath -> StateT DebInfo m ()

@@ -1,5 +1,5 @@
 -- | Input the Cabal package description.
-{-# LANGUAGE CPP, DeriveDataTypeable #-}
+{-# LANGUAGE CPP, DeriveDataTypeable, TemplateHaskell #-}
 module Debian.Debianize.InputCabalPackageDescription
     ( Flags(..)
     , EnvSet(..)
@@ -20,7 +20,7 @@ import Control.Monad.State (execStateT, StateT)
 import Control.Monad.Trans (MonadIO)
 import Data.Char (toLower, toUpper)
 import Data.Generics (Data, Typeable)
-import Data.Lens.Common (lens, Lens)
+import Data.Lens.Template (nameMakeLens)
 import Data.Monoid (Monoid(..))
 import Data.Set as Set (fromList, Set, toList, union)
 import Debian.Debianize.Prelude ((%=), intToVerbosity', read', (~=))
@@ -29,14 +29,12 @@ import Debian.Orphans ()
 import Distribution.Compiler (AbiTag(NoAbiTag), CompilerFlavor(..), CompilerId, unknownCompilerInfo)
 import Distribution.Package (Dependency, Package(packageId))
 import Distribution.PackageDescription as Cabal (FlagName(FlagName), PackageDescription)
-import qualified Distribution.PackageDescription as Cabal (PackageDescription)
 import Distribution.PackageDescription.Configuration (finalizePackageDescription)
 import Distribution.PackageDescription.Parse (readPackageDescription)
 import Distribution.Simple.Utils (defaultPackageDesc, die, setupMessage)
 import Distribution.System as Cabal (buildArch, Platform(..))
 import qualified Distribution.System as Cabal (buildOS)
 import Distribution.Verbosity (Verbosity)
-import Prelude (($), (++), Bool(..), const, either, Either(..), Eq, error, FilePath, Int, IO, map, maybe, Maybe, Monad((>>=), return), not, Ord, Read, sequence, Show(show), String, unlines, words)
 import Prelude hiding ((.), break, lines, log, null, readFile, sum)
 import System.Console.GetOpt (ArgDescr(ReqArg, NoArg), ArgOrder(Permute), getOpt, OptDescr(Option))
 import System.Directory (doesFileExist, getCurrentDirectory)
@@ -105,6 +103,41 @@ defaultFlags =
     , buildEnv_ = EnvSet {cleanOS = "/", dependOS = "/", buildOS = "/"}
     }
 
+#if 1
+$(let f s = case s of
+              (_ : _) | last s == '_' -> Just (init s)
+              _ -> Nothing in
+  nameMakeLens ''Flags f)
+#else
+-- | Set how much progress messages get generated.
+verbosity :: Lens Flags Int
+verbosity = lens verbosity_ (\ b a -> a {verbosity_ = b})
+
+-- | Don't write anything, just output a description of what would have happened
+dryRun :: Lens Flags Bool
+dryRun = lens dryRun_ (\ b a -> a {dryRun_ = b})
+
+-- | Make sure the version number and package names of the supplied
+-- and generated debianizations match.
+validate :: Lens Flags Bool
+validate = lens validate_ (\ b a -> a {validate_ = b})
+
+-- | Debianize, SubstVars, or Usage.  I'm no longer sure what SubstVars does, but someone
+-- may still be using it.
+debAction :: Lens Flags DebAction
+debAction = lens debAction_ (\ b a -> a {debAction_ = b})
+
+-- | Cabal flag assignments to use when loading the cabal file.
+cabalFlagAssignments :: Lens Flags (Set (FlagName, Bool))
+cabalFlagAssignments = lens cabalFlagAssignments_ (\ a b -> b {cabalFlagAssignments_ = a})
+
+compilerFlavor :: Lens Flags CompilerFlavor
+compilerFlavor = lens compilerFlavor_ (\ a b -> b {compilerFlavor_ = a})
+
+buildEnv :: Lens Flags EnvSet
+buildEnv = lens buildEnv_ (\ b a -> a {buildEnv_ = b})
+#endif
+
 newFlags :: IO Flags
 newFlags = do
   (fns, _, _) <- getOpt Permute flagOptions <$> getArgs
@@ -142,34 +175,6 @@ flagOptions =
       Option "f" ["cabal-flags"] (ReqArg (\ s -> cabalFlagAssignments %= (Set.union (fromList (flagList s)))) "FLAG FLAG ...")
              "Flags to pass to cabal configure with the --flags= option "
       ]
-
--- | Set how much progress messages get generated.
-verbosity :: Lens Flags Int
-verbosity = lens verbosity_ (\ b a -> a {verbosity_ = b})
-
--- | Don't write anything, just output a description of what would have happened
-dryRun :: Lens Flags Bool
-dryRun = lens dryRun_ (\ b a -> a {dryRun_ = b})
-
--- | Make sure the version number and package names of the supplied
--- and generated debianizations match.
-validate :: Lens Flags Bool
-validate = lens validate_ (\ b a -> a {validate_ = b})
-
--- | Debianize, SubstVars, or Usage.  I'm no longer sure what SubstVars does, but someone
--- may still be using it.
-debAction :: Lens Flags DebAction
-debAction = lens debAction_ (\ b a -> a {debAction_ = b})
-
--- | Cabal flag assignments to use when loading the cabal file.
-cabalFlagAssignments :: Lens Flags (Set (FlagName, Bool))
-cabalFlagAssignments = lens cabalFlagAssignments_ (\ a b -> b {cabalFlagAssignments_ = a})
-
-compilerFlavor :: Lens Flags CompilerFlavor
-compilerFlavor = lens compilerFlavor_ (\ a b -> b {compilerFlavor_ = a})
-
-buildEnv :: Lens Flags EnvSet
-buildEnv = lens buildEnv_ (\ b a -> a {buildEnv_ = b})
 
 setBuildEnv :: MonadIO m => EnvSet -> Flags -> m Flags
 setBuildEnv envset atoms = return $ atoms {buildEnv_ = envset}

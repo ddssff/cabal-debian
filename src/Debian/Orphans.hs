@@ -12,20 +12,12 @@ import Debian.Changes (ChangeLog(..), ChangeLogEntry(..))
 import Debian.Pretty (PP(PP, unPP))
 import Debian.Relation (Relation(..), VersionReq(..), ArchitectureReq(..))
 import Distribution.Compiler (CompilerId(..))
-#if !MIN_VERSION_Cabal(1,18,0)
-import Distribution.Compiler (CompilerFlavor(..))
-#endif
-#if MIN_VERSION_Cabal(1,22,0)
 import Distribution.Compiler (AbiTag(..))
-#endif
 import Distribution.License (License(..))
 import Distribution.PackageDescription (PackageDescription(package), Executable(..))
 import Distribution.Simple.Compiler (Compiler(..))
 import Distribution.Version (VersionRange(..), foldVersionRange')
 import Language.Haskell.Extension (Language(..))
-#if !MIN_VERSION_Cabal(1,21,1)
-import Language.Haskell.Extension (Extension(..), KnownExtension(..))
-#endif
 import Network.URI (URI)
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr(..))
 import Text.PrettyPrint.HughesPJClass (Pretty(pPrint), text, hcat)
@@ -33,35 +25,15 @@ import Text.PrettyPrint.HughesPJClass (Pretty(pPrint), text, hcat)
 deriving instance Typeable Compiler
 deriving instance Typeable CompilerId
 
-#if !MIN_VERSION_Cabal(1,18,0)
-deriving instance Typeable CompilerFlavor
-deriving instance Typeable Language
-deriving instance Typeable Extension
-deriving instance Typeable KnownExtension
-#endif
-
-#if MIN_VERSION_Cabal(1,22,0)
 deriving instance Typeable AbiTag
 deriving instance Data AbiTag
 deriving instance Eq AbiTag
 deriving instance Ord AbiTag
-#endif
 
 deriving instance Data Compiler
 deriving instance Data CompilerId
 
-#if !MIN_VERSION_Cabal(1,18,0)
-deriving instance Data Extension
-deriving instance Data KnownExtension
-deriving instance Data Language
-deriving instance Data CompilerFlavor
-#endif
-
 deriving instance Ord Language
-#if !MIN_VERSION_Cabal(1,21,1)
-deriving instance Ord KnownExtension
-deriving instance Ord Extension
-#endif
 deriving instance Eq Compiler
 deriving instance Ord Compiler
 deriving instance Ord NameAddr
@@ -90,12 +62,6 @@ deriving instance Typeable VersionReq
 
 deriving instance Ord ChangeLog
 deriving instance Ord ChangeLogEntry
-
-#if !MIN_VERSION_Cabal(1,18,0)
-deriving instance Typeable License
-deriving instance Data Version
-deriving instance Data License
-#endif
 
 -- Convert from license to RPM-friendly description.  The strings are
 -- taken from TagsCheck.py in the rpmlint distribution.

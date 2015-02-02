@@ -46,9 +46,7 @@ import Debian.Release (parseReleaseName)
 import Debian.Time (getCurrentLocalRFC822Time)
 import Debian.Version (buildDebianVersion, DebianVersion, parseDebianVersion)
 import Distribution.Compiler (CompilerFlavor(GHC))
-#if MIN_VERSION_Cabal(1,21,0)
 import Distribution.Compiler (CompilerFlavor(GHCJS))
-#endif
 import Distribution.Package (Dependency(..), PackageIdentifier(..), PackageName(PackageName))
 import Distribution.PackageDescription (PackageDescription, FlagName(FlagName))
 import Distribution.PackageDescription as Cabal (allBuildInfo, BuildInfo(buildable, extraLibs), Executable(buildInfo, exeName), maintainer, author)
@@ -476,9 +474,7 @@ expandAtoms =
          GHCJS -> (cabalFlagAssignments . T.flags . A.debInfo) %= (Set.union (Set.fromList (flagList "--ghcjs")))
        builddir <- access T.buildDir >>= return . fromMaybe (case hc of
                                                                GHC -> "dist-ghc/build"
-#if MIN_VERSION_Cabal(1,21,0)
                                                                GHCJS -> "dist-ghcjs/build"
-#endif
                                                                _ -> error $ "Unexpected compiler: " ++ show hc)
        dDir <- dataDir
        expandApacheSites
@@ -512,14 +508,12 @@ expandAtoms =
             doAtom GHC (A.InstallCabalExec b name dest) = (A.atomSet . A.debInfo) %= (Set.insert $ A.Install b (builddir </> name </> name) dest)
             -- A GHCJS executable is a directory with files, copy them
             -- all into place.
-#if MIN_VERSION_Cabal(1,21,0)
             doAtom GHCJS (A.InstallCabalExec b name dest) =
                 (T.rulesFragments . A.debInfo) +=
                      (Text.unlines
                         [ pack ("binary-fixup" </> ppDisplay b) <> "::"
                         , pack ("\t(cd " <> builddir </> name <> " && find " <> name <.> "jsexe" <> " -type f) |\\\n" <>
                                        "\t  while read i; do install -Dp " <> builddir </> name </> "$$i debian" </> ppDisplay b </> makeRelative "/" dest </> "$$i; done\n") ])
-#endif
             doAtom _ _ = return ()
 
       -- Turn A.InstallCabalExecTo into a make rule

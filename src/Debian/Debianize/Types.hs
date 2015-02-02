@@ -191,7 +191,6 @@ debianMaintainer = S.maintainer . control
 debianUploaders :: Lens DebInfo [NameAddr]
 debianUploaders = S.uploaders . control
 
-#if 1
 -- | The architectures supported by a binary package
 binaryArchitectures :: BinPkgName -> Lens DebInfo (Maybe PackageArchitectures)
 binaryArchitectures b = B.architecture . binaryDebDescription b
@@ -203,7 +202,6 @@ sourcePriority = S.priority . control
 -- | The source package's section assignment - <http://www.debian.org/doc/debian-policy/ch-controlfields.html#s-f-Section>
 sourceSection :: Lens DebInfo (Maybe Section)
 sourceSection = S.section . control
-#endif
 
 -- | Map of the binary package priorities (FIXME: redundant with BinaryDebDescription)
 binaryPriority :: BinPkgName -> Lens DebInfo (Maybe PackagePriority)

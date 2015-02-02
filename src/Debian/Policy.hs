@@ -365,13 +365,9 @@ fromCabalLicense x =
       Cabal.Apache mver -> Apache
       Cabal.PublicDomain -> Public_Domain
       Cabal.AllRightsReserved -> OtherLicense "AllRightsReserved"
-#if MIN_VERSION_Cabal(1,19,2)
       Cabal.BSD2 -> BSD_2_Clause
       Cabal.MPL ver -> MPL
-#endif
-#if MIN_VERSION_Cabal(1,21,1)
       Cabal.UnspecifiedLicense -> OtherLicense (show x)
-#endif
       Cabal.OtherLicense -> OtherLicense (show x)
       Cabal.UnknownLicense s -> OtherLicense (show x)
 
@@ -379,9 +375,7 @@ toCabalLicense :: License -> Cabal.License
 toCabalLicense x =
     -- This needs to be finished
     case x of
-#if MIN_VERSION_Cabal(1,19,2)
       BSD_2_Clause -> Cabal.BSD2
-#endif
       BSD_3_Clause -> Cabal.BSD3
       BSD_4_Clause -> Cabal.BSD4
       OtherLicense s -> Cabal.UnknownLicense s

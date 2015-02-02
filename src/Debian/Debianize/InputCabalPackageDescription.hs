@@ -27,9 +27,7 @@ import Debian.Debianize.Prelude (intToVerbosity', read', (~=), (%=))
 import Debian.GHC (newestAvailableCompilerId)
 import Debian.Orphans ()
 import Distribution.Compiler (CompilerId, CompilerFlavor(..))
-#if MIN_VERSION_Cabal(1,22,0)
 import Distribution.Compiler (unknownCompilerInfo, AbiTag(NoAbiTag))
-#endif
 import Distribution.Package (Package(packageId), Dependency)
 import qualified Distribution.PackageDescription as Cabal (PackageDescription)
 import Distribution.PackageDescription as Cabal (PackageDescription, FlagName(FlagName))
@@ -124,9 +122,7 @@ flagOptions =
       Option "h?" ["help"] (NoArg (debAction ~= Usage))
              "Show this help text",
       Option "" ["ghc"] (NoArg (compilerFlavor ~= GHC)) "Generate packages for GHC - same as --with-compiler GHC",
-#if MIN_VERSION_Cabal(1,21,0)
       Option "" ["ghcjs"] (NoArg (compilerFlavor ~= GHCJS)) "Generate packages for GHCJS - same as --with-compiler GHCJS",
-#endif
       Option "" ["hugs"] (NoArg (compilerFlavor ~= Hugs)) "Generate packages for Hugs - same as --with-compiler GHC",
       Option "" ["with-compiler"] (ReqArg (\ s -> maybe (error $ "Invalid compiler id: " ++ show s)
                                                         (\ hc -> compilerFlavor ~= hc)
@@ -197,11 +193,7 @@ inputCabalization flags =
 inputCabalization' :: Verbosity -> Set (FlagName, Bool) -> CompilerId -> IO (Either [Dependency] PackageDescription)
 inputCabalization' vb flags cid = do
   genPkgDesc <- defaultPackageDesc vb >>= readPackageDescription vb
-#if MIN_VERSION_Cabal(1,22,0)
   let cid' = unknownCompilerInfo cid NoAbiTag
-#else
-  let cid' = cid
-#endif
   let finalized = finalizePackageDescription (toList flags) (const True) (Platform buildArch Cabal.buildOS) cid' [] genPkgDesc
   either (return . Left)
          (\ (pkgDesc, _) -> do bracket (setFileCreationMask 0o022) setFileCreationMask $ \ _ -> autoreconf vb pkgDesc

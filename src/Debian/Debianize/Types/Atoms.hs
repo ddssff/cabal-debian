@@ -343,11 +343,6 @@ data InstallFile
 showAtoms :: Atoms -> IO ()
 showAtoms x = putStrLn ("\nTop: " ++ show x ++ "\n")
 
-#if 0
-$(nameMakeLens ''Atoms (\ fname -> case splitAt (max 0 (length fname - 1)) fname of
-                                     (pre, "_") -> Just pre
-                                     _ -> Nothing))
-#else
 -- | Obsolete record containing verbosity, dryRun, validate, and debAction.
 flags :: Lens DebInfo Flags
 flags = lens flags_ (\ b a -> a {flags_ = b})
@@ -578,7 +573,6 @@ installInit = lens installInit_ (\ a b -> b {installInit_ = a})
 -- FIXME: change signature to BinPkgName -> Lens Atoms (Set (FilePath, Text))
 intermediateFiles :: Lens DebInfo (Set (FilePath, Text))
 intermediateFiles = lens intermediateFiles_ (\ a b -> b {intermediateFiles_ = a})
-#endif
 
 -- We need (%=_)
 link :: Monad m => BinPkgName -> FilePath -> FilePath -> StateT DebInfo m ()
@@ -597,14 +591,3 @@ installCabalExecTo :: Monad m => BinPkgName -> String -> FilePath -> StateT DebI
 installCabalExecTo b name dest = atomSet %= (Set.insert $ InstallCabalExecTo b name dest) >> return ()
 installDir :: Monad m => BinPkgName -> FilePath -> StateT DebInfo m ()
 installDir b dir = atomSet %= (Set.insert $ InstallDir b dir) >> return ()
-
-{-
-compilerFlavor :: Monad m => StateT Atoms m CompilerFlavor
-compilerFlavor = do
-#if MIN_VERSION_Cabal(1,20,0)
-  CompilerId x _ _ <- access ghcVersion
-#else
-  CompilerId x _ <- access ghcVersion
-#endif
-  return x
--}

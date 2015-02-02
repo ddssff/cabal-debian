@@ -166,13 +166,7 @@ toParagraph ld@LicenseDescription {} =
 defaultCopyrightDescription :: CopyrightDescription -> PackageDescription -> IO CopyrightDescription
 defaultCopyrightDescription copyright0 pkgDesc = do
   licenseFiles <- mapM (\ path -> liftIO (readFileMaybe path) >>= \ text -> return (path, text))
-#if MIN_VERSION_Cabal(1,19,0)
                        (Cabal.licenseFiles pkgDesc)
-#else
-                       (case Cabal.licenseFile pkgDesc of
-                          "" -> []
-                          path -> [path])
-#endif
   -- It is possible we might interpret the license file path
   -- as a license name, so I hang on to it here.
   let licenseFiles' = mapMaybe (\ (path, text) -> maybe Nothing (\ t -> Just (path, t)) text) licenseFiles

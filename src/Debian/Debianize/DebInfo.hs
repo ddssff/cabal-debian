@@ -42,6 +42,7 @@ module Debian.Debianize.DebInfo
     , installCabalExecTo
     , installDir
     ) where
+
 import Control.Monad.State (StateT)
 import Data.Generics (Data, Typeable)
 import Data.Lens.Lazy ((%=), lens, Lens)

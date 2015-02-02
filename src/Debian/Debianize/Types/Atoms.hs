@@ -4,17 +4,7 @@
 {-# LANGUAGE CPP, DeriveDataTypeable, TemplateHaskell #-}
 {-# OPTIONS_GHC -Wall #-}
 module Debian.Debianize.Types.Atoms
-
-    ( Atoms(Atoms, apacheSite_, backups_, binaryArchitectures_,
-      binaryPriorities_, binarySections_, buildDir_, comments_, debInfo_,
-      debVersion_, debianNameMap_, epochMap_, execMap_, executable_,
-      extraDevDeps_, extraLibMap_, maintainerOption_,
-      missingDependencies_, noDocumentationLibrary_, noProfilingLibrary_,
-      official_, omitLTDeps_, omitProfVersionDeps_,
-      overrideDebianNameBase_, packageDescription_, packageInfo_,
-      revision_, serverInfo_, sourceArchitectures_, sourcePackageName_,
-      sourcePriority_, sourceSection_, uploadersOption_,
-      utilsPackageNameBase_, website_, xDescription_)
+    ( Atoms
     , newAtoms
     , makeAtoms
     , PackageInfo(PackageInfo, cabalName, devDeb, docDeb, profDeb)
@@ -53,10 +43,16 @@ module Debian.Debianize.Types.Atoms
     , extraDevDeps
     , xDescription
     , comments
+    , binaryArchitectures
+    , sourcePriority
+    , sourceSection
+    , binaryPriorities
+    , binarySections
     ) where
 
 import Data.Generics (Data, Typeable)
-import Data.Lens.Lazy (lens, Lens)
+import Data.Lens.Template (nameMakeLens)
+import Data.List (init)
 import Data.Map as Map (Map)
 import Data.Monoid (Monoid(..))
 import Data.Set as Set (Set)
@@ -287,150 +283,7 @@ data InstallFile
 showAtoms :: Atoms -> IO ()
 showAtoms x = putStrLn ("\nTop: " ++ show x ++ "\n")
 
-debInfo :: Lens Atoms DebInfo
-debInfo = lens debInfo_ (\ a b -> b {debInfo_ = a})
-
--- | The build directory.  This can be set by an argument to the @Setup@ script.
--- When @Setup@ is run manually it is just @dist@, when it is run by
--- @dpkg-buildpackage@ the compiler name is appended, so it is typically
--- @dist-ghc@.  Cabal-debian needs the correct value of buildDir to find
--- the build results.
-buildDir :: Lens Atoms (Maybe FilePath)
-buildDir = lens buildDir_ (\ b a -> a {buildDir_ = b})
-
--- We need to update ghcVersion when this is changed, which means doing IO
--- buildEnv :: Lens Atoms (Maybe EnvSet)
--- buildEnv = lens buildEnv_ (\ b a -> a {buildEnv_ = b})
-
--- | Map from cabal Extra-Lib names to debian binary package names.
-extraLibMap :: Lens Atoms (Map String Relations)
-extraLibMap = lens extraLibMap_ (\ a b -> b {extraLibMap_ = a})
-
--- | Map from cabal Build-Tool names to debian binary package names.
-execMap :: Lens Atoms (Map String Relations)
-execMap = lens execMap_ (\ a b -> b {execMap_ = a})
-
-maintainerOption :: Lens Atoms (Maybe NameAddr)
-maintainerOption = lens maintainerOption_ (\ a b -> b {maintainerOption_ = a})
-
-uploadersOption :: Lens Atoms [NameAddr]
-uploadersOption = lens uploadersOption_ (\ a b -> b {uploadersOption_ = a})
-
--- | The result of loading a .cabal file
-packageDescription :: Lens Atoms PackageDescription
-packageDescription = lens packageDescription_ (\ a b -> b {packageDescription_ = a})
-
--- | Map from cabal version number ranges to debian package names.  This is a
--- result of the fact that only one version of a debian package can be
--- installed at a given time, while multiple versions of a cabal package can.
-debianNameMap :: Lens Atoms (Map PackageName VersionSplits)
-debianNameMap = lens debianNameMap_ (\ a b -> b {debianNameMap_ = a})
-
--- | Map of Debian epoch numbers assigned to cabal packages.
-epochMap :: Lens Atoms (Map PackageName Int)
-epochMap = lens epochMap_ (\ a b -> b {epochMap_ = a})
-
--- | Create a package to hold a cabal executable
-executable :: Lens Atoms (Map BinPkgName InstallFile)
-executable = lens executable_ (\ a b -> b {executable_ = a})
-
--- | Create a package for a server
-serverInfo :: Lens Atoms (Map BinPkgName Server)
-serverInfo = lens serverInfo_ (\ a b -> b {serverInfo_ = a})
-
--- | Create a package for a website
-website :: Lens Atoms (Map BinPkgName Site)
-website = lens website_ (\ a b -> b {website_ = a})
-
--- | Create a package for a timed backup script
-backups :: Lens Atoms (Map BinPkgName String)
-backups = lens backups_ (\ a b -> b {backups_ = a})
-
--- | Create an apache configuration file with the given
--- (domain, logdir, filetext).  This is called when expanding
--- the result of the website lens above.
-apacheSite :: Lens Atoms (Map BinPkgName (String, FilePath, Text))
-apacheSite = lens apacheSite_ (\ a b -> b {apacheSite_ = a})
-
--- * Lower level hints about the debianization
-
-
--- | List if packages that should be omitted from any
--- dependency list - e.g. a profiling package missing due
--- to use of noProfilingPackage lens elsewhere.
-missingDependencies :: Lens Atoms (Set BinPkgName)
-missingDependencies = lens missingDependencies_ (\ a b -> b {missingDependencies_ = a})
-
--- | Override the package name used to hold left over data files and executables.
-utilsPackageNameBase :: Lens Atoms (Maybe String)
-utilsPackageNameBase = lens utilsPackageNameBase_ (\ a b -> b {utilsPackageNameBase_ = a})
-
--- | Override the debian source package name constructed from the cabal name
-sourcePackageName :: Lens Atoms (Maybe SrcPkgName)
-sourcePackageName = lens sourcePackageName_ (\ a b -> b {sourcePackageName_ = a})
-
--- | Override the default base of the debian binary package names.
-overrideDebianNameBase :: Lens Atoms (Maybe DebBase)
-overrideDebianNameBase = lens overrideDebianNameBase_ (\ a b -> b {overrideDebianNameBase_ = a})
-
--- | Revision string used in constructing the debian verison number from the cabal version
-revision :: Lens Atoms (Maybe String)
-revision = lens revision_ (\ a b -> b {revision_ = a})
-
--- | Exact debian version number, overrides the version generated from the cabal version
-debVersion :: Lens Atoms (Maybe DebianVersion)
-debVersion = lens debVersion_ (\ b a -> a {debVersion_ = b})
-
--- | No longer sure what the purpose of this lens is.
-packageInfo :: Lens Atoms (Map PackageName PackageInfo)
-packageInfo = lens packageInfo_ (\ a b -> b {packageInfo_ = a})
-
--- | Do not put the version dependencies on the prof packages that we put on the dev packages.
-omitProfVersionDeps :: Lens Atoms Bool
-omitProfVersionDeps = lens omitProfVersionDeps_ (\ b a -> a {omitProfVersionDeps_ = b})
-
--- | Set this to filter any less-than dependencies out of the generated debian
--- dependencies.  (Not sure if this is implemented.)
-omitLTDeps :: Lens Atoms Bool
-omitLTDeps = lens omitLTDeps_ (\ b a -> a {omitLTDeps_ = b})
-
--- | Set this to omit the prof library deb.
-noProfilingLibrary :: Lens Atoms Bool
-noProfilingLibrary = lens noProfilingLibrary_ (\ b a -> a {noProfilingLibrary_ = b})
-
--- | Set this to omit the doc library deb.
-noDocumentationLibrary :: Lens Atoms Bool
-noDocumentationLibrary = lens noDocumentationLibrary_ (\ b a -> a {noDocumentationLibrary_ = b})
-
--- | Set this to apply offical Debian settings
-official :: Lens Atoms Bool
-official = lens official_ (\ b a -> a {official_ = b})
-
-{-
--- | The license information from the cabal file
-license :: Lens Atoms (Maybe License)
-license = lens license_ (\ a b -> b {license_ = a})
-
--- | The value in the cabal file's license-file field
-licenseFile :: Lens Atoms (Maybe Text)
-licenseFile = lens licenseFile_ (\ a b -> b {licenseFile_ = a})
--}
-
--- | The architectures supported by this source package - @Any@,
--- @All@, or some list of specific architectures.
-sourceArchitectures :: Lens Atoms (Maybe PackageArchitectures)
-sourceArchitectures = lens sourceArchitectures_ (\ a b -> b {sourceArchitectures_ = a})
-
--- | Extra install dependencies for the devel library.  Redundant
--- with depends, but kept for backwards compatibility.  Also, I
--- think maybe this is or was needed because it can be set before
--- the exact name of the library package is known.
-extraDevDeps :: Lens Atoms Relations
-extraDevDeps = lens extraDevDeps_ (\ a b -> b {extraDevDeps_ = a})
-
-xDescription :: Lens Atoms (Maybe Text)
-xDescription = lens xDescription_ (\ a b -> b {xDescription_ = a})
-
--- | Comment entries for the latest changelog entry (DebLogComments [[Text]])
-comments :: Lens Atoms (Maybe [[Text]])
-comments = lens comments_ (\ a b -> b {comments_ = a})
+$(let f s = case s of
+              (_ : _) | last s == '_' -> Just (init s)
+              _ -> Nothing in
+  nameMakeLens ''Atoms f)

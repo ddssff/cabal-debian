@@ -29,7 +29,7 @@ import Debian.Debianize.InputCabalPackageDescription (compilerFlavor, newFlags)
 import Debian.Debianize.Monad (CabalT, evalCabalT, execCabalM, execCabalT, liftCabal, execDebianT, DebianT, evalDebianT)
 import Debian.Debianize.Prelude ((%=), (++=), (+=), (~=), withCurrentDirectory)
 import Debian.Debianize.Types as T
-import Debian.Debianize.Types.Atoms as T
+import Debian.Debianize.Types.Atoms as A
 import qualified Debian.Debianize.Types.BinaryDebDescription as B
 import Debian.Debianize.Types.CopyrightDescription
 import qualified Debian.Debianize.Types.SourceDebDescription as S
@@ -65,7 +65,7 @@ testAtoms :: IO Atoms
 testAtoms = newFlags >>= newAtoms >>= return . ghc763
     where
       ghc763 :: Atoms -> Atoms
-      ghc763 atoms = setL (compilerFlavor . T.flags . T.debInfo) GHC atoms
+      ghc763 atoms = setL (compilerFlavor . T.flags . A.debInfo) GHC atoms
 
 -- | Create a Debianization based on a changelog entry and a license
 -- value.  Uses the currently installed versions of debhelper and
@@ -73,17 +73,17 @@ testAtoms = newFlags >>= newAtoms >>= return . ghc763
 newDebianization :: Monad m => ChangeLog -> Maybe Int -> Maybe StandardsVersion -> CabalT m ()
 newDebianization (ChangeLog (WhiteSpace {} : _)) _ _ = error "defaultDebianization: Invalid changelog entry"
 newDebianization (log@(ChangeLog (entry : _))) level standards =
-    do (T.changelog . T.debInfo) ~= Just log
-       (T.compat . T.debInfo) ~= level
-       (T.source . T.debInfo) ~= Just (SrcPkgName (logPackage entry))
-       (S.maintainer . T.control . T.debInfo) ~= either error Just (parseMaintainer (logWho entry))
-       (T.standardsVersion . T.debInfo) ~= standards
+    do (T.changelog . A.debInfo) ~= Just log
+       (T.compat . A.debInfo) ~= level
+       (T.source . A.debInfo) ~= Just (SrcPkgName (logPackage entry))
+       (S.maintainer . T.control . A.debInfo) ~= either error Just (parseMaintainer (logWho entry))
+       (T.standardsVersion . A.debInfo) ~= standards
 newDebianization _ _ _ = error "Invalid changelog"
 
 newDebianization' :: Monad m => Maybe Int -> Maybe StandardsVersion -> CabalT m ()
 newDebianization' level standards =
-    do (T.compat . T.debInfo) ~= level
-       (T.standardsVersion . T.debInfo) ~= standards
+    do (T.compat . A.debInfo) ~= level
+       (T.standardsVersion . A.debInfo) ~= standards
 
 tests :: Test
 tests = TestLabel "Debianization Tests" (TestList [-- 1 and 2 do not input a cabal package - we're not ready to
@@ -105,8 +105,8 @@ issue23 label =
     TestLabel label $
     TestCase (withCurrentDirectory "test-data/alex/input" $
               do atoms <- testAtoms
-                 actual <- evalCabalT (do (T.changelog . T.debInfo) ~= Just (ChangeLog [testEntry])
-                                          (T.compat . T.debInfo) ~= Just 9
+                 actual <- evalCabalT (do (T.changelog . A.debInfo) ~= Just (ChangeLog [testEntry])
+                                          (T.compat . A.debInfo) ~= Just 9
                                           T.official ~= True
                                           Map.toList <$> liftCabal debianizationFileMap) atoms
                  assertEqual label
@@ -445,7 +445,7 @@ test4 label =
                                            (BinPkgName "libghc-clckwrks-plugin-bugs-dev", BinPkgName "haskell-clckwrks-plugin-bugs-utils"),
                                            (BinPkgName "libghc-clckwrks-dev", BinPkgName "haskell-clckwrks-utils")]) serverNames
 
-      theSite :: BinPkgName -> T.Site
+      theSite :: BinPkgName -> A.Site
       theSite deb =
           Site { domain = hostname'
                , serverAdmin = "logic@seereason.com"

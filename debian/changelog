@@ -1,3 +1,9 @@
+haskell-cabal-debian (4.22) unstable; urgency=low
+
+  * Big module reorganization for more type safety.
+
+ -- David Fox <dsf@seereason.com>  Tue, 03 Feb 2015 13:22:29 -0800
+
 haskell-cabal-debian (4.21.1) unstable; urgency=low
 
   * Fix --buildenvdir command line option.

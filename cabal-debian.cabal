@@ -1,5 +1,5 @@
 Name:           cabal-debian
-Version:        4.21.1
+Version:        4.22
 Copyright:      Copyright (c) 2007-2014, David Fox, Jeremy Shaw
 License:        BSD3
 License-File:   debian/copyright
@@ -156,6 +156,7 @@ Library
    base < 5,
    Cabal >= 1.9,
    containers,
+   data-default,
    data-lens,
    data-lens-template,
    deepseq,
@@ -186,10 +187,11 @@ Library
    Debian.GHC
    Debian.Policy
    Distribution.Version.Invert
-   Debian.Debianize.Atoms
+   Debian.Debianize.BasicInfo
    Debian.Debianize.BinaryDebDescription
    Debian.Debianize.BuildDependencies
    Debian.Debianize.Bundled
+   Debian.Debianize.CabalInfo
    Debian.Debianize.Changelog
    Debian.Debianize.CopyrightDescription
    Debian.Debianize.DebianName
@@ -198,8 +200,8 @@ Library
    Debian.Debianize.Files
    Debian.Debianize.Finalize
    Debian.Debianize.Goodies
-   Debian.Debianize.Input
-   Debian.Debianize.InputCabalPackageDescription
+   Debian.Debianize.InputCabal
+   Debian.Debianize.InputDebian
    Debian.Debianize.Interspersed
    Debian.Debianize.Monad
    Debian.Debianize.Options

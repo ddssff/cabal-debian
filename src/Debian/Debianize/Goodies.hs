@@ -28,9 +28,9 @@ import Data.Monoid ((<>))
 import Data.Set as Set (insert, singleton, union)
 import Data.Text as Text (pack, Text, unlines)
 import qualified Debian.Debianize.DebInfo as D
-import Debian.Debianize.Monad (Atoms, CabalT, DebianT, execCabalM)
+import Debian.Debianize.Monad (CabalInfo, CabalT, DebianT, execCabalM)
 import Debian.Debianize.Prelude ((%=), (+++=), (++=), (+=), stripWith)
-import qualified Debian.Debianize.Atoms as A
+import qualified Debian.Debianize.CabalInfo as A
 import qualified Debian.Debianize.BinaryDebDescription as B
 import Debian.Orphans ()
 import Debian.Policy (apacheAccessLog, apacheErrorLog, apacheLogDirectory, databaseDirectory, serverAccessLog, serverAppLog)
@@ -168,7 +168,7 @@ watchAtom :: PackageName -> Text
 watchAtom (PackageName pkgname) =
     pack $ "version=3\nhttp://hackage.haskell.org/package/" ++ pkgname ++ "/distro-monitor .*-([0-9\\.]+)\\.(?:zip|tgz|tbz|txz|(?:tar\\.(?:gz|bz2|xz)))\n"
 
-siteAtoms :: BinPkgName -> D.Site -> Atoms -> Atoms
+siteAtoms :: BinPkgName -> D.Site -> CabalInfo -> CabalInfo
 siteAtoms b site =
     execCabalM
       (do (D.atomSet . A.debInfo) %= (Set.insert $ D.InstallDir b "/etc/apache2/sites-available")
@@ -233,8 +233,7 @@ siteAtoms b site =
                    , "</VirtualHost>" ]
       port' = pack (show (D.port (D.server site)))
 
--- FIXME - use Atoms
-serverAtoms :: BinPkgName -> D.Server -> Bool -> Atoms -> Atoms
+serverAtoms :: BinPkgName -> D.Server -> Bool -> CabalInfo -> CabalInfo
 serverAtoms b server' isSite =
     modL (D.postInst . A.debInfo) (insertWith (\ old new -> if old /= new then error ("serverAtoms: " ++ show old ++ " -> " ++ show new) else old) b debianPostinst) .
     modL (D.installInit . A.debInfo) (Map.insertWith (\ old new -> if old /= new then error ("serverAtoms: " ++ show old ++ " -> " ++ show new) else old) b debianInit) .
@@ -299,8 +298,7 @@ serverAtoms b server' isSite =
 
 -- | A configuration file for the logrotate facility, installed via a line
 -- in debianFiles.
--- FIXME - use Atoms
-serverLogrotate' :: BinPkgName -> Atoms -> Atoms
+serverLogrotate' :: BinPkgName -> CabalInfo -> CabalInfo
 serverLogrotate' b =
     modL (D.logrotateStanza . A.debInfo) (insertWith Set.union b (singleton (Text.unlines $ [ pack (serverAccessLog b) <> " {"
                                  , "  weekly"
@@ -315,8 +313,7 @@ serverLogrotate' b =
                                  , "  missingok"
                                  , "}" ])))
 
--- FIXME - use Atoms
-backupAtoms :: BinPkgName -> String -> Atoms -> Atoms
+backupAtoms :: BinPkgName -> String -> CabalInfo -> CabalInfo
 backupAtoms b name =
     modL (D.postInst . A.debInfo) (insertWith (\ old new -> if old /= new then error $ "backupAtoms: " ++ show old ++ " -> " ++ show new else old) b
                  (Text.unlines $
@@ -332,20 +329,17 @@ backupAtoms b name =
                                , D.sourceDir = Nothing
                                , D.destDir = Just "/etc/cron.hourly" })
 
--- FIXME - use Atoms
-execAtoms :: BinPkgName -> D.InstallFile -> Atoms -> Atoms
+execAtoms :: BinPkgName -> D.InstallFile -> CabalInfo -> CabalInfo
 execAtoms b ifile r =
     modL (D.rulesFragments . A.debInfo) (Set.insert (pack ("build" </> ppDisplay b ++ ":: build-ghc-stamp\n"))) .
     fileAtoms b ifile $
     r
 
--- FIXME - use Atoms
-fileAtoms :: BinPkgName -> D.InstallFile -> Atoms -> Atoms
+fileAtoms :: BinPkgName -> D.InstallFile -> CabalInfo -> CabalInfo
 fileAtoms b installFile' r =
     fileAtoms' b (D.sourceDir installFile') (D.execName installFile') (D.destDir installFile') (D.destName installFile') r
 
--- FIXME - use Atoms
-fileAtoms' :: BinPkgName -> Maybe FilePath -> String -> Maybe FilePath -> String -> Atoms -> Atoms
+fileAtoms' :: BinPkgName -> Maybe FilePath -> String -> Maybe FilePath -> String -> CabalInfo -> CabalInfo
 fileAtoms' b sourceDir' execName' destDir' destName' r =
     case (sourceDir', execName' == destName') of
       (Nothing, True) -> execCabalM ((D.atomSet . A.debInfo) %= (Set.insert $ D.InstallCabalExec b execName' d)) r

@@ -1,58 +1,29 @@
 -- | Input the Cabal package description.
 {-# LANGUAGE CPP, DeriveDataTypeable, TemplateHaskell #-}
-module Debian.Debianize.InputCabalPackageDescription
-    ( Flags(..)
-    , EnvSet(..)
-    , DebType(..)
-    , DebAction(..)
-    , newFlags
-    , verbosity, dryRun, validate, debAction, cabalFlagAssignments, compilerFlavor, buildEnv, setBuildEnv
-    , inputCabalization
-    , inputCabalization'
-    , flagOptions
-    ) where
+module Debian.Debianize.BasicInfo where
 
 import Control.Applicative ((<$>))
 import Control.Category ((.))
-import Control.Exception (bracket)
-import Control.Monad (when)
-import Control.Monad.State (execStateT, StateT)
+import Control.Monad.State (StateT, execStateT)
 import Control.Monad.Trans (MonadIO)
 import Data.Char (toLower, toUpper)
+import Data.Default (Default(def))
 import Data.Generics (Data, Typeable)
 import Data.Lens.Template (nameMakeLens)
 import Data.Monoid (Monoid(..))
-import Data.Set as Set (fromList, Set, toList, union)
-import Debian.Debianize.Prelude ((%=), intToVerbosity', read', (~=))
-import Debian.GHC (newestAvailableCompilerId)
+import Data.Set as Set (fromList, Set, union)
+import Debian.Debianize.Prelude ((%=), read', (~=))
 import Debian.Orphans ()
-import Distribution.Compiler (AbiTag(NoAbiTag), CompilerFlavor(..), CompilerId, unknownCompilerInfo)
-import Distribution.Package (Dependency, Package(packageId))
-import Distribution.PackageDescription as Cabal (FlagName(FlagName), PackageDescription)
-import Distribution.PackageDescription.Configuration (finalizePackageDescription)
-import Distribution.PackageDescription.Parse (readPackageDescription)
-import Distribution.Simple.Utils (defaultPackageDesc, die, setupMessage)
-import Distribution.System as Cabal (buildArch, Platform(..))
-import qualified Distribution.System as Cabal (buildOS)
-import Distribution.Verbosity (Verbosity)
+import Distribution.Compiler (CompilerFlavor(..))
+import Distribution.PackageDescription as Cabal (FlagName(FlagName))
 import Prelude hiding ((.), break, lines, log, null, readFile, sum)
 import System.Console.GetOpt (ArgDescr(ReqArg, NoArg), ArgOrder(Permute), getOpt, OptDescr(Option))
-import System.Directory (doesFileExist, getCurrentDirectory)
 import System.Environment (getArgs)
-import System.Exit (ExitCode(..))
 import System.FilePath ((</>))
-import System.Posix.Files (setFileCreationMask)
-import System.Process (system)
 import Text.Read (readMaybe)
 
-data EnvSet = EnvSet
-    { cleanOS :: FilePath  -- ^ The output of the debootstrap command
-    , dependOS :: FilePath -- ^ An environment with build dependencies installed
-    , buildOS :: FilePath  -- ^ An environment where we have built a package
-    } deriving (Eq, Ord, Show, Data, Typeable)
-
--- | This record supplies enough information to locate and load the
--- cabal file from the IO monad.
+-- | This record supplies enough information to locate and load a debianization
+-- or a cabal file from the IO monad.
 data Flags = Flags
     {
       verbosity_ :: Int
@@ -86,32 +57,33 @@ data Flags = Flags
     -- all the paths in EnvSet are "/".
     } deriving (Eq, Ord, Show, Data, Typeable)
 
+data EnvSet = EnvSet
+    { cleanOS :: FilePath  -- ^ The output of the debootstrap command
+    , dependOS :: FilePath -- ^ An environment with build dependencies installed
+    , buildOS :: FilePath  -- ^ An environment where we have built a package
+    } deriving (Eq, Ord, Show, Data, Typeable)
+
 data DebAction = Usage | Debianize | SubstVar DebType deriving (Read, Show, Eq, Ord, Data, Typeable)
 
 -- | A redundant data type, too lazy to expunge.
 data DebType = Dev | Prof | Doc deriving (Eq, Ord, Read, Show, Data, Typeable)
 
-defaultFlags :: Flags
-defaultFlags =
-    Flags
-    { verbosity_ = 1
-    , debAction_ = Debianize
-    , dryRun_ = False
-    , validate_ = False
-    , compilerFlavor_ = GHC
-    , cabalFlagAssignments_ = mempty
-    , buildEnv_ = EnvSet {cleanOS = "/", dependOS = "/", buildOS = "/"}
-    }
+instance Default Flags where
+    def = Flags
+          { verbosity_ = 1
+          , debAction_ = Debianize
+          , dryRun_ = False
+          , validate_ = False
+          , compilerFlavor_ = GHC
+          , cabalFlagAssignments_ = mempty
+          , buildEnv_ = EnvSet {cleanOS = "/", dependOS = "/", buildOS = "/"}
+          }
 
+-- Build the lenses
 $(let f s = case s of
               (_ : _) | last s == '_' -> Just (init s)
               _ -> Nothing in
   nameMakeLens ''Flags f)
-
-newFlags :: IO Flags
-newFlags = do
-  (fns, _, _) <- getOpt Permute flagOptions <$> getArgs
-  execStateT (sequence fns) defaultFlags
 
 flagOptions :: MonadIO m => [OptDescr (StateT Flags m ())]
 flagOptions =
@@ -146,47 +118,13 @@ flagOptions =
              "Flags to pass to cabal configure with the --flags= option "
       ]
 
-setBuildEnv :: MonadIO m => EnvSet -> Flags -> m Flags
-setBuildEnv envset atoms = return $ atoms {buildEnv_ = envset}
-
-inputCabalization :: Flags -> IO PackageDescription
-inputCabalization flags =
-    do let root = dependOS (buildEnv_ flags)
-       let cid = newestAvailableCompilerId root (compilerFlavor_ flags)
-       ePkgDesc <- inputCabalization' (intToVerbosity' $ verbosity_ flags) (cabalFlagAssignments_ flags) cid
-       either (\ deps -> getCurrentDirectory >>= \ here ->
-                         error $ "Missing dependencies in cabal package at " ++ here ++ ": " ++ show deps)
-              return
-              ePkgDesc
-
--- | Load a GenericPackageDescription from the current directory and
--- from that create a finalized PackageDescription for the given
--- CompilerId.
-inputCabalization' :: Verbosity -> Set (FlagName, Bool) -> CompilerId -> IO (Either [Dependency] PackageDescription)
-inputCabalization' vb flags cid = do
-  genPkgDesc <- defaultPackageDesc vb >>= readPackageDescription vb
-  let cid' = unknownCompilerInfo cid NoAbiTag
-  let finalized = finalizePackageDescription (toList flags) (const True) (Platform buildArch Cabal.buildOS) cid' [] genPkgDesc
-  either (return . Left)
-         (\ (pkgDesc, _) -> do bracket (setFileCreationMask 0o022) setFileCreationMask $ \ _ -> autoreconf vb pkgDesc
-                               return (Right pkgDesc))
-         finalized
-
--- | Run the package's configuration script.
-autoreconf :: Verbosity -> Cabal.PackageDescription -> IO ()
-autoreconf verbose pkgDesc = do
-    ac <- doesFileExist "configure.ac"
-    when ac $ do
-        c <- doesFileExist "configure"
-        when (not c) $ do
-            setupMessage verbose "Running autoreconf" (packageId pkgDesc)
-            ret <- system "autoreconf"
-            case ret of
-              ExitSuccess -> return ()
-              ExitFailure n -> die ("autoreconf failed with status " ++ show n)
-
 -- Lifted from Distribution.Simple.Setup, since it's not exported.
 flagList :: String -> [(FlagName, Bool)]
 flagList = map tagWithValue . words
   where tagWithValue ('-':name) = (FlagName (map toLower name), False)
         tagWithValue name       = (FlagName (map toLower name), True)
+
+newFlags :: IO Flags
+newFlags = do
+  (fns, _, _) <- getOpt Permute flagOptions <$> getArgs
+  execStateT (sequence fns) def

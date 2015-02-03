@@ -19,18 +19,18 @@ import Data.Set as Set (fromList, union, insert)
 import Data.Text as Text (intercalate, split, Text, unlines, unpack)
 import Data.Version (Version(Version))
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(..), parseEntry)
+import Debian.Debianize.BasicInfo (compilerFlavor, newFlags)
+import qualified Debian.Debianize.BinaryDebDescription as B
+import Debian.Debianize.CabalInfo as A
+import Debian.Debianize.CopyrightDescription
 import Debian.Debianize.DebianName (mapCabal, splitCabal)
 import qualified Debian.Debianize.DebInfo as D
 import Debian.Debianize.Files (debianizationFileMap)
 import Debian.Debianize.Finalize (debianize, finalizeDebianization)
 import Debian.Debianize.Goodies (doBackups, doExecutable, doServer, doWebsite, tightDependencyFixup)
-import Debian.Debianize.Input (inputDebianization)
-import Debian.Debianize.InputCabalPackageDescription (compilerFlavor, newFlags)
+import Debian.Debianize.InputDebian (inputDebianization)
 import Debian.Debianize.Monad (CabalT, evalCabalT, execCabalM, execCabalT, liftCabal, execDebianT, DebianT, evalDebianT)
 import Debian.Debianize.Prelude ((%=), (++=), (+=), (~=), withCurrentDirectory)
-import Debian.Debianize.Atoms as A
-import qualified Debian.Debianize.BinaryDebDescription as B
-import Debian.Debianize.CopyrightDescription
 import qualified Debian.Debianize.SourceDebDescription as S
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
 import Debian.Pretty (ppDisplay)
@@ -60,10 +60,10 @@ defaultAtoms =
        mapCabal (PackageName "gtk2hs-buildtools") (DebBase "gtk2hs-buildtools")
 
 -- | Force the compiler version to 7.6 to get predictable outputs
-testAtoms :: IO Atoms
-testAtoms = newFlags >>= newAtoms >>= return . ghc763
+testAtoms :: IO CabalInfo
+testAtoms = newFlags >>= newCabalInfo >>= return . ghc763
     where
-      ghc763 :: Atoms -> Atoms
+      ghc763 :: CabalInfo -> CabalInfo
       ghc763 atoms = setL (compilerFlavor . D.flags . A.debInfo) GHC atoms
 
 -- | Create a Debianization based on a changelog entry and a license
@@ -129,7 +129,7 @@ test1 label =
                  diff <- diffDebianizations (getL debInfo (testDeb1 atoms)) (getL debInfo deb)
                  assertEqual label [] diff)
     where
-      testDeb1 :: Atoms -> Atoms
+      testDeb1 :: CabalInfo -> CabalInfo
       testDeb1 atoms =
           execCabalM
             (do defaultAtoms
@@ -229,7 +229,7 @@ test3 label =
                  diff <- diffDebianizations (getL debInfo (testDeb2 atoms)) (getL debInfo deb)
                  assertEqual label [] diff)
     where
-      testDeb2 :: Atoms -> Atoms
+      testDeb2 :: CabalInfo -> CabalInfo
       testDeb2 atoms =
           execCabalM
             (do defaultAtoms
@@ -409,7 +409,7 @@ test4 label =
              newDebianization' (Just 7) (Just (StandardsVersion 3 9 4 Nothing))
 {-
       customize log = modifyM (lift . customize' log)
-      customize' :: Maybe ChangeLog -> Atoms -> IO Atoms
+      customize' :: Maybe ChangeLog -> CabalInfo -> IO CabalInfo
       customize' log atoms =
           execCabalT (newDebianization' (Just 7) (Just (StandardsVersion 3 9 4 Nothing))) .
           modL T.control (\ y -> y {T.homepage = Just "http://www.clckwrks.com/"}) .
@@ -594,7 +594,7 @@ test8 label =
                       outTop = "test-data/artvaluereport-data/output"
                   (old :: D.DebInfo) <- withCurrentDirectory outTop $ newFlags >>= execDebianT inputDebianization . D.makeDebInfo
                   let log = getL D.changelog old
-                  new <- withCurrentDirectory inTop $ newFlags >>= newAtoms >>= execCabalT (debianize (defaultAtoms >> customize log))
+                  new <- withCurrentDirectory inTop $ newFlags >>= newCabalInfo >>= execCabalT (debianize (defaultAtoms >> customize log))
                   diff <- diffDebianizations old (getL debInfo new)
                   assertEqual label [] diff
              )
@@ -612,7 +612,7 @@ test9 label =
     TestLabel label $
     TestCase (do let inTop = "test-data/alex/input"
                      outTop = "test-data/alex/output"
-                 new <- withCurrentDirectory inTop $ newFlags >>= newAtoms >>= execCabalT (debianize (defaultAtoms >> customize))
+                 new <- withCurrentDirectory inTop $ newFlags >>= newCabalInfo >>= execCabalT (debianize (defaultAtoms >> customize))
                  let Just (ChangeLog (entry : _)) = getL (D.changelog . debInfo) new
                  old <- withCurrentDirectory outTop $ newFlags >>= execDebianT (inputDebianization >> copyChangelogDate (logDate entry)) . D.makeDebInfo
                  diff <- diffDebianizations old (getL debInfo new)
@@ -648,15 +648,16 @@ test10 label =
     TestLabel label $
     TestCase (do let inTop = "test-data/archive/input"
                      outTop = "test-data/archive/output"
-                 new <- withCurrentDirectory inTop $ newFlags >>= newAtoms >>= execCabalT (debianize (defaultAtoms >> customize))
-                 let Just (ChangeLog (entry : _)) = getL (D.changelog . debInfo) new
-                 old <- withCurrentDirectory outTop $ newFlags >>= execDebianT (inputDebianization >> copyChangelogDate (logDate entry)) . D.makeDebInfo
+                 old <- withCurrentDirectory outTop $ newFlags >>= execDebianT inputDebianization . D.makeDebInfo
+                 let Just (ChangeLog (entry : _)) = getL D.changelog old
+                 new <- withCurrentDirectory inTop $ newFlags >>= newCabalInfo >>= execCabalT (debianize (defaultAtoms >> customize >> (liftCabal $ copyChangelogDate $ logDate entry)))
                  diff <- diffDebianizations old (getL debInfo new)
                  assertEqual label [] diff)
     where
       customize :: CabalT IO ()
       customize =
-          do (D.sourcePackageName . A.debInfo) ~= Just (SrcPkgName "seereason-darcs-backups")
+          do (D.sourceFormat . A.debInfo) ~= Just Native3
+             (D.sourcePackageName . A.debInfo) ~= Just (SrcPkgName "seereason-darcs-backups")
              (D.compat . debInfo) ~= Just 5
              (S.standardsVersion . D.control . debInfo) ~= Just (StandardsVersion 3 8 1 Nothing)
              (S.maintainer . D.control . debInfo) ~= either (const Nothing) Just (parseMaintainer "David Fox <dsf@seereason.com>")

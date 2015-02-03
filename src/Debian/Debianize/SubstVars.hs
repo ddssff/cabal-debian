@@ -21,11 +21,11 @@ import Data.Maybe (catMaybes, fromMaybe, listToMaybe)
 import qualified Data.Set as Set (member, Set)
 import Data.Text (pack)
 import Debian.Control (Control'(unControl), ControlFunctions(lookupP, parseControl, stripWS), Field'(Field))
+import Debian.Debianize.BasicInfo (DebType(..), dryRun)
 import qualified Debian.Debianize.DebInfo as D (flags, extraLibMap, missingDependencies)
-import Debian.Debianize.InputCabalPackageDescription (DebType(..), dryRun)
 import Debian.Debianize.Monad (CabalT)
 import Debian.Debianize.Prelude ((!), buildDebVersionMap, cond, DebMap, debOfFile, diffFile, dpkgFileMap, modifyM, replaceFile, showDeps)
-import qualified Debian.Debianize.Atoms as A (Atoms, debInfo, packageDescription, packageInfo, PackageInfo(PackageInfo, cabalName, devDeb, docDeb, profDeb))
+import qualified Debian.Debianize.CabalInfo as A (CabalInfo, debInfo, packageDescription, packageInfo, PackageInfo(PackageInfo, cabalName, devDeb, docDeb, profDeb))
 import Debian.Orphans ()
 import Debian.Pretty (ppDisplay)
 import Debian.Relation (BinPkgName(BinPkgName), Relation, Relations)
@@ -114,7 +114,7 @@ substvars' debType control =
       bd = maybe "" (\ (Field (_a, b)) -> stripWS b) . lookupP "Build-Depends" . head . unControl $ control
       bdi = maybe "" (\ (Field (_a, b)) -> stripWS b) . lookupP "Build-Depends-Indep" . head . unControl $ control
 
-libPaths :: DebMap -> A.Atoms -> IO A.Atoms
+libPaths :: DebMap -> A.CabalInfo -> IO A.CabalInfo
 libPaths debVersions atoms =
     do a <- getDirPaths "/usr/lib"
        b <- getDirPaths ("/usr/lib/haskell-packages" </> display buildCompilerId </> "lib")
@@ -123,7 +123,7 @@ libPaths debVersions atoms =
     where
       getDirPaths path = try (getDirectoryContents path) >>= return . map (\ x -> (path, x)) . either (\ (_ :: SomeException) -> []) id
 
-packageInfo' :: DebMap -> A.Atoms -> (FilePath, String) -> ReaderT (Map.Map FilePath (Set.Set D.BinPkgName)) IO A.Atoms
+packageInfo' :: DebMap -> A.CabalInfo -> (FilePath, String) -> ReaderT (Map.Map FilePath (Set.Set D.BinPkgName)) IO A.CabalInfo
 packageInfo' debVersions atoms (d, f) =
     case parseNameVersion f of
       Nothing -> return atoms
@@ -194,7 +194,7 @@ cabalDependencies =
 
 -- |Debian packages don't have per binary package build dependencies,
 -- so we just gather them all up here.
-allBuildDepends :: A.Atoms -> [Dependency] -> [Dependency] -> [Dependency] -> [String] -> [Dependency_]
+allBuildDepends :: A.CabalInfo -> [Dependency] -> [Dependency] -> [Dependency] -> [String] -> [Dependency_]
 allBuildDepends atoms buildDepends buildTools pkgconfigDepends extraLibs =
     nub $ map BuildDepends buildDepends ++
           map BuildTools buildTools ++

@@ -17,13 +17,13 @@ import Data.Map as Map (lookup, Map)
 import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing)
 import Data.Set as Set (empty, fold, fromList, map, member, Set, singleton, toList, union)
 import Data.Version (showVersion, Version)
+import Debian.Debianize.BasicInfo (buildEnv, compilerFlavor, EnvSet(dependOS))
 import Debian.Debianize.Bundled (builtIn)
 import qualified Debian.Debianize.DebInfo as D
 import Debian.Debianize.DebianName (mkPkgName, mkPkgName')
-import Debian.Debianize.InputCabalPackageDescription (buildEnv, compilerFlavor, EnvSet(dependOS))
-import Debian.Debianize.Monad as Monad (Atoms, CabalT)
-import qualified Debian.Debianize.Atoms as A
+import Debian.Debianize.Monad as Monad (CabalInfo, CabalT)
 import qualified Debian.Debianize.BinaryDebDescription as B
+import qualified Debian.Debianize.CabalInfo as A
 import qualified Debian.Debianize.SourceDebDescription as S
 import Debian.Debianize.VersionSplits (packageRangesFromVersionSplits)
 import Debian.Orphans ()
@@ -74,7 +74,7 @@ allBuildDepends buildDepends' buildTools' pkgconfigDepends' extraLibs' =
                       List.map PkgConfigDepends pkgconfigDepends' ++
                       [ExtraLibs (fixDeps atoms extraLibs')]
     where
-      fixDeps :: Atoms -> [String] -> Relations
+      fixDeps :: CabalInfo -> [String] -> Relations
       fixDeps atoms xs =
           concatMap (\ cab -> fromMaybe [[D.Rel (D.BinPkgName ("lib" ++ List.map toLower cab ++ "-dev")) Nothing Nothing]]
                                         (Map.lookup cab (getL (D.extraLibMap . A.debInfo) atoms))) xs
@@ -366,7 +366,7 @@ debianVersion' name v =
     do atoms <- get
        return $ parseDebianVersion (maybe "" (\ n -> show n ++ ":") (Map.lookup name (getL A.epochMap atoms)) ++ showVersion v)
 
-debianVersion'' :: Atoms -> PackageName -> Version -> DebianVersion
+debianVersion'' :: CabalInfo -> PackageName -> Version -> DebianVersion
 debianVersion'' atoms name v = parseDebianVersion (maybe "" (\ n -> show n ++ ":") (Map.lookup name (getL A.epochMap atoms)) ++ showVersion v)
 
 data Rels a = And {unAnd :: [Rels a]} | Or {unOr :: [Rels a]} | Rel' {unRel :: a} deriving Show

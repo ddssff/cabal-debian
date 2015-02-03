@@ -353,6 +353,8 @@ instance Pretty License where
     pPrint Zope = text "Zope"
     pPrint (OtherLicense s) = text s
 
+-- | Convert the Cabal license to a Debian license.  I would welcome input
+-- on how to make this more correct.
 fromCabalLicense :: Cabal.License -> License
 fromCabalLicense x =
     case x of
@@ -371,6 +373,8 @@ fromCabalLicense x =
       Cabal.OtherLicense -> OtherLicense (show x)
       Cabal.UnknownLicense s -> OtherLicense (show x)
 
+-- | Convert a Debian license to a Cabal license.  Additional cases
+-- and corrections welcome.
 toCabalLicense :: License -> Cabal.License
 toCabalLicense x =
     -- This needs to be finished

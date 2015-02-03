@@ -10,11 +10,11 @@ import Control.Category ((.))
 import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Lens.Lazy (access)
 import Data.List as List (unlines)
-import Debian.Debianize.Atoms (newAtoms, debInfo)
+import Debian.Debianize.BasicInfo (DebAction(Debianize, SubstVar, Usage), debAction, newFlags)
+import Debian.Debianize.CabalInfo (newCabalInfo, debInfo)
 import Debian.Debianize.DebInfo (flags)
-import Debian.Debianize.Details (debianDefaultAtoms)
+import Debian.Debianize.Details (debianDefaults)
 import Debian.Debianize.Finalize (debianize)
-import Debian.Debianize.InputCabalPackageDescription (DebAction(Debianize, SubstVar, Usage), debAction, newFlags)
 import Debian.Debianize.Monad (CabalT, evalCabalT, liftCabal)
 import Debian.Debianize.Options (options)
 import Debian.Debianize.Output (doDebianizeAction)
@@ -24,14 +24,14 @@ import System.Console.GetOpt (OptDescr, usageInfo)
 import System.Environment (getProgName)
 
 main :: IO ()
-main = cabalDebianMain debianDefaultAtoms
+main = cabalDebianMain debianDefaults
 
 -- | The main function for the cabal-debian executable.
 cabalDebianMain :: (MonadIO m, Functor m) => CabalT m () -> m ()
 cabalDebianMain init =
     -- This picks up the options required to decide what action we are
     -- taking.  Much of this will be repeated in the call to debianize.
-    do atoms <- liftIO $ newFlags >>= newAtoms
+    do atoms <- liftIO $ newFlags >>= newCabalInfo
        evalCabalT (do debianize init
                       action <- access (debAction . flags . debInfo)
                       finish action) atoms

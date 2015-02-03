@@ -66,7 +66,7 @@ module Debian.Debianize.DebInfo
     , official
     , sourceArchitectures
     , extraDevDeps
-    , xDescription
+    , xDescriptionText
     , comments
     , binaryArchitectures
     , sourcePriority
@@ -87,31 +87,18 @@ import Data.Monoid (Monoid(..))
 import Data.Set as Set (insert, Set)
 import Data.Text (Text)
 import Debian.Changes (ChangeLog)
-import Debian.Debianize.InputCabalPackageDescription (Flags)
+import Debian.Debianize.BasicInfo (Flags)
 import Debian.Debianize.Prelude (listElemLens, maybeLens)
 import Debian.Debianize.BinaryDebDescription (BinaryDebDescription, Canonical(canonical), newBinaryDebDescription, package)
 import Debian.Debianize.CopyrightDescription (CopyrightDescription, defaultCopyrightDescription, newCopyrightDescription)
 import qualified Debian.Debianize.SourceDebDescription as S (newSourceDebDescription, SourceDebDescription, binaryPackages)
+import Debian.Debianize.VersionSplits (DebBase)
 import Debian.Orphans ()
-import Debian.Policy (SourceFormat)
-import Debian.Relation (BinPkgName)
-import Distribution.PackageDescription as Cabal (PackageDescription)
-import Prelude hiding ((.), init, init, log, log)
-
-import Data.Generics (Data, Typeable)
-import Data.Lens.Template (nameMakeLens)
-import Data.List (init)
-import Data.Map as Map (Map)
-import Data.Monoid (Monoid(..))
-import Data.Set as Set (Set)
-import Data.Text (Text)
-import Debian.Debianize.InputCabalPackageDescription (Flags, inputCabalization)
-import Debian.Debianize.BinaryDebDescription (Canonical(canonical))
-import Debian.Debianize.VersionSplits (DebBase, VersionSplits)
-import Debian.Orphans ()
-import Debian.Policy (PackageArchitectures, PackagePriority, Section)
+import Debian.Policy (PackageArchitectures, PackagePriority, Section, SourceFormat)
 import Debian.Relation (BinPkgName, Relations, SrcPkgName)
 import Debian.Version (DebianVersion)
+import Distribution.PackageDescription as Cabal (PackageDescription)
+import Prelude hiding ((.), init, init, log, log)
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr)
 
 -- | Information required to represent a non-cabal debianization.
@@ -211,7 +198,7 @@ data DebInfo
       , utilsPackageNameBase_ :: Maybe String
       -- ^ Name of a package that will get left-over data files and executables.
       -- If there are more than one, each package will get those files.
-      , xDescription_ :: Maybe Text
+      , xDescriptionText_ :: Maybe Text
       -- ^ The text for the X-Description field of the Source package stanza.
       , comments_ :: Maybe [[Text]]
       -- ^ Each element is a comment to be added to the changelog, where the
@@ -345,7 +332,7 @@ makeDebInfo fs =
     , maintainerOption_ = Nothing
     , uploadersOption_ = []
     , utilsPackageNameBase_ = Nothing
-    , xDescription_ = Nothing
+    , xDescriptionText_ = Nothing
     , comments_ = Nothing
     , missingDependencies_ = mempty
     , extraLibMap_ = mempty

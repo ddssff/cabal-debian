@@ -1,7 +1,7 @@
 -- | Read an existing Debianization from a directory file.
 {-# LANGUAGE CPP, DeriveDataTypeable, FlexibleInstances, OverloadedStrings, ScopedTypeVariables, TypeSynonymInstances #-}
 {-# OPTIONS_GHC -Wall -fno-warn-orphans #-}
-module Debian.Debianize.Input
+module Debian.Debianize.InputDebian
     ( inputDebianization
     , inputDebianizationFile
     , inputChangeLog
@@ -25,7 +25,7 @@ import Debian.Debianize.DebInfo (changelog, compat, control, copyright, install,
 import qualified Debian.Debianize.DebInfo as T (flags, makeDebInfo)
 import Debian.Debianize.Monad (CabalT, DebianT)
 import Debian.Debianize.Prelude ((+++=), (++=), (+=), getDirectoryContents', read', readFileMaybe, (~=), (~?=))
-import Debian.Debianize.Atoms (packageDescription)
+import Debian.Debianize.CabalInfo (packageDescription)
 import Debian.Debianize.BinaryDebDescription (BinaryDebDescription, newBinaryDebDescription)
 import qualified Debian.Debianize.BinaryDebDescription as B (architecture, binaryPriority, binarySection, breaks, builtUsing, conflicts, depends, description, essential, package, preDepends, provides, recommends, relations, replaces, suggests)
 import Debian.Debianize.CopyrightDescription (readCopyrightDescription)
@@ -49,13 +49,13 @@ inputDebianization =
        fs <- access T.flags
        put $ T.makeDebInfo fs
        (ctl, _) <- inputSourceDebDescription
-       inputAtomsFromDirectory
+       inputCabalInfoFromDirectory
        control ~= ctl
 
 -- | Try to input a file and if successful add it to the debianization.
 inputDebianizationFile :: MonadIO m => FilePath -> DebianT m ()
 inputDebianizationFile path =
-    do inputAtomsFromDirectory
+    do inputCabalInfoFromDirectory
        liftIO (readFileMaybe path) >>= maybe (return ()) (\ text -> intermediateFiles += (path, text))
 
 inputSourceDebDescription :: MonadIO m => DebianT m (S.SourceDebDescription, [Field])
@@ -169,8 +169,8 @@ inputChangeLog =
     do log <- liftIO $ tryIOError (readFile "debian/changelog" >>= return . parseChangeLog . unpack)
        changelog ~?= either (\ _ -> Nothing) Just log
 
-inputAtomsFromDirectory :: MonadIO m => DebianT m () -- .install files, .init files, etc.
-inputAtomsFromDirectory =
+inputCabalInfoFromDirectory :: MonadIO m => DebianT m () -- .install files, .init files, etc.
+inputCabalInfoFromDirectory =
     do findFiles
        doFiles ("./debian/cabalInstall")
     where
@@ -181,7 +181,7 @@ inputAtomsFromDirectory =
           liftIO (getDirectoryContents' ("debian")) >>=
           return . (++ ["source/format"]) >>=
           liftIO . filterM (doesFileExist . (("debian") </>)) >>= \ names ->
-          mapM_ (inputAtoms ("debian")) names
+          mapM_ (inputCabalInfo ("debian")) names
       doFiles :: MonadIO m => FilePath -> DebianT m ()
       doFiles tmp =
           do sums <- liftIO $ getDirectoryContents' tmp `catchIOError` (\ _ -> return [])
@@ -194,16 +194,16 @@ inputAtomsFromDirectory =
 -- This may mean using a specialized parser from the debian package
 -- (e.g. parseChangeLog), and some files (like control) are ignored
 -- here, though I don't recall why at the moment.
-inputAtoms :: MonadIO m => FilePath -> FilePath -> DebianT m ()
-inputAtoms _ path | elem path ["control"] = return ()
-inputAtoms debian name@"source/format" = liftIO (readFile (debian </> name)) >>= \ text -> either (warning +=) ((sourceFormat ~=) . Just) (readSourceFormat text)
-inputAtoms debian name@"watch" = liftIO (readFile (debian </> name)) >>= \ text -> watch ~= Just text
-inputAtoms debian name@"rules" = liftIO (readFile (debian </> name)) >>= \ text -> rulesHead ~= (Just $ strip text <> "\n")
-inputAtoms debian name@"compat" = liftIO (readFile (debian </> name)) >>= \ text -> compat ~= Just (read' (\ s -> error $ "compat: " ++ show s) (unpack text))
-inputAtoms debian name@"copyright" = liftIO (readFile (debian </> name)) >>= \ text -> copyright ~= (\ _ -> return (readCopyrightDescription text))
-inputAtoms debian name@"changelog" =
+inputCabalInfo :: MonadIO m => FilePath -> FilePath -> DebianT m ()
+inputCabalInfo _ path | elem path ["control"] = return ()
+inputCabalInfo debian name@"source/format" = liftIO (readFile (debian </> name)) >>= \ text -> either (warning +=) ((sourceFormat ~=) . Just) (readSourceFormat text)
+inputCabalInfo debian name@"watch" = liftIO (readFile (debian </> name)) >>= \ text -> watch ~= Just text
+inputCabalInfo debian name@"rules" = liftIO (readFile (debian </> name)) >>= \ text -> rulesHead ~= (Just $ strip text <> "\n")
+inputCabalInfo debian name@"compat" = liftIO (readFile (debian </> name)) >>= \ text -> compat ~= Just (read' (\ s -> error $ "compat: " ++ show s) (unpack text))
+inputCabalInfo debian name@"copyright" = liftIO (readFile (debian </> name)) >>= \ text -> copyright ~= (\ _ -> return (readCopyrightDescription text))
+inputCabalInfo debian name@"changelog" =
     liftIO (readFile (debian </> name)) >>= return . parseChangeLog . unpack >>= \ log -> changelog ~= Just log
-inputAtoms debian name =
+inputCabalInfo debian name =
     case (BinPkgName (dropExtension name), takeExtension name) of
       (p, ".install") ->   liftIO (readFile (debian </> name)) >>= \ text -> mapM_ (readInstall p) (lines text)
       (p, ".dirs") ->      liftIO (readFile (debian </> name)) >>= \ text -> mapM_ (readDir p) (lines text)

@@ -3,10 +3,11 @@
 module Debian.Debianize.CopyrightDescription
     ( CopyrightDescription(..)
     , FilesOrLicenseDescription(..)
+    -- * Lenses
     , format
     , upstreamName
     , upstreamContact
-    , source
+    , upstreamSource
     , disclaimer
     , summaryComment
     , summaryLicense
@@ -16,8 +17,9 @@ module Debian.Debianize.CopyrightDescription
     , filesCopyright
     , filesLicense
     , filesComment
-    , Debian.Debianize.CopyrightDescription.license
+    , license
     , comment
+    -- * Builders
     , newCopyrightDescription
     , readCopyrightDescription
     , parseCopyrightDescription
@@ -37,7 +39,7 @@ import Debian.Debianize.Prelude (readFileMaybe)
 import Debian.Orphans ()
 import Debian.Policy (License(..), readLicense, fromCabalLicense)
 import Debian.Pretty (PP(PP, unPP), display', ppDisplay', ppPrint)
-import Distribution.PackageDescription as Cabal (PackageDescription(licenseFiles, copyright, license))
+import qualified Distribution.PackageDescription as Cabal (PackageDescription(licenseFiles, copyright, license))
 import Network.URI (URI, parseURI)
 import Prelude hiding (init, init, log, log, unlines, readFile)
 import Text.PrettyPrint.HughesPJClass (Pretty(pPrint), text)
@@ -52,7 +54,7 @@ data CopyrightDescription
       { _format :: URI
       , _upstreamName :: Maybe Text
       , _upstreamContact :: Maybe Text
-      , _source :: Maybe Text
+      , _upstreamSource :: Maybe Text
       , _disclaimer :: Maybe Text
       , _summaryComment :: Maybe Text
       , _summaryLicense :: Maybe License
@@ -83,7 +85,7 @@ newCopyrightDescription =
     { _format = fromJust $ parseURI "http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/"
     , _upstreamName = Nothing
     , _upstreamContact = Nothing
-    , _source = Nothing
+    , _upstreamSource = Nothing
     , _disclaimer = Nothing
     , _summaryComment = Nothing
     , _summaryLicense = Nothing
@@ -108,7 +110,7 @@ parseCopyrightDescription (hd : tl) =
                    { _format = uri
                    , _upstreamName = fmap (\ (Field (_, x)) -> x) $ lookupP "Upstream-Name" hd
                    , _upstreamContact = fmap (\ (Field (_, x)) -> x) $ lookupP "Upstream-Contact" hd
-                   , _source = fmap (\ (Field (_, x)) -> x) $ lookupP "Source" hd
+                   , _upstreamSource = fmap (\ (Field (_, x)) -> x) $ lookupP "Source" hd
                    , _disclaimer = fmap (\ (Field (_, x)) -> x) $ lookupP "Disclaimer" hd
                    , _summaryComment = fmap (\ (Field (_, x)) -> x) $ lookupP "Comment" hd
                    , _summaryLicense = fmap (\ (Field (_, x)) -> readLicense x) $ lookupP "License" hd
@@ -144,7 +146,7 @@ toControlFile d =
       ( [ Field ("Format", (" " <> ppDisplay' (_format d))) ] ++
         maybe [] (\x -> [Field ("Upstream-Name", " " <> x)]) (_upstreamName d) ++
         maybe [] (\x -> [Field ("Upstream-Contact", " " <> x)]) (_upstreamContact d) ++
-        maybe [] (\x -> [Field ("Source", " " <> x)]) (_source d) ++
+        maybe [] (\x -> [Field ("Source", " " <> x)]) (_upstreamSource d) ++
         maybe [] (\x -> [Field ("Disclaimer", " " <> x)]) (_disclaimer d) ++
         maybe [] (\x -> [Field ("License", " " <> display' x)]) (_summaryLicense d) ++
         maybe [] (\x -> [Field ("Copyright", " " <> x)]) (_summaryCopyright d) ++
@@ -163,16 +165,16 @@ toParagraph ld@LicenseDescription {} =
       [ Field ("License", " " <> display' (_license ld)) ] ++
       maybe [] (\ t -> [Field ("Comment", " " <> t)]) (_comment ld)
 
-defaultCopyrightDescription :: CopyrightDescription -> PackageDescription -> IO CopyrightDescription
+defaultCopyrightDescription :: CopyrightDescription -> Cabal.PackageDescription -> IO CopyrightDescription
 defaultCopyrightDescription copyright0 pkgDesc = do
-  licenseFiles <- mapM (\ path -> liftIO (readFileMaybe path) >>= \ text -> return (path, text))
+  licenseFiles <- mapM (\ path -> liftIO (readFileMaybe path) >>= \ t -> return (path, t))
                        (Cabal.licenseFiles pkgDesc)
   -- It is possible we might interpret the license file path
   -- as a license name, so I hang on to it here.
-  let licenseFiles' = mapMaybe (\ (path, text) -> maybe Nothing (\ t -> Just (path, t)) text) licenseFiles
+  let licenseFiles' = mapMaybe (\ (path, t1) -> maybe Nothing (\ t2 -> Just (path, t2)) t1) licenseFiles
   return $ cabalToCopyrightDescription pkgDesc licenseFiles' copyright0
 
-cabalToCopyrightDescription :: PackageDescription -> [(FilePath, Text)] -> CopyrightDescription -> CopyrightDescription
+cabalToCopyrightDescription :: Cabal.PackageDescription -> [(FilePath, Text)] -> CopyrightDescription -> CopyrightDescription
 cabalToCopyrightDescription pkgDesc licenseFiles cdesc =
     let triples = zip3 (repeat (nothingIf (Text.null . strip) (pack (Cabal.copyright pkgDesc))))
                        (repeat (Cabal.license pkgDesc))

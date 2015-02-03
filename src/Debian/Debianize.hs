@@ -3,7 +3,7 @@
 -- You can either run the @cabal-debian --debianize@, or
 -- for more power and flexibility you can put a @Debianize.hs@ script in
 -- the package's @debian@ subdirectory.
--- 'Debian.Debianize.Atoms' value and pass it to the
+-- 'Debian.Debianize.CabalInfo' value and pass it to the
 -- 'Debian.Debianize.debianize' function.  The
 -- 'Debian.Debianize.callDebianize' function retrieves extra arguments
 -- from the @CABALDEBIAN@ environment variable and calls
@@ -101,7 +101,45 @@
    VersionSplits.hs
 -}
 module Debian.Debianize
-    ( Debian.Debianize.Finalize.debianize
+    ( -- * Basic information needed to input a Cabal package description.
+      module Debian.Debianize.BasicInfo
+      -- * Description of a Debian package 
+    , module Debian.Debianize.DebInfo
+      -- * Description of a Debian package's source paragraph
+    , module Debian.Debianize.SourceDebDescription
+      -- * Description of a Debian package's binary paragraph
+    , module Debian.Debianize.BinaryDebDescription
+      -- * Description of a Debian copyright file
+    , module Debian.Debianize.CopyrightDescription
+      -- * Combines the DebInfo record with the Cabal Package info.
+    , module Debian.Debianize.CabalInfo
+      -- * State monads DebianT and CabalT that carry the DebInfo and
+      -- Atoms packaging info respectively.
+    , module Debian.Debianize.Monad
+      -- * Functions for maping Cabal name and version number to Debian name
+    , module Debian.Debianize.DebianName
+      -- * Specific details about the particular packages and versions in the Debian repo
+    , module Debian.Debianize.Details
+      -- * Functions to configure some useful packaging idioms - web server packages,
+      -- tight install dependencies, etc.
+    , module Debian.Debianize.Goodies
+      -- * Input a debianization.
+    , module Debian.Debianize.InputDebian
+      -- * Input a Cabal package description
+    , module Debian.Debianize.InputCabal
+      -- * Command line options for the CabalT state monad.
+    , module Debian.Debianize.Options
+      -- * Finish computing the debianization
+    , module Debian.Debianize.Finalize
+      -- * Create the debianization files
+    , module Debian.Debianize.Output
+      -- * Utility files
+    , module Debian.Debianize.Prelude
+      -- * Utility files concerning Debian policy
+    , module Debian.Debianize.VersionSplits
+    , module Debian.Policy
+{-
+    , Debian.Debianize.Finalize.debianize
     , Debian.Debianize.Finalize.finalizeDebianization
 
     , Debian.Debianize.Output.doDebianizeAction
@@ -119,12 +157,9 @@ module Debian.Debianize
     , Debian.Debianize.Goodies.doWebsite
     , Debian.Debianize.Goodies.doBackups
 
-    , Debian.Debianize.Input.inputDebianization
-    , Debian.Debianize.Input.inputDebianizationFile
-    , Debian.Debianize.Input.inputChangeLog
-
-    -- * Deb monad - 'Debian.Debianize.Monad'
-    , CabalT, runCabalT, execCabalT, evalCabalT, CabalM, runCabalM, execCabalM, evalCabalM
+    , Debian.Debianize.InputDebian.inputDebianization
+    , Debian.Debianize.InputDebian.inputDebianizationFile
+    , Debian.Debianize.InputDebian.inputChangeLog
 
     , Debian.Debianize.DebianName.mapCabal
     , Debian.Debianize.DebianName.splitCabal
@@ -137,6 +172,7 @@ module Debian.Debianize
     , Debian.Debianize.Prelude.buildDebVersionMap
     , Debian.Debianize.Prelude.dpkgFileMap
     , Debian.Debianize.Prelude.debOfFile
+    -- * Lens operators
     , (~=)
     , (~?=)
     , (%=)
@@ -144,23 +180,25 @@ module Debian.Debianize
     , (++=)
     , (+++=)
 
-    -- * TBD
-
-    , module Debian.Debianize.Atoms
-    , module Debian.Debianize.DebInfo
-    , module Debian.Policy
+-}
     ) where
 
-import Debian.Debianize.Atoms (debianNameMap, debInfo, epochMap, newAtoms, packageDescription, PackageInfo, packageInfo, showAtoms)
-import Debian.Debianize.DebInfo (Atom(..), atomSet, changelog, compat, control, copyright, DebInfo(..), file, flags, install, installCabalExec, installCabalExecTo, installData, installDir, installInit, installTo, intermediateFiles, link, logrotateStanza, makeDebInfo, postInst, postRm, preInst, preRm, rulesFragments, rulesHead, rulesIncludes, rulesSettings, sourceFormat, warning, watch, apacheSite, backups, buildDir, comments, debVersion, execMap, executable, extraDevDeps, extraLibMap, InstallFile(..), maintainerOption, missingDependencies, noDocumentationLibrary, noProfilingLibrary, official, omitLTDeps, omitProfVersionDeps, revision, Server(..), serverInfo, Site(..), sourceArchitectures, sourcePackageName, uploadersOption, utilsPackageNameBase, website, xDescription, overrideDebianNameBase)
-import Debian.Debianize.DebianName (mapCabal, splitCabal)
-import Debian.Debianize.Details (debianDefaultAtoms)
-import Debian.Debianize.Finalize (debianize, finalizeDebianization)
-import Debian.Debianize.Goodies (doBackups, doExecutable, doServer, doWebsite, tightDependencyFixup)
-import Debian.Debianize.Input (inputChangeLog, inputDebianization, inputDebianizationFile)
-import Debian.Debianize.Monad (CabalM, CabalT, evalCabalM, evalCabalT, execCabalM, execCabalT, runCabalM, runCabalT)
+import Debian.Debianize.CabalInfo -- (debianNameMap, debInfo, epochMap, newAtoms, packageDescription, PackageInfo, packageInfo, showAtoms)
+import Debian.Debianize.BasicInfo
+import Debian.Debianize.BinaryDebDescription
+import Debian.Debianize.CopyrightDescription
+import Debian.Debianize.DebInfo -- (Atom(..), atomSet, changelog, compat, control, copyright, DebInfo, file, flags, install, installCabalExec, installCabalExecTo, installData, installDir, installInit, installTo, intermediateFiles, link, logrotateStanza, makeDebInfo, postInst, postRm, preInst, preRm, rulesFragments, rulesHead, rulesIncludes, rulesSettings, sourceFormat, warning, watch, apacheSite, backups, buildDir, comments, debVersion, execMap, executable, extraDevDeps, extraLibMap, InstallFile(..), maintainerOption, missingDependencies, noDocumentationLibrary, noProfilingLibrary, official, omitLTDeps, omitProfVersionDeps, revision, Server(..), serverInfo, Site(..), sourceArchitectures, sourcePackageName, uploadersOption, utilsPackageNameBase, website, xDescription, overrideDebianNameBase)
+import Debian.Debianize.DebianName (mapCabal, splitCabal, remapCabal)
+import Debian.Debianize.Details (debianDefaults)
+import Debian.Debianize.Finalize (debianize)
+import Debian.Debianize.Goodies -- (doBackups, doExecutable, doServer, doWebsite, tightDependencyFixup)
+import Debian.Debianize.InputDebian (inputChangeLog, inputDebianization, inputDebianizationFile)
+import Debian.Debianize.InputCabal (inputCabalization)
+import Debian.Debianize.Monad (CabalM, CabalT, evalCabalM, evalCabalT, execCabalM, execCabalT, runCabalM, runCabalT, DebianT, execDebianT, evalDebianT, liftCabal)
 import Debian.Debianize.Options (compileArgs)
 import Debian.Debianize.Output (compareDebianization, describeDebianization, doDebianizeAction, runDebianizeScript, validateDebianization, writeDebianization)
 import Debian.Debianize.Prelude ((%=), (+++=), (++=), (+=), buildDebVersionMap, debOfFile, dpkgFileMap, withCurrentDirectory, (~=), (~?=))
+import Debian.Debianize.SourceDebDescription
 import Debian.Debianize.SubstVars (substvars)
+import Debian.Debianize.VersionSplits (DebBase(DebBase))
 import Debian.Policy (accessLogBaseName, apacheAccessLog, apacheErrorLog, apacheLogDirectory, appLogBaseName, Area(..), databaseDirectory, debianPackageVersion, errorLogBaseName, fromCabalLicense, getCurrentDebianUser, getDebhelperCompatLevel, getDebianStandardsVersion, haskellMaintainer, License(..), PackageArchitectures(..), PackagePriority(..), parseMaintainer, parsePackageArchitectures, parseStandardsVersion, parseUploaders, readLicense, readPriority, readSection, readSourceFormat, Section(..), serverAccessLog, serverAppLog, serverLogDirectory, SourceFormat(..), StandardsVersion(..), toCabalLicense)

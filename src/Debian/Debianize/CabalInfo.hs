@@ -3,9 +3,9 @@
 -- debianization is to be constructed.
 {-# LANGUAGE CPP, DeriveDataTypeable, TemplateHaskell #-}
 {-# OPTIONS_GHC -Wall #-}
-module Debian.Debianize.Atoms
-    ( Atoms
-    , newAtoms
+module Debian.Debianize.CabalInfo
+    ( CabalInfo
+    , newCabalInfo
     -- , makeAtoms
     , PackageInfo(PackageInfo, cabalName, devDeb, docDeb, profDeb)
     , debianNameMap
@@ -13,7 +13,7 @@ module Debian.Debianize.Atoms
     , packageDescription
     , epochMap
     , packageInfo
-    , showAtoms
+    , showCabalInfo
     ) where
 
 import Data.Generics (Data, Typeable)
@@ -21,20 +21,17 @@ import Data.Lens.Template (nameMakeLens)
 import Data.List (init)
 import Data.Map as Map (Map)
 import Data.Monoid (Monoid(..))
-import Data.Set as Set (Set)
-import Data.Text (Text)
+import Debian.Debianize.BasicInfo (Flags)
 import Debian.Debianize.DebInfo (DebInfo, makeDebInfo)
-import Debian.Debianize.InputCabalPackageDescription (Flags, inputCabalization)
+import Debian.Debianize.InputCabal (inputCabalization)
 import Debian.Debianize.BinaryDebDescription (Canonical(canonical))
-import Debian.Debianize.VersionSplits (DebBase, VersionSplits)
+import Debian.Debianize.VersionSplits (VersionSplits)
 import Debian.Orphans ()
-import Debian.Policy (PackageArchitectures, PackagePriority, Section)
-import Debian.Relation (BinPkgName, Relations, SrcPkgName)
+import Debian.Relation (BinPkgName)
 import Debian.Version (DebianVersion)
 import Distribution.Package (PackageName)
 import Distribution.PackageDescription as Cabal (PackageDescription)
 import Prelude hiding ((.), init, init, log, log)
-import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr)
 
 -- This enormous record is a mistake - instead it should be an Atom
 -- type with lots of constructors, and the Atoms type is a set of
@@ -50,8 +47,8 @@ import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr)
 -- this module are used to get and set the values hidden in this Atoms
 -- value.  Many of the values should be left alone to be set when the
 -- debianization is finalized.
-data Atoms
-    = Atoms
+data CabalInfo
+    = CabalInfo
       { packageDescription_ :: PackageDescription
       -- ^ The result of reading a cabal configuration file.
       , debInfo_ :: DebInfo
@@ -67,17 +64,17 @@ data Atoms
       -- ^ Supply some info about a cabal package.
       } deriving (Show, Data, Typeable)
 
-instance Canonical Atoms where
+instance Canonical CabalInfo where
     canonical x = x {debInfo_ = canonical (debInfo_ x)}
 
-newAtoms :: Flags -> IO Atoms
-newAtoms flags' = do
+newCabalInfo :: Flags -> IO CabalInfo
+newCabalInfo flags' = do
   pkgDesc <- inputCabalization flags'
-  return $ makeAtoms flags' pkgDesc
+  return $ makeCabalInfo flags' pkgDesc
 
-makeAtoms :: Flags -> PackageDescription -> Atoms
-makeAtoms fs pkgDesc =
-    Atoms
+makeCabalInfo :: Flags -> PackageDescription -> CabalInfo
+makeCabalInfo fs pkgDesc =
+    CabalInfo
       { packageDescription_ = pkgDesc
       , epochMap_ = mempty
       , packageInfo_ = mempty
@@ -90,10 +87,10 @@ data PackageInfo = PackageInfo { cabalName :: PackageName
                                , profDeb :: Maybe (BinPkgName, DebianVersion)
                                , docDeb :: Maybe (BinPkgName, DebianVersion) } deriving (Eq, Ord, Show, Data, Typeable)
 
-showAtoms :: Atoms -> IO ()
-showAtoms x = putStrLn ("\nTop: " ++ show x ++ "\n")
+showCabalInfo :: CabalInfo -> IO ()
+showCabalInfo x = putStrLn ("\nTop: " ++ show x ++ "\n")
 
 $(let f s = case s of
               (_ : _) | last s == '_' -> Just (init s)
               _ -> Nothing in
-  nameMakeLens ''Atoms f)
+  nameMakeLens ''CabalInfo f)

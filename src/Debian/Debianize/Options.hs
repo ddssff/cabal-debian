@@ -13,13 +13,13 @@ import Control.Monad.State (StateT)
 import Control.Monad.Trans (liftIO, MonadIO)
 import Data.Char (isDigit, ord)
 import Data.Lens.Lazy (focus, Lens)
+import Debian.Debianize.BasicInfo (flagOptions, Flags)
 import Debian.Debianize.DebInfo (DebInfo, flags, binaryDebDescription)
 import qualified  Debian.Debianize.DebInfo as D
 import Debian.Debianize.Goodies (doExecutable)
-import Debian.Debianize.InputCabalPackageDescription (flagOptions, Flags)
-import Debian.Debianize.Monad (CabalT, DebianT)
+import Debian.Debianize.Monad (CabalT)
 import Debian.Debianize.Prelude ((%=), (+++=), (++=), (+=), maybeRead, (~=))
-import qualified Debian.Debianize.Atoms as A
+import qualified Debian.Debianize.CabalInfo as A
 import qualified Debian.Debianize.BinaryDebDescription as B
 import qualified Debian.Debianize.SourceDebDescription as S
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
@@ -184,10 +184,10 @@ options =
                       , "behavior of the --builddir option in the Setup script."])
     ] ++ map liftOpt flagOptions
 
-liftOpt :: Monad m => OptDescr (StateT Flags m ()) -> OptDescr (StateT A.Atoms m ())
+liftOpt :: Monad m => OptDescr (StateT Flags m ()) -> OptDescr (CabalT m ())
 liftOpt (Option chrs strs desc doc) = Option chrs strs (liftDesc desc) doc
 
-liftDesc :: Monad m => ArgDescr (StateT Flags m ()) -> ArgDescr (StateT A.Atoms m ())
+liftDesc :: Monad m => ArgDescr (StateT Flags m ()) -> ArgDescr (CabalT m ())
 liftDesc (NoArg x) = NoArg (focus (flags . A.debInfo) x)
 liftDesc (ReqArg f s) = ReqArg (\ p -> focus (flags . A.debInfo) (f p)) s
 liftDesc (OptArg f s) = OptArg (\ mp -> focus (flags . A.debInfo) (f mp)) s
@@ -207,8 +207,8 @@ executableOption arg f =
                            , D.sourceDir = case sd of "./" -> Nothing; _ -> Just sd
                            , D.destDir = case md of (':' : dd) -> Just dd; _ -> Nothing })
 
-addDep' :: Monad m => (BinPkgName -> Lens DebInfo Relations) -> String -> DebianT m ()
-addDep' lns arg = mapM_ (\ (b, rel) -> lns b %= (++ [[rel]])) (parseDeps arg)
+-- addDep' :: Monad m => (BinPkgName -> Lens DebInfo Relations) -> String -> DebianT m ()
+-- addDep' lns arg = mapM_ (\ (b, rel) -> lns b %= (++ [[rel]])) (parseDeps arg)
 
 addDep :: Monad m => (BinPkgName -> Lens DebInfo Relations) -> String -> CabalT m ()
 addDep lns arg = mapM_ (\ (b, rel) -> (lns b . A.debInfo) %= (++ [[rel]])) (parseDeps arg)

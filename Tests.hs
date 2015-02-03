@@ -20,7 +20,7 @@ import Data.Text as Text (intercalate, split, Text, unlines, unpack)
 import Data.Version (Version(Version))
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(..), parseEntry)
 import Debian.Debianize.DebianName (mapCabal, splitCabal)
-import qualified Debian.Debianize.DebInfo as DI
+import qualified Debian.Debianize.DebInfo as D
 import Debian.Debianize.Files (debianizationFileMap)
 import Debian.Debianize.Finalize (debianize, finalizeDebianization)
 import Debian.Debianize.Goodies (doBackups, doExecutable, doServer, doWebsite, tightDependencyFixup)
@@ -28,7 +28,6 @@ import Debian.Debianize.Input (inputDebianization)
 import Debian.Debianize.InputCabalPackageDescription (compilerFlavor, newFlags)
 import Debian.Debianize.Monad (CabalT, evalCabalT, execCabalM, execCabalT, liftCabal, execDebianT, DebianT, evalDebianT)
 import Debian.Debianize.Prelude ((%=), (++=), (+=), (~=), withCurrentDirectory)
-import Debian.Debianize.Types as T
 import Debian.Debianize.Types.Atoms as A
 import qualified Debian.Debianize.Types.BinaryDebDescription as B
 import Debian.Debianize.Types.CopyrightDescription
@@ -52,8 +51,8 @@ import Text.PrettyPrint.HughesPJClass (pPrint, text, Doc)
 -- | A suitable defaultAtoms value for the debian repository.
 defaultAtoms :: Monad m => CabalT m ()
 defaultAtoms =
-    do T.epochMap ++= (PackageName "HaXml", 1)
-       T.epochMap ++= (PackageName "HTTP", 1)
+    do A.epochMap ++= (PackageName "HaXml", 1)
+       A.epochMap ++= (PackageName "HTTP", 1)
        mapCabal (PackageName "parsec") (DebBase "parsec3")
        splitCabal (PackageName "parsec") (DebBase "parsec2") (Version [3] [])
        mapCabal (PackageName "QuickCheck") (DebBase "quickcheck2")
@@ -65,7 +64,7 @@ testAtoms :: IO Atoms
 testAtoms = newFlags >>= newAtoms >>= return . ghc763
     where
       ghc763 :: Atoms -> Atoms
-      ghc763 atoms = setL (compilerFlavor . T.flags . A.debInfo) GHC atoms
+      ghc763 atoms = setL (compilerFlavor . D.flags . A.debInfo) GHC atoms
 
 -- | Create a Debianization based on a changelog entry and a license
 -- value.  Uses the currently installed versions of debhelper and
@@ -73,17 +72,17 @@ testAtoms = newFlags >>= newAtoms >>= return . ghc763
 newDebianization :: Monad m => ChangeLog -> Maybe Int -> Maybe StandardsVersion -> CabalT m ()
 newDebianization (ChangeLog (WhiteSpace {} : _)) _ _ = error "defaultDebianization: Invalid changelog entry"
 newDebianization (log@(ChangeLog (entry : _))) level standards =
-    do (T.changelog . A.debInfo) ~= Just log
-       (T.compat . A.debInfo) ~= level
-       (T.source . A.debInfo) ~= Just (SrcPkgName (logPackage entry))
-       (S.maintainer . T.control . A.debInfo) ~= either error Just (parseMaintainer (logWho entry))
-       (T.standardsVersion . A.debInfo) ~= standards
+    do (D.changelog . A.debInfo) ~= Just log
+       (D.compat . A.debInfo) ~= level
+       (S.source . D.control . A.debInfo) ~= Just (SrcPkgName (logPackage entry))
+       (S.maintainer . D.control . A.debInfo) ~= either error Just (parseMaintainer (logWho entry))
+       (S.standardsVersion . D.control . A.debInfo) ~= standards
 newDebianization _ _ _ = error "Invalid changelog"
 
 newDebianization' :: Monad m => Maybe Int -> Maybe StandardsVersion -> CabalT m ()
 newDebianization' level standards =
-    do (T.compat . A.debInfo) ~= level
-       (T.standardsVersion . A.debInfo) ~= standards
+    do (D.compat . A.debInfo) ~= level
+       (S.standardsVersion . D.control . A.debInfo) ~= standards
 
 tests :: Test
 tests = TestLabel "Debianization Tests" (TestList [-- 1 and 2 do not input a cabal package - we're not ready to
@@ -105,9 +104,9 @@ issue23 label =
     TestLabel label $
     TestCase (withCurrentDirectory "test-data/alex/input" $
               do atoms <- testAtoms
-                 actual <- evalCabalT (do (T.changelog . A.debInfo) ~= Just (ChangeLog [testEntry])
-                                          (T.compat . A.debInfo) ~= Just 9
-                                          T.official ~= True
+                 actual <- evalCabalT (do (D.changelog . A.debInfo) ~= Just (ChangeLog [testEntry])
+                                          (D.compat . A.debInfo) ~= Just 9
+                                          A.official ~= True
                                           Map.toList <$> liftCabal debianizationFileMap) atoms
                  assertEqual label
                    []
@@ -123,7 +122,7 @@ test1 label =
                           (do -- let top = Top "."
                               defaultAtoms
                               newDebianization (ChangeLog [testEntry]) level standards
-                              (copyright . debInfo) %= (\ f -> (\ pkgDesc -> f pkgDesc >>= \ c -> return $ c { _summaryLicense = Just BSD_3_Clause }))
+                              (D.copyright . debInfo) %= (\ f -> (\ pkgDesc -> f pkgDesc >>= \ c -> return $ c { _summaryLicense = Just BSD_3_Clause }))
                               -- inputCabalization top
                               finalizeDebianization)
                           atoms
@@ -135,23 +134,23 @@ test1 label =
           execCabalM
             (do defaultAtoms
                 newDebianization log (Just 9) (Just (StandardsVersion 3 9 3 (Just 1)))
-                (rulesHead . debInfo) %= (const (Just (Text.unlines $
+                (D.rulesHead . debInfo) %= (const (Just (Text.unlines $
                                                 [ "#!/usr/bin/make -f"
                                                 , ""
                                                 , "include /usr/share/cdbs/1/rules/debhelper.mk"
                                                 , "include /usr/share/cdbs/1/class/hlibrary.mk" ])))
-                (compat . debInfo) ~= Just 9 -- This will change as new version of debhelper are released
-                (copyright . debInfo) %= (\ f -> (\ pkgDesc -> f pkgDesc >>= \ c -> return $ c { _summaryLicense = Just BSD_3_Clause }))
-                (T.source . debInfo) ~= Just (SrcPkgName {unSrcPkgName = "haskell-cabal-debian"})
-                (S.maintainer . T.control . debInfo) ~= Just (NameAddr (Just "David Fox") "dsf@seereason.com")
-                (T.standardsVersion . debInfo) ~= Just (StandardsVersion 3 9 3 (Just 1)) -- This will change as new versions of debian-policy are released
-                (T.buildDepends . debInfo) %=
+                (D.compat . debInfo) ~= Just 9 -- This will change as new version of debhelper are released
+                (D.copyright . debInfo) %= (\ f -> (\ pkgDesc -> f pkgDesc >>= \ c -> return $ c { _summaryLicense = Just BSD_3_Clause }))
+                (S.source . D.control . debInfo) ~= Just (SrcPkgName {unSrcPkgName = "haskell-cabal-debian"})
+                (S.maintainer . D.control . debInfo) ~= Just (NameAddr (Just "David Fox") "dsf@seereason.com")
+                (S.standardsVersion . D.control . debInfo) ~= Just (StandardsVersion 3 9 3 (Just 1)) -- This will change as new versions of debian-policy are released
+                (S.buildDepends . D.control . debInfo) %=
                                   (++ [[Rel (BinPkgName "debhelper") (Just (GRE (parseDebianVersion ("7.0" :: String)))) Nothing],
                                        [Rel (BinPkgName "haskell-devscripts") (Just (GRE (parseDebianVersion ("0.8" :: String)))) Nothing],
                                        [Rel (BinPkgName "cdbs") Nothing Nothing],
                                        [Rel (BinPkgName "ghc") Nothing Nothing],
                                        [Rel (BinPkgName "ghc-prof") Nothing Nothing]])
-                (T.buildDependsIndep . debInfo) %= (++ [[Rel (BinPkgName "ghc-doc") Nothing Nothing]]))
+                (S.buildDependsIndep . D.control . debInfo) %= (++ [[Rel (BinPkgName "ghc-doc") Nothing Nothing]]))
             atoms
       log = ChangeLog [Entry { logPackage = "haskell-cabal-debian"
                              , logVersion = buildDebianVersion Nothing "2.6.2" Nothing
@@ -171,7 +170,7 @@ test2 label =
                           (do -- let top = Top "."
                               defaultAtoms
                               newDebianization (ChangeLog [testEntry]) level standards
-                              (copyright . debInfo) %= (\ f -> (\ pkgDesc -> f pkgDesc >>= \ c -> return $ c { _summaryLicense = Just BSD_3_Clause }))
+                              (D.copyright . debInfo) %= (\ f -> (\ pkgDesc -> f pkgDesc >>= \ c -> return $ c { _summaryLicense = Just BSD_3_Clause }))
                               -- inputCabalization top
                               finalizeDebianization)
                           atoms
@@ -182,23 +181,23 @@ test2 label =
           execCabalM
             (do defaultAtoms
                 newDebianization log (Just 9) (Just (StandardsVersion 3 9 3 (Just 1)))
-                (rulesHead . debInfo) %= (const (Just (Text.unlines $
+                (D.rulesHead . debInfo) %= (const (Just (Text.unlines $
                                                 ["#!/usr/bin/make -f",
                                                  "",
                                                  "include /usr/share/cdbs/1/rules/debhelper.mk",
                                                  "include /usr/share/cdbs/1/class/hlibrary.mk"])))
-                (compat . debInfo) ~= Just 9
-                (copyright . debInfo) %= (\ f -> (\ pkgDesc -> f pkgDesc >>= \ c -> return $ c { _summaryLicense = Just BSD_3_Clause }))
-                (T.source . debInfo) ~= Just (SrcPkgName {unSrcPkgName = "haskell-cabal-debian"})
-                (S.maintainer . T.control . debInfo) ~= Just (NameAddr {nameAddr_name = Just "David Fox", nameAddr_addr = "dsf@seereason.com"})
-                (T.standardsVersion . debInfo) ~= Just (StandardsVersion 3 9 3 (Just 1))
-                (T.buildDepends . debInfo)
+                (D.compat . debInfo) ~= Just 9
+                (D.copyright . debInfo) %= (\ f -> (\ pkgDesc -> f pkgDesc >>= \ c -> return $ c { _summaryLicense = Just BSD_3_Clause }))
+                (S.source . D.control . debInfo) ~= Just (SrcPkgName {unSrcPkgName = "haskell-cabal-debian"})
+                (S.maintainer . D.control . debInfo) ~= Just (NameAddr {nameAddr_name = Just "David Fox", nameAddr_addr = "dsf@seereason.com"})
+                (S.standardsVersion . D.control . debInfo) ~= Just (StandardsVersion 3 9 3 (Just 1))
+                (S.buildDepends . D.control . debInfo)
                                %= (++ [[Rel (BinPkgName "debhelper") (Just (GRE (parseDebianVersion ("7.0" :: String)))) Nothing],
                                        [Rel (BinPkgName "haskell-devscripts") (Just (GRE (parseDebianVersion ("0.8" :: String)))) Nothing],
                                        [Rel (BinPkgName "cdbs") Nothing Nothing],
                                        [Rel (BinPkgName "ghc") Nothing Nothing],
                                        [Rel (BinPkgName "ghc-prof") Nothing Nothing]])
-                (T.buildDependsIndep . debInfo) %= (++ [[Rel (BinPkgName "ghc-doc") Nothing Nothing]]))
+                (S.buildDependsIndep . D.control . debInfo) %= (++ [[Rel (BinPkgName "ghc-doc") Nothing Nothing]]))
             atoms
       log = ChangeLog [Entry {logPackage = "haskell-cabal-debian",
                               logVersion = Debian.Version.parseDebianVersion ("2.6.2" :: String),
@@ -235,8 +234,8 @@ test3 label =
           execCabalM
             (do defaultAtoms
                 newDebianization log (Just 7) (Just (StandardsVersion 3 9 4 Nothing))
-                (T.sourceFormat . debInfo) ~= Just Native3
-                (T.rulesHead . debInfo) ~=
+                (D.sourceFormat . debInfo) ~= Just Native3
+                (D.rulesHead . debInfo) ~=
                                Just (Text.unlines  ["#!/usr/bin/make -f",
                                                     "# -*- makefile -*-",
                                                     "",
@@ -281,20 +280,20 @@ test3 label =
                                                     "\trm -f $(manpages)",
                                                     "",
                                                     ""])
-                (T.compat . debInfo) ~= Just 7
-                (T.copyright . debInfo) %= (\ f -> (\ pkgDesc -> f pkgDesc >>= \ c -> return $ c { _summaryComment = Just "This package was debianized by John Goerzen <jgoerzen@complete.org> on\nWed,  6 Oct 2004 09:46:14 -0500.\n\nCopyright information removed from this test data.\n" }))
-                (T.source . debInfo) ~= Just (SrcPkgName {unSrcPkgName = "haskell-devscripts"})
-                (S.maintainer . T.control . debInfo) ~= Just (NameAddr {nameAddr_name = Just "Debian Haskell Group", nameAddr_addr = "pkg-haskell-maintainers@lists.alioth.debian.org"})
-                (S.uploaders . T.control . debInfo) ~= [NameAddr {nameAddr_name = Just "Marco Silva", nameAddr_addr = "marcot@debian.org"},NameAddr {nameAddr_name = Just "Joachim Breitner", nameAddr_addr = "nomeata@debian.org"}]
-                (T.sourcePriority . debInfo) ~= Just Extra
-                (T.sourceSection . debInfo) ~= Just (MainSection "haskell")
-                (T.buildDepends . debInfo) %= (++ [[Rel (BinPkgName {unBinPkgName = "debhelper"}) (Just (GRE (Debian.Version.parseDebianVersion ("7" :: String)))) Nothing]])
-                (T.buildDependsIndep . debInfo) %=  (++ [[Rel (BinPkgName {unBinPkgName = "perl"}) Nothing Nothing]])
-                (T.standardsVersion . debInfo) ~= Just (StandardsVersion 3 9 4 Nothing)
-                (T.vcsFields . debInfo) %= Set.union (Set.fromList [ S.VCSBrowser "http://darcs.debian.org/cgi-bin/darcsweb.cgi?r=pkg-haskell/haskell-devscripts"
+                (D.compat . debInfo) ~= Just 7
+                (D.copyright . debInfo) %= (\ f -> (\ pkgDesc -> f pkgDesc >>= \ c -> return $ c { _summaryComment = Just "This package was debianized by John Goerzen <jgoerzen@complete.org> on\nWed,  6 Oct 2004 09:46:14 -0500.\n\nCopyright information removed from this test data.\n" }))
+                (S.source . D.control . debInfo) ~= Just (SrcPkgName {unSrcPkgName = "haskell-devscripts"})
+                (S.maintainer . D.control . debInfo) ~= Just (NameAddr {nameAddr_name = Just "Debian Haskell Group", nameAddr_addr = "pkg-haskell-maintainers@lists.alioth.debian.org"})
+                (S.uploaders . D.control . debInfo) ~= [NameAddr {nameAddr_name = Just "Marco Silva", nameAddr_addr = "marcot@debian.org"},NameAddr {nameAddr_name = Just "Joachim Breitner", nameAddr_addr = "nomeata@debian.org"}]
+                (S.priority . D.control . debInfo) ~= Just Extra
+                (S.section . D.control . debInfo) ~= Just (MainSection "haskell")
+                (S.buildDepends . D.control . debInfo) %= (++ [[Rel (BinPkgName {unBinPkgName = "debhelper"}) (Just (GRE (Debian.Version.parseDebianVersion ("7" :: String)))) Nothing]])
+                (S.buildDependsIndep . D.control . debInfo) %=  (++ [[Rel (BinPkgName {unBinPkgName = "perl"}) Nothing Nothing]])
+                (S.standardsVersion . D.control . debInfo) ~= Just (StandardsVersion 3 9 4 Nothing)
+                (S.vcsFields . D.control . debInfo) %= Set.union (Set.fromList [ S.VCSBrowser "http://darcs.debian.org/cgi-bin/darcsweb.cgi?r=pkg-haskell/haskell-devscripts"
                                                        , S.VCSDarcs "http://darcs.debian.org/pkg-haskell/haskell-devscripts"])
-                (T.binaryArchitectures (BinPkgName "haskell-devscripts") . debInfo)  ~= Just All
-                (T.debianDescription (BinPkgName "haskell-devscripts") . debInfo) ~=
+                (B.architecture . D.binaryDebDescription (BinPkgName "haskell-devscripts") . debInfo)  ~= Just All
+                (B.description . D.binaryDebDescription (BinPkgName "haskell-devscripts") . debInfo) ~=
                    Just
                      (intercalate "\n"   ["Tools to help Debian developers build Haskell packages",
                                           " This package provides a collection of scripts to help build Haskell",
@@ -306,7 +305,7 @@ test3 label =
                                           " interpreter, generate appropriate postinst/prerm files for each one,",
                                           " generate appropriate substvars entries for each one, and install the",
                                           " package in the Debian temporary area as part of the build process."])
-                (T.depends (BinPkgName "haskell-devscripts") . debInfo) ~=
+                (B.depends . B.relations . D.binaryDebDescription (BinPkgName "haskell-devscripts") . debInfo) ~=
                      [ [Rel (BinPkgName {unBinPkgName = "dctrl-tools"}) Nothing Nothing]
                      , [Rel (BinPkgName {unBinPkgName = "debhelper"}) Nothing Nothing]
                      , [Rel (BinPkgName {unBinPkgName = "dh-buildinfo"}) Nothing Nothing]
@@ -390,7 +389,7 @@ test4 label =
                  atoms <- withCurrentDirectory inTop $ testAtoms
                  old <- withCurrentDirectory outTop $ do
                           execCabalT (liftCabal inputDebianization) atoms
-                 let log = getL (T.changelog . debInfo) old
+                 let log = getL (D.changelog . debInfo) old
                  new <- withCurrentDirectory inTop $ do
                           execCabalT (debianize (defaultAtoms >> customize log)) atoms
                  diff <- diffDebianizations (getL debInfo old) (getL debInfo ({-copyFirstLogEntry old-} new))
@@ -398,15 +397,15 @@ test4 label =
     where
       customize :: Maybe ChangeLog -> CabalT IO ()
       customize log =
-          do (T.changelog . debInfo) ~= log
+          do (D.changelog . debInfo) ~= log
              liftCabal tight
              fixRules
              doBackups (BinPkgName "clckwrks-dot-com-backups") "clckwrks-dot-com-backups"
              doWebsite (BinPkgName "clckwrks-dot-com-production") (theSite (BinPkgName "clckwrks-dot-com-production"))
-             T.revision ~= Nothing
-             T.missingDependencies += (BinPkgName "libghc-clckwrks-theme-clckwrks-doc")
-             (T.sourceFormat . debInfo) ~= Just Native3
-             (T.homepage . debInfo) ~= Just "http://www.clckwrks.com/"
+             A.revision ~= Nothing
+             A.missingDependencies += (BinPkgName "libghc-clckwrks-theme-clckwrks-doc")
+             (D.sourceFormat . debInfo) ~= Just Native3
+             (S.homepage . D.control . debInfo) ~= Just "http://www.clckwrks.com/"
              newDebianization' (Just 7) (Just (StandardsVersion 3 9 4 Nothing))
 {-
       customize log = modifyM (lift . customize' log)
@@ -428,7 +427,7 @@ test4 label =
       serverNames = map BinPkgName ["clckwrks-dot-com-production"] -- , "clckwrks-dot-com-staging", "clckwrks-dot-com-development"]
       -- Insert a line just above the debhelper.mk include
       fixRules =
-          (rulesSettings . debInfo) %= (++ ["DEB_SETUP_GHC_CONFIGURE_ARGS = -fbackups"])
+          (D.rulesSettings . debInfo) %= (++ ["DEB_SETUP_GHC_CONFIGURE_ARGS = -fbackups"])
 {-
           mapAtoms f deb
           where
@@ -496,42 +495,42 @@ test5 label =
     TestCase (do let inTop = "test-data/creativeprompts/input"
                      outTop = "test-data/creativeprompts/output"
                  atoms <- withCurrentDirectory inTop testAtoms
-                 old <- withCurrentDirectory outTop $ newFlags >>= execDebianT inputDebianization . DI.makeDebInfo
-                 let standards = getL T.standardsVersion old
-                     level = getL T.compat old
+                 old <- withCurrentDirectory outTop $ newFlags >>= execDebianT inputDebianization . D.makeDebInfo
+                 let standards = getL (S.standardsVersion . D.control) old
+                     level = getL D.compat old
                  new <- withCurrentDirectory inTop (execCabalT (debianize (defaultAtoms >> customize old level standards)) atoms)
                  diff <- diffDebianizations old (getL debInfo new)
                  assertEqual label [] diff)
     where
       customize old level standards =
-          do T.utilsPackageNameBase ~= Just "creativeprompts-data"
+          do A.utilsPackageNameBase ~= Just "creativeprompts-data"
              newDebianization' level standards
-             (T.changelog . debInfo) ~= (getL T.changelog old)
+             (D.changelog . debInfo) ~= (getL D.changelog old)
              doWebsite (BinPkgName "creativeprompts-production") (theSite (BinPkgName "creativeprompts-production"))
              doServer (BinPkgName "creativeprompts-development") (theServer (BinPkgName "creativeprompts-development"))
              doBackups (BinPkgName "creativeprompts-backups") "creativeprompts-backups"
-             T.execMap ++= ("trhsx", [[Rel (BinPkgName "haskell-hsx-utils") Nothing Nothing]])
-             mapM_ (\ b -> (T.depends b . debInfo) %= \ deps -> deps ++ [[anyrel (BinPkgName "markdown")]])
+             A.execMap ++= ("trhsx", [[Rel (BinPkgName "haskell-hsx-utils") Nothing Nothing]])
+             mapM_ (\ b -> (B.depends . B.relations . D.binaryDebDescription b . debInfo) %= \ deps -> deps ++ [[anyrel (BinPkgName "markdown")]])
                    [(BinPkgName "creativeprompts-production"), (BinPkgName "creativeprompts-development")]
-             (T.debianDescription (BinPkgName "creativeprompts-development") . debInfo) ~=
+             (B.description . D.binaryDebDescription (BinPkgName "creativeprompts-development") . debInfo) ~=
                    Just (intercalate "\n" [ "Configuration for running the creativeprompts.com server"
                                             , "  Testing version of the blog server, runs on port"
                                             , "  8000 with HTML validation turned on." ])
-             (T.debianDescription (BinPkgName "creativeprompts-data") . debInfo) ~=
+             (B.description . D.binaryDebDescription (BinPkgName "creativeprompts-data") . debInfo) ~=
                    Just (intercalate "\n" [ "creativeprompts.com data files"
                                             , "  Static data files for creativeprompts.com"])
-             (T.debianDescription (BinPkgName "creativeprompts-production") . debInfo) ~=
+             (B.description . D.binaryDebDescription (BinPkgName "creativeprompts-production") . debInfo) ~=
                    Just (intercalate "\n" [ "Configuration for running the creativeprompts.com server"
                                             , "  Production version of the blog server, runs on port"
                                             , "  9021 with HTML validation turned off." ])
-             (T.debianDescription (BinPkgName "creativeprompts-backups") . debInfo) ~=
+             (B.description . D.binaryDebDescription (BinPkgName "creativeprompts-backups") . debInfo) ~=
                    Just (intercalate "\n" [ "backup program for creativeprompts.com"
                                             , "  Install this somewhere other than creativeprompts.com to run automated"
                                             , "  backups of the database."])
-             (T.binaryArchitectures (BinPkgName "creativeprompts-production") . debInfo) ~= Just All
-             (T.binaryArchitectures (BinPkgName "creativeprompts-data") . debInfo) ~= Just All
-             (T.binaryArchitectures (BinPkgName "creativeprompts-development") . debInfo) ~= Just All
-             (T.sourceFormat . debInfo) ~= Just Native3
+             (B.architecture . D.binaryDebDescription (BinPkgName "creativeprompts-production") . debInfo) ~= Just All
+             (B.architecture . D.binaryDebDescription (BinPkgName "creativeprompts-data") . debInfo) ~= Just All
+             (B.architecture . D.binaryDebDescription (BinPkgName "creativeprompts-development") . debInfo) ~= Just All
+             (D.sourceFormat . debInfo) ~= Just Native3
 
       theSite :: BinPkgName -> Site
       theSite deb =
@@ -592,8 +591,8 @@ test8 label =
     TestLabel label $
     TestCase ( do let inTop = "test-data/artvaluereport-data/input"
                       outTop = "test-data/artvaluereport-data/output"
-                  (old :: DI.DebInfo) <- withCurrentDirectory outTop $ newFlags >>= execDebianT inputDebianization . DI.makeDebInfo
-                  let log = getL T.changelog old
+                  (old :: D.DebInfo) <- withCurrentDirectory outTop $ newFlags >>= execDebianT inputDebianization . D.makeDebInfo
+                  let log = getL D.changelog old
                   new <- withCurrentDirectory inTop $ newFlags >>= newAtoms >>= execCabalT (debianize (defaultAtoms >> customize log))
                   diff <- diffDebianizations old (getL debInfo new)
                   assertEqual label [] diff
@@ -601,10 +600,10 @@ test8 label =
     where
       customize Nothing = error "Missing changelog"
       customize (Just log) =
-          do (T.buildDepends . debInfo) %= (++ [[Rel (BinPkgName "haskell-hsx-utils") Nothing Nothing]])
-             (T.homepage . debInfo) ~= Just "http://artvaluereportonline.com"
-             (T.sourceFormat . debInfo) ~= Just Native3
-             (T.changelog . debInfo) ~= Just log
+          do (S.buildDepends . D.control . debInfo) %= (++ [[Rel (BinPkgName "haskell-hsx-utils") Nothing Nothing]])
+             (S.homepage . D.control . debInfo) ~= Just "http://artvaluereportonline.com"
+             (D.sourceFormat . debInfo) ~= Just Native3
+             (D.changelog . debInfo) ~= Just log
              newDebianization' (Just 7) (Just (StandardsVersion 3 9 3 Nothing))
 
 test9 :: String -> Test
@@ -613,14 +612,14 @@ test9 label =
     TestCase (do let inTop = "test-data/alex/input"
                      outTop = "test-data/alex/output"
                  new <- withCurrentDirectory inTop $ newFlags >>= newAtoms >>= execCabalT (debianize (defaultAtoms >> customize))
-                 let Just (ChangeLog (entry : _)) = getL (T.changelog . debInfo) new
-                 old <- withCurrentDirectory outTop $ newFlags >>= execDebianT (inputDebianization >> copyChangelogDate (logDate entry)) . DI.makeDebInfo
+                 let Just (ChangeLog (entry : _)) = getL (D.changelog . debInfo) new
+                 old <- withCurrentDirectory outTop $ newFlags >>= execDebianT (inputDebianization >> copyChangelogDate (logDate entry)) . D.makeDebInfo
                  diff <- diffDebianizations old (getL debInfo new)
                  assertEqual label [] diff)
     where
       customize =
           do newDebianization' (Just 7) (Just (StandardsVersion 3 9 3 Nothing))
-             mapM_ (\ name -> (DI.atomSet . debInfo) %= (Set.insert $ DI.InstallData (BinPkgName "alex") name name))
+             mapM_ (\ name -> (D.atomSet . debInfo) %= (Set.insert $ D.InstallData (BinPkgName "alex") name name))
                    [ "AlexTemplate"
                    , "AlexTemplate-debug"
                    , "AlexTemplate-ghc"
@@ -635,13 +634,13 @@ test9 label =
                    , "AlexWrapper-posn"
                    , "AlexWrapper-posn-bytestring"
                    , "AlexWrapper-strict-bytestring"]
-             (T.homepage . debInfo) ~= Just "http://www.haskell.org/alex/"
-             (T.sourceFormat . debInfo) ~= Just Native3
-             T.debVersion ~= Just (parseDebianVersion ("3.0.2-1~hackage1" :: String))
+             (S.homepage . D.control . debInfo) ~= Just "http://www.haskell.org/alex/"
+             (D.sourceFormat . debInfo) ~= Just Native3
+             A.debVersion ~= Just (parseDebianVersion ("3.0.2-1~hackage1" :: String))
              doExecutable (BinPkgName "alex")
                           (InstallFile {execName = "alex", destName = "alex", sourceDir = Nothing, destDir = Nothing})
              -- Bootstrap dependency
-             (T.buildDepends . debInfo) %= (++ [[Rel (BinPkgName "alex") Nothing Nothing]])
+             (S.buildDepends . D.control . debInfo) %= (++ [[Rel (BinPkgName "alex") Nothing Nothing]])
 
 test10 :: String -> Test
 test10 label =
@@ -649,25 +648,25 @@ test10 label =
     TestCase (do let inTop = "test-data/archive/input"
                      outTop = "test-data/archive/output"
                  new <- withCurrentDirectory inTop $ newFlags >>= newAtoms >>= execCabalT (debianize (defaultAtoms >> customize))
-                 let Just (ChangeLog (entry : _)) = getL (T.changelog . debInfo) new
-                 old <- withCurrentDirectory outTop $ newFlags >>= execDebianT (inputDebianization >> copyChangelogDate (logDate entry)) . DI.makeDebInfo
+                 let Just (ChangeLog (entry : _)) = getL (D.changelog . debInfo) new
+                 old <- withCurrentDirectory outTop $ newFlags >>= execDebianT (inputDebianization >> copyChangelogDate (logDate entry)) . D.makeDebInfo
                  diff <- diffDebianizations old (getL debInfo new)
                  assertEqual label [] diff)
     where
       customize :: CabalT IO ()
       customize =
-          do T.sourcePackageName ~= Just (SrcPkgName "seereason-darcs-backups")
-             (T.compat . debInfo) ~= Just 5
-             (T.standardsVersion . debInfo) ~= Just (StandardsVersion 3 8 1 Nothing)
-             (S.maintainer . T.control . debInfo) ~= either (const Nothing) Just (parseMaintainer "David Fox <dsf@seereason.com>")
-             (T.depends (BinPkgName "seereason-darcs-backups") . debInfo) %= (++ [[Rel (BinPkgName "anacron") Nothing Nothing]])
-             (T.sourceSection . debInfo) ~= Just (MainSection "haskell")
-             T.utilsPackageNameBase ~= Just "seereason-darcs-backups"
-             (DI.atomSet . debInfo) %= (Set.insert $ DI.InstallCabalExec (BinPkgName "seereason-darcs-backups") "seereason-darcs-backups" "/etc/cron.hourly")
+          do A.sourcePackageName ~= Just (SrcPkgName "seereason-darcs-backups")
+             (D.compat . debInfo) ~= Just 5
+             (S.standardsVersion . D.control . debInfo) ~= Just (StandardsVersion 3 8 1 Nothing)
+             (S.maintainer . D.control . debInfo) ~= either (const Nothing) Just (parseMaintainer "David Fox <dsf@seereason.com>")
+             (B.depends . B.relations . D.binaryDebDescription (BinPkgName "seereason-darcs-backups") . debInfo) %= (++ [[Rel (BinPkgName "anacron") Nothing Nothing]])
+             (S.section . D.control . debInfo) ~= Just (MainSection "haskell")
+             A.utilsPackageNameBase ~= Just "seereason-darcs-backups"
+             (D.atomSet . debInfo) %= (Set.insert $ D.InstallCabalExec (BinPkgName "seereason-darcs-backups") "seereason-darcs-backups" "/etc/cron.hourly")
 
 copyChangelogDate :: Monad m => String -> DebianT m ()
 copyChangelogDate date =
-    T.changelog %= (\ (Just (ChangeLog (entry : older))) -> Just (ChangeLog (entry {logDate = date} : older)))
+    D.changelog %= (\ (Just (ChangeLog (entry : older))) -> Just (ChangeLog (entry {logDate = date} : older)))
 
 data Change k a
     = Created k a
@@ -685,7 +684,7 @@ diffMaps old new =
       combine1 k a b = if a == b then Unchanged k a else Modified k a b
       combine2 _ _ _ = Nothing
 
-diffDebianizations :: DI.DebInfo -> DI.DebInfo -> IO String -- [Change FilePath T.Text]
+diffDebianizations :: D.DebInfo -> D.DebInfo -> IO String -- [Change FilePath T.Text]
 diffDebianizations old new =
     do old' <- evalDebianT (sortBinaryDebs >> debianizationFileMap) old
        new' <- evalDebianT (sortBinaryDebs >> debianizationFileMap) new
@@ -709,7 +708,7 @@ diffDebianizations old new =
                      (contextDiff 2 (split (== '\n') a) (split (== '\n') b))
 
 sortBinaryDebs :: DebianT IO ()
-sortBinaryDebs = T.binaryPackages %= sortBy (compare `on` getL B.package)
+sortBinaryDebs = (S.binaryPackages . D.control) %= sortBy (compare `on` getL B.package)
 
 main :: IO ()
 main = runTestTT tests >>= putStrLn . show

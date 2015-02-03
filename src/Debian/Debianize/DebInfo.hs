@@ -36,10 +36,14 @@ module Debian.Debianize.DebInfo
     , installCabalExec
     , installCabalExecTo
     , installDir
+
+    , binaryDebDescription
     ) where
 
+import Control.Category ((.))
 import Control.Monad.State (StateT)
 import Data.Generics (Data, Typeable)
+import Data.Lens.Common (Lens, iso, getL)
 import Data.Lens.Lazy ((%=))
 import Data.Lens.Template (nameMakeLens)
 import Data.List (init)
@@ -49,9 +53,10 @@ import Data.Set as Set (insert, Set)
 import Data.Text (Text)
 import Debian.Changes (ChangeLog)
 import Debian.Debianize.InputCabalPackageDescription (Flags)
-import Debian.Debianize.Types.BinaryDebDescription (Canonical(canonical))
+import Debian.Debianize.Prelude (listElemLens, maybeLens)
+import Debian.Debianize.Types.BinaryDebDescription (BinaryDebDescription, Canonical(canonical), newBinaryDebDescription, package)
 import Debian.Debianize.Types.CopyrightDescription (CopyrightDescription, defaultCopyrightDescription, newCopyrightDescription)
-import qualified Debian.Debianize.Types.SourceDebDescription as S (newSourceDebDescription, SourceDebDescription)
+import qualified Debian.Debianize.Types.SourceDebDescription as S (newSourceDebDescription, SourceDebDescription, binaryPackages)
 import Debian.Orphans ()
 import Debian.Policy (SourceFormat)
 import Debian.Relation (BinPkgName)
@@ -178,3 +183,7 @@ installCabalExecTo :: Monad m => BinPkgName -> String -> FilePath -> StateT DebI
 installCabalExecTo b name dest = atomSet %= (Set.insert $ InstallCabalExecTo b name dest) >> return ()
 installDir :: Monad m => BinPkgName -> FilePath -> StateT DebInfo m ()
 installDir b dir = atomSet %= (Set.insert $ InstallDir b dir) >> return ()
+
+-- | Not exported - <http://www.debian.org/doc/debian-policy/ch-controlfields.html#s-f-Package>
+binaryDebDescription :: BinPkgName -> Lens DebInfo BinaryDebDescription
+binaryDebDescription b = maybeLens (newBinaryDebDescription b) (iso id id) . listElemLens ((== b) . getL package) . S.binaryPackages . control

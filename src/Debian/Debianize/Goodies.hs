@@ -27,11 +27,11 @@ import Data.Maybe (fromMaybe)
 import Data.Monoid ((<>))
 import Data.Set as Set (insert, singleton, union)
 import Data.Text as Text (pack, Text, unlines)
-import qualified Debian.Debianize.DebInfo as T (Atom(File, Install, InstallCabalExec, InstallCabalExecTo, InstallDir, InstallTo, Link), atomSet)
+import qualified Debian.Debianize.DebInfo as D
 import Debian.Debianize.Monad (Atoms, CabalT, DebianT, execCabalM)
 import Debian.Debianize.Prelude ((%=), (+++=), (++=), (+=), stripWith)
-import qualified Debian.Debianize.Types as T (backups, depends, executable, installInit, logrotateStanza, packageDescription, postInst, rulesFragments, serverInfo, website)
-import qualified Debian.Debianize.Types.Atoms as T (debInfo, InstallFile(..), Server(hostname, installFile, port, retry, serverFlags), Site(domain, server, serverAdmin))
+import qualified Debian.Debianize.Types.Atoms as A
+import qualified Debian.Debianize.Types.BinaryDebDescription as B
 import Debian.Orphans ()
 import Debian.Policy (apacheAccessLog, apacheErrorLog, apacheLogDirectory, databaseDirectory, serverAccessLog, serverAppLog)
 import Debian.Pretty (ppDisplay, ppDisplay')
@@ -59,7 +59,7 @@ translate str =
 tightDependencyFixup :: Monad m => [(BinPkgName, BinPkgName)] -> BinPkgName -> DebianT m ()
 tightDependencyFixup [] _ = return ()
 tightDependencyFixup pairs p =
-    T.rulesFragments +=
+    D.rulesFragments +=
           (Text.unlines $
                ([ "binary-fixup/" <> name <> "::"
                 , "\techo -n 'haskell:Depends=' >> debian/" <> name <> ".substvars" ] ++
@@ -75,27 +75,27 @@ tightDependencyFixup pairs p =
       display' = ppDisplay'
 
 -- | Add a debian binary package to the debianization containing a cabal executable file.
-doExecutable :: Monad m => BinPkgName -> T.InstallFile -> CabalT m ()
-doExecutable p f = T.executable ++= (p, f)
+doExecutable :: Monad m => BinPkgName -> A.InstallFile -> CabalT m ()
+doExecutable p f = A.executable ++= (p, f)
 
 -- | Add a debian binary package to the debianization containing a cabal executable file set up to be a server.
-doServer :: Monad m => BinPkgName -> T.Server -> CabalT m ()
-doServer p s = T.serverInfo ++= (p, s)
+doServer :: Monad m => BinPkgName -> A.Server -> CabalT m ()
+doServer p s = A.serverInfo ++= (p, s)
 
 -- | Add a debian binary package to the debianization containing a cabal executable file set up to be a web site.
-doWebsite :: Monad m => BinPkgName -> T.Site -> CabalT m ()
-doWebsite p w = T.website ++= (p, w)
+doWebsite :: Monad m => BinPkgName -> A.Site -> CabalT m ()
+doWebsite p w = A.website ++= (p, w)
 
 -- | Add a debian binary package to the debianization containing a cabal executable file set up to be a backup script.
 doBackups :: Monad m => BinPkgName -> String -> CabalT m ()
 doBackups bin s =
-    do T.backups ++= (bin, s)
-       (T.depends bin . T.debInfo) %= (++ [[Rel (BinPkgName "anacron") Nothing Nothing]])
+    do A.backups ++= (bin, s)
+       (B.depends . B.relations . D.binaryDebDescription bin . A.debInfo) %= (++ [[Rel (BinPkgName "anacron") Nothing Nothing]])
        -- depends +++= (bin, Rel (BinPkgName "anacron") Nothing Nothing)
 
 describe :: Monad m => CabalT m Text
 describe =
-    do p <- access T.packageDescription
+    do p <- access A.packageDescription
        return $
           debianDescriptionBase p {- <> "\n" <>
           case typ of
@@ -153,29 +153,29 @@ debianDescriptionBase p =
       desc = List.map addDot . stripWith null $ map (dropWhileEnd isSpace) $ lines $ Cabal.description p
       addDot line = if null line then "." else line
 
-oldClckwrksSiteFlags :: T.Site -> [String]
+oldClckwrksSiteFlags :: A.Site -> [String]
 oldClckwrksSiteFlags x =
     [ -- According to the happstack-server documentation this needs a trailing slash.
-      "--base-uri", "http://" ++ T.domain x ++ "/"
-    , "--http-port", show T.port]
-oldClckwrksServerFlags :: T.Server -> [String]
+      "--base-uri", "http://" ++ A.domain x ++ "/"
+    , "--http-port", show A.port]
+oldClckwrksServerFlags :: A.Server -> [String]
 oldClckwrksServerFlags x =
     [ -- According to the happstack-server documentation this needs a trailing slash.
-      "--base-uri", "http://" ++ T.hostname x ++ ":" ++ show (T.port x) ++ "/"
-    , "--http-port", show T.port]
+      "--base-uri", "http://" ++ A.hostname x ++ ":" ++ show (A.port x) ++ "/"
+    , "--http-port", show A.port]
 
 watchAtom :: PackageName -> Text
 watchAtom (PackageName pkgname) =
     pack $ "version=3\nhttp://hackage.haskell.org/package/" ++ pkgname ++ "/distro-monitor .*-([0-9\\.]+)\\.(?:zip|tgz|tbz|txz|(?:tar\\.(?:gz|bz2|xz)))\n"
 
-siteAtoms :: BinPkgName -> T.Site -> Atoms -> Atoms
+siteAtoms :: BinPkgName -> A.Site -> Atoms -> Atoms
 siteAtoms b site =
     execCabalM
-      (do (T.atomSet . T.debInfo) %= (Set.insert $ T.InstallDir b "/etc/apache2/sites-available")
-          (T.atomSet . T.debInfo) %= (Set.insert $ T.Link b ("/etc/apache2/sites-available/" ++ T.domain site) ("/etc/apache2/sites-enabled/" ++ T.domain site))
-          (T.atomSet . T.debInfo) %= (Set.insert $ T.File b ("/etc/apache2/sites-available" </> T.domain site) apacheConfig)
-          (T.atomSet . T.debInfo) %= (Set.insert $ T.InstallDir b (apacheLogDirectory b))
-          (T.logrotateStanza . T.debInfo) +++=
+      (do (D.atomSet . A.debInfo) %= (Set.insert $ D.InstallDir b "/etc/apache2/sites-available")
+          (D.atomSet . A.debInfo) %= (Set.insert $ D.Link b ("/etc/apache2/sites-available/" ++ A.domain site) ("/etc/apache2/sites-enabled/" ++ A.domain site))
+          (D.atomSet . A.debInfo) %= (Set.insert $ D.File b ("/etc/apache2/sites-available" </> A.domain site) apacheConfig)
+          (D.atomSet . A.debInfo) %= (Set.insert $ D.InstallDir b (apacheLogDirectory b))
+          (D.logrotateStanza . A.debInfo) +++=
                               (b, singleton
                                    (Text.unlines $ [ pack (apacheAccessLog b) <> " {"
                                                    , "  copytruncate" -- hslogger doesn't notice when the log is rotated, maybe this will help
@@ -184,7 +184,7 @@ siteAtoms b site =
                                                    , "  compress"
                                                    , "  missingok"
                                                    , "}"]))
-          (T.logrotateStanza . T.debInfo) +++=
+          (D.logrotateStanza . A.debInfo) +++=
                               (b, singleton
                                    (Text.unlines $ [ pack (apacheErrorLog b) <> " {"
                                                    , "  copytruncate"
@@ -193,16 +193,16 @@ siteAtoms b site =
                                                    , "  compress"
                                                    , "  missingok"
                                                    , "}" ]))) .
-      serverAtoms b (T.server site) True
+      serverAtoms b (A.server site) True
     where
       -- An apache site configuration file.  This is installed via a line
       -- in debianFiles.
       apacheConfig =
           Text.unlines $
                    [  "<VirtualHost *:80>"
-                   , "    ServerAdmin " <> pack (T.serverAdmin site)
-                   , "    ServerName www." <> pack (T.domain site)
-                   , "    ServerAlias " <> pack (T.domain site)
+                   , "    ServerAdmin " <> pack (A.serverAdmin site)
+                   , "    ServerName www." <> pack (A.domain site)
+                   , "    ServerAlias " <> pack (A.domain site)
                    , ""
                    , "    ErrorLog " <> pack (apacheErrorLog b)
                    , "    CustomLog " <> pack (apacheAccessLog b) <> " combined"
@@ -231,34 +231,34 @@ siteAtoms b site =
                    , "    ProxyPass / http://127.0.0.1:" <> port' <> "/ nocanon"
                    , "    ProxyPassReverse / http://127.0.0.1:" <> port' <> "/"
                    , "</VirtualHost>" ]
-      port' = pack (show (T.port (T.server site)))
+      port' = pack (show (A.port (A.server site)))
 
 -- FIXME - use Atoms
-serverAtoms :: BinPkgName -> T.Server -> Bool -> Atoms -> Atoms
+serverAtoms :: BinPkgName -> A.Server -> Bool -> Atoms -> Atoms
 serverAtoms b server' isSite =
-    modL (T.postInst . T.debInfo) (insertWith (\ old new -> if old /= new then error ("serverAtoms: " ++ show old ++ " -> " ++ show new) else old) b debianPostinst) .
-    modL (T.installInit . T.debInfo) (Map.insertWith (\ old new -> if old /= new then error ("serverAtoms: " ++ show old ++ " -> " ++ show new) else old) b debianInit) .
+    modL (D.postInst . A.debInfo) (insertWith (\ old new -> if old /= new then error ("serverAtoms: " ++ show old ++ " -> " ++ show new) else old) b debianPostinst) .
+    modL (D.installInit . A.debInfo) (Map.insertWith (\ old new -> if old /= new then error ("serverAtoms: " ++ show old ++ " -> " ++ show new) else old) b debianInit) .
     serverLogrotate' b .
     execAtoms b exec
     where
-      exec = T.installFile server'
+      exec = A.installFile server'
       debianInit =
           Text.unlines $
                    [ "#! /bin/sh -e"
                    , ""
                    , ". /lib/lsb/init-functions"
-                   , "test -f /etc/default/" <> pack (T.destName exec) <> " && . /etc/default/" <> pack (T.destName exec)
+                   , "test -f /etc/default/" <> pack (A.destName exec) <> " && . /etc/default/" <> pack (A.destName exec)
                    , ""
                    , "case \"$1\" in"
                    , "  start)"
-                   , "    test -x /usr/bin/" <> pack (T.destName exec) <> " || exit 0"
-                   , "    log_begin_msg \"Starting " <> pack (T.destName exec) <> "...\""
+                   , "    test -x /usr/bin/" <> pack (A.destName exec) <> " || exit 0"
+                   , "    log_begin_msg \"Starting " <> pack (A.destName exec) <> "...\""
                    , "    mkdir -p " <> pack (databaseDirectory b)
                    , "    " <> startCommand
                    , "    log_end_msg $?"
                    , "    ;;"
                    , "  stop)"
-                   , "    log_begin_msg \"Stopping " <> pack (T.destName exec) <> "...\""
+                   , "    log_begin_msg \"Stopping " <> pack (A.destName exec) <> "...\""
                    , "    " <> stopCommand
                    , "    log_end_msg $?"
                    , "    ;;"
@@ -268,11 +268,11 @@ serverAtoms b server' isSite =
                    , "esac"
                    , ""
                    , "exit 0" ]
-      startCommand = pack $ showCommand "start-stop-daemon" (startOptions ++ commonOptions ++ ["--"] ++ T.serverFlags server')
+      startCommand = pack $ showCommand "start-stop-daemon" (startOptions ++ commonOptions ++ ["--"] ++ A.serverFlags server')
       stopCommand = pack $ showCommand "start-stop-daemon" (stopOptions ++ commonOptions)
-      commonOptions = ["--pidfile", "/var/run/" ++ T.destName exec]
-      startOptions = ["--start", "-b", "--make-pidfile", "-d", databaseDirectory b, "--exec", "/usr/bin" </> T.destName exec]
-      stopOptions = ["--stop", "--oknodo"] ++ if T.retry server' /= "" then ["--retry=" ++ T.retry server' ] else []
+      commonOptions = ["--pidfile", "/var/run/" ++ A.destName exec]
+      startOptions = ["--start", "-b", "--make-pidfile", "-d", databaseDirectory b, "--exec", "/usr/bin" </> A.destName exec]
+      stopOptions = ["--stop", "--oknodo"] ++ if A.retry server' /= "" then ["--retry=" ++ A.retry server' ] else []
 
       debianPostinst =
           Text.unlines $
@@ -302,13 +302,13 @@ serverAtoms b server' isSite =
 -- FIXME - use Atoms
 serverLogrotate' :: BinPkgName -> Atoms -> Atoms
 serverLogrotate' b =
-    modL (T.logrotateStanza . T.debInfo) (insertWith Set.union b (singleton (Text.unlines $ [ pack (serverAccessLog b) <> " {"
+    modL (D.logrotateStanza . A.debInfo) (insertWith Set.union b (singleton (Text.unlines $ [ pack (serverAccessLog b) <> " {"
                                  , "  weekly"
                                  , "  rotate 5"
                                  , "  compress"
                                  , "  missingok"
                                  , "}" ]))) .
-    modL (T.logrotateStanza . T.debInfo) (insertWith Set.union b (singleton (Text.unlines $ [ pack (serverAppLog b) <> " {"
+    modL (D.logrotateStanza . A.debInfo) (insertWith Set.union b (singleton (Text.unlines $ [ pack (serverAppLog b) <> " {"
                                  , "  weekly"
                                  , "  rotate 5"
                                  , "  compress"
@@ -318,7 +318,7 @@ serverLogrotate' b =
 -- FIXME - use Atoms
 backupAtoms :: BinPkgName -> String -> Atoms -> Atoms
 backupAtoms b name =
-    modL (T.postInst . T.debInfo) (insertWith (\ old new -> if old /= new then error $ "backupAtoms: " ++ show old ++ " -> " ++ show new else old) b
+    modL (D.postInst . A.debInfo) (insertWith (\ old new -> if old /= new then error $ "backupAtoms: " ++ show old ++ " -> " ++ show new else old) b
                  (Text.unlines $
                   [ "#!/bin/sh"
                   , ""
@@ -327,30 +327,30 @@ backupAtoms b name =
                   , "    " <> pack ("/etc/cron.hourly" </> name) <> " --initialize"
                   , "    ;;"
                   , "esac" ])) .
-    execAtoms b (T.InstallFile { T.execName = name
-                               , T.destName = name
-                               , T.sourceDir = Nothing
-                               , T.destDir = Just "/etc/cron.hourly" })
+    execAtoms b (A.InstallFile { A.execName = name
+                               , A.destName = name
+                               , A.sourceDir = Nothing
+                               , A.destDir = Just "/etc/cron.hourly" })
 
 -- FIXME - use Atoms
-execAtoms :: BinPkgName -> T.InstallFile -> Atoms -> Atoms
+execAtoms :: BinPkgName -> A.InstallFile -> Atoms -> Atoms
 execAtoms b ifile r =
-    modL (T.rulesFragments . T.debInfo) (Set.insert (pack ("build" </> ppDisplay b ++ ":: build-ghc-stamp\n"))) .
+    modL (D.rulesFragments . A.debInfo) (Set.insert (pack ("build" </> ppDisplay b ++ ":: build-ghc-stamp\n"))) .
     fileAtoms b ifile $
     r
 
 -- FIXME - use Atoms
-fileAtoms :: BinPkgName -> T.InstallFile -> Atoms -> Atoms
+fileAtoms :: BinPkgName -> A.InstallFile -> Atoms -> Atoms
 fileAtoms b installFile' r =
-    fileAtoms' b (T.sourceDir installFile') (T.execName installFile') (T.destDir installFile') (T.destName installFile') r
+    fileAtoms' b (A.sourceDir installFile') (A.execName installFile') (A.destDir installFile') (A.destName installFile') r
 
 -- FIXME - use Atoms
 fileAtoms' :: BinPkgName -> Maybe FilePath -> String -> Maybe FilePath -> String -> Atoms -> Atoms
 fileAtoms' b sourceDir' execName' destDir' destName' r =
     case (sourceDir', execName' == destName') of
-      (Nothing, True) -> execCabalM ((T.atomSet . T.debInfo) %= (Set.insert $ T.InstallCabalExec b execName' d)) r
-      (Just s, True) -> execCabalM ((T.atomSet . T.debInfo) %= (Set.insert $ T.Install b (s </> execName') d)) r
-      (Nothing, False) -> execCabalM ((T.atomSet . T.debInfo) %= (Set.insert $ T.InstallCabalExecTo b execName' (d </> destName'))) r
-      (Just s, False) -> execCabalM ((T.atomSet . T.debInfo) %= (Set.insert $ T.InstallTo b (s </> execName') (d </> destName'))) r
+      (Nothing, True) -> execCabalM ((D.atomSet . A.debInfo) %= (Set.insert $ D.InstallCabalExec b execName' d)) r
+      (Just s, True) -> execCabalM ((D.atomSet . A.debInfo) %= (Set.insert $ D.Install b (s </> execName') d)) r
+      (Nothing, False) -> execCabalM ((D.atomSet . A.debInfo) %= (Set.insert $ D.InstallCabalExecTo b execName' (d </> destName'))) r
+      (Just s, False) -> execCabalM ((D.atomSet . A.debInfo) %= (Set.insert $ D.InstallTo b (s </> execName') (d </> destName'))) r
     where
       d = fromMaybe "usr/bin" destDir'

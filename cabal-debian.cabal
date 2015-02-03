@@ -203,7 +203,6 @@ Library
    Debian.Debianize.Output
    Debian.Debianize.Prelude
    Debian.Debianize.SubstVars
-   Debian.Debianize.Types
    Debian.Debianize.Types.Atoms
    Debian.Debianize.Types.BinaryDebDescription
    Debian.Debianize.Types.CopyrightDescription

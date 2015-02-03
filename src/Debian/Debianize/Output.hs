@@ -25,16 +25,15 @@ import Data.Map as Map (elems, toList)
 import Data.Maybe (fromMaybe)
 import Data.Text as Text (split, Text, unpack)
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(..))
-import Debian.Debianize.DebInfo (DebInfo)
+import qualified Debian.Debianize.DebInfo as D
 import Debian.Debianize.Files (debianizationFileMap)
 import Debian.Debianize.Input (inputDebianization)
 import Debian.Debianize.InputCabalPackageDescription (dryRun, validate)
 import Debian.Debianize.Monad (DebianT, evalDebianT)
 import Debian.Debianize.Options (putEnvironmentArgs)
 import Debian.Debianize.Prelude (indent, replaceFile, zipMaps)
-import qualified Debian.Debianize.Types as T (binaryPackages, changelog, control, flags)
 import Debian.Debianize.Types.BinaryDebDescription as B (canonical, package)
-import qualified Debian.Debianize.Types.SourceDebDescription as S (source)
+import qualified Debian.Debianize.Types.SourceDebDescription as S
 import Debian.Pretty (ppDisplay, ppPrint)
 import Prelude hiding ((.), unlines, writeFile)
 import System.Directory (createDirectoryIfMissing, doesFileExist, getPermissions, Permissions(executable), setPermissions)
@@ -74,11 +73,11 @@ doDebianizeAction :: (MonadIO m, Functor m) => DebianT m ()
 doDebianizeAction =
     do new <- get
        case () of
-         _ | getL (validate . T.flags) new ->
+         _ | getL (validate . D.flags) new ->
                do inputDebianization
                   old <- get
                   return $ validateDebianization old new
-         _ | getL (dryRun . T.flags) new ->
+         _ | getL (dryRun . D.flags) new ->
                do inputDebianization
                   old <- get
                   diff <- liftIO $ compareDebianization old new
@@ -104,7 +103,7 @@ describeDebianization =
 
 -- | Compare the old and new debianizations, returning a string
 -- describing the differences.
-compareDebianization :: DebInfo -> DebInfo -> IO String
+compareDebianization :: D.DebInfo -> D.DebInfo -> IO String
 compareDebianization old new =
     do oldFiles <- evalDebianT debianizationFileMap (canonical old)
        newFiles <- evalDebianT debianizationFileMap (canonical new)
@@ -124,7 +123,7 @@ compareDebianization old new =
 -- the names of the source and binary packages.  Some debian packages
 -- come with a skeleton debianization that needs to be filled in, this
 -- can be used to make sure the debianization we produce is usable.
-validateDebianization :: DebInfo -> DebInfo -> ()
+validateDebianization :: D.DebInfo -> D.DebInfo -> ()
 validateDebianization old new =
     case () of
       _ | oldVersion /= newVersion -> throw (userError ("Version mismatch, expected " ++ ppDisplay oldVersion ++ ", found " ++ ppDisplay newVersion))
@@ -132,11 +131,11 @@ validateDebianization old new =
         | oldPackages /= newPackages -> throw (userError ("Package mismatch, expected " ++ show (map ppPrint oldPackages) ++ ", found " ++ show (map ppPrint newPackages)))
         | True -> ()
     where
-      oldVersion = logVersion (head (unChangeLog (fromMaybe (error "Missing changelog") (getL T.changelog old))))
-      newVersion = logVersion (head (unChangeLog (fromMaybe (error "Missing changelog") (getL T.changelog new))))
-      oldSource = getL (S.source . T.control) old
-      newSource = getL (S.source . T.control) new
-      oldPackages = map (getL B.package) $ getL T.binaryPackages old
-      newPackages = map (getL B.package) $ getL T.binaryPackages new
+      oldVersion = logVersion (head (unChangeLog (fromMaybe (error "Missing changelog") (getL D.changelog old))))
+      newVersion = logVersion (head (unChangeLog (fromMaybe (error "Missing changelog") (getL D.changelog new))))
+      oldSource = getL (S.source . D.control) old
+      newSource = getL (S.source . D.control) new
+      oldPackages = map (getL B.package) $ getL (S.binaryPackages . D.control) old
+      newPackages = map (getL B.package) $ getL (S.binaryPackages . D.control) new
       unChangeLog :: ChangeLog -> [ChangeLogEntry]
       unChangeLog (ChangeLog x) = x

@@ -11,14 +11,16 @@ module Debian.Debianize.DebianName
     ) where
 
 import Control.Applicative ((<$>))
+import Control.Category ((.))
 import Data.Char (toLower)
 import Data.Lens.Lazy (access)
 import Data.Map as Map (alter, lookup)
 import Data.Version (showVersion, Version)
 import Debian.Debianize.Monad (CabalT)
 import Debian.Debianize.Prelude ((%=))
-import Debian.Debianize.Atoms as T (debianNameMap, overrideDebianNameBase, packageDescription, utilsPackageNameBase)
+import Debian.Debianize.Atoms as A (debianNameMap, packageDescription, debInfo)
 import Debian.Debianize.BinaryDebDescription as Debian (PackageType(..))
+import Debian.Debianize.DebInfo as D (overrideDebianNameBase, utilsPackageNameBase)
 import Debian.Debianize.VersionSplits (DebBase(DebBase, unDebBase), doSplits, insertSplit, makePackage, VersionSplits)
 import Debian.Orphans ()
 import Debian.Relation (PkgName(..), Relations)
@@ -27,7 +29,7 @@ import Debian.Version (parseDebianVersion)
 import Distribution.Compiler (CompilerFlavor(..))
 import Distribution.Package (Dependency(..), PackageIdentifier(..), PackageName(PackageName))
 import qualified Distribution.PackageDescription as Cabal (PackageDescription(package))
-import Prelude hiding (unlines)
+import Prelude hiding (unlines, (.))
 
 data Dependency_
   = BuildDepends Dependency
@@ -41,8 +43,8 @@ debianName :: (Monad m, Functor m, PkgName name) => PackageType -> CompilerFlavo
 debianName typ cfl =
     do base <-
            case (typ, cfl) of
-             (Utilities, GHC) -> access utilsPackageNameBase >>= maybe (((\ base -> "haskell-" ++ base ++ "-utils") . unDebBase) <$> debianNameBase) return
-             (Utilities, _) -> access utilsPackageNameBase >>= maybe (((\ base -> base ++ "-utils") . unDebBase) <$> debianNameBase) return
+             (Utilities, GHC) -> access (utilsPackageNameBase . debInfo) >>= maybe (((\ base -> "haskell-" ++ base ++ "-utils") . unDebBase) <$> debianNameBase) return
+             (Utilities, _) -> access (utilsPackageNameBase . debInfo) >>= maybe (((\ base -> base ++ "-utils") . unDebBase) <$> debianNameBase) return
              _ -> unDebBase <$> debianNameBase
        return $ mkPkgName' cfl typ (DebBase base)
 
@@ -52,10 +54,10 @@ debianName typ cfl =
 -- is >= v.
 debianNameBase :: Monad m => CabalT m DebBase
 debianNameBase =
-    do nameBase <- access T.overrideDebianNameBase
+    do nameBase <- access (D.overrideDebianNameBase . debInfo)
        pkgDesc <- access packageDescription
        let pkgId = Cabal.package pkgDesc
-       nameMap <- access T.debianNameMap
+       nameMap <- access A.debianNameMap
        let pname@(PackageName _) = pkgName pkgId
            version = (Just (D.EEQ (parseDebianVersion (showVersion (pkgVersion pkgId)))))
        case (nameBase, Map.lookup (pkgName pkgId) nameMap) of

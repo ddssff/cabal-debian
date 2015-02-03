@@ -21,11 +21,11 @@ import Data.Maybe (catMaybes, fromMaybe, listToMaybe)
 import qualified Data.Set as Set (member, Set)
 import Data.Text (pack)
 import Debian.Control (Control'(unControl), ControlFunctions(lookupP, parseControl, stripWS), Field'(Field))
-import qualified Debian.Debianize.DebInfo as T (flags)
+import qualified Debian.Debianize.DebInfo as D (flags, extraLibMap, missingDependencies)
 import Debian.Debianize.InputCabalPackageDescription (DebType(..), dryRun)
 import Debian.Debianize.Monad (CabalT)
 import Debian.Debianize.Prelude ((!), buildDebVersionMap, cond, DebMap, debOfFile, diffFile, dpkgFileMap, modifyM, replaceFile, showDeps)
-import qualified Debian.Debianize.Atoms as T (Atoms, debInfo, extraLibMap, missingDependencies, packageDescription, packageInfo, PackageInfo(PackageInfo, cabalName, devDeb, docDeb, profDeb))
+import qualified Debian.Debianize.Atoms as A (Atoms, debInfo, packageDescription, packageInfo, PackageInfo(PackageInfo, cabalName, devDeb, docDeb, profDeb))
 import Debian.Orphans ()
 import Debian.Pretty (ppDisplay)
 import Debian.Relation (BinPkgName(BinPkgName), Relation, Relations)
@@ -60,7 +60,7 @@ substvars debType =
 
 substvars' :: (MonadIO m, Functor m) => DebType -> Control' String -> CabalT m ()
 substvars' debType control =
-    get >>= return . getL T.packageInfo >>= \ info ->
+    get >>= return . getL A.packageInfo >>= \ info ->
     cabalDependencies >>= \ cabalDeps ->
     case (missingBuildDeps info cabalDeps, path) of
       -- There should already be a .substvars file produced by dh_haskell_prep,
@@ -75,7 +75,7 @@ substvars' debType control =
           do old <- liftIO $ readFile path'
              deps <- debDeps debType control
              new <- addDeps old deps
-             dry <- get >>= return . getL (dryRun . T.flags . T.debInfo)
+             dry <- get >>= return . getL (dryRun . D.flags . A.debInfo)
              liftIO (diffFile path' (pack new) >>= maybe (putStrLn ("cabal-debian substvars: No updates found for " ++ show path'))
                                                        (\ diff -> if dry then putStr diff else replaceFile path' new))
       ([], Nothing) -> return ()
@@ -101,8 +101,8 @@ substvars' debType control =
                   concat (map (\ (Dependency name _) ->
                                case Map.lookup name info of
                                  Just info' ->
-                                     let prof = maybe (T.devDeb info') Just (T.profDeb info') in
-                                     let doc = T.docDeb info' in
+                                     let prof = maybe (A.devDeb info') Just (A.profDeb info') in
+                                     let doc = A.docDeb info' in
                                      catMaybes [prof, doc]
                                  Nothing -> []) cabalDeps) in
           filter (not . (`elem` buildDepNames) . fst) requiredDebs
@@ -114,7 +114,7 @@ substvars' debType control =
       bd = maybe "" (\ (Field (_a, b)) -> stripWS b) . lookupP "Build-Depends" . head . unControl $ control
       bdi = maybe "" (\ (Field (_a, b)) -> stripWS b) . lookupP "Build-Depends-Indep" . head . unControl $ control
 
-libPaths :: DebMap -> T.Atoms -> IO T.Atoms
+libPaths :: DebMap -> A.Atoms -> IO A.Atoms
 libPaths debVersions atoms =
     do a <- getDirPaths "/usr/lib"
        b <- getDirPaths ("/usr/lib/haskell-packages" </> display buildCompilerId </> "lib")
@@ -123,7 +123,7 @@ libPaths debVersions atoms =
     where
       getDirPaths path = try (getDirectoryContents path) >>= return . map (\ x -> (path, x)) . either (\ (_ :: SomeException) -> []) id
 
-packageInfo' :: DebMap -> T.Atoms -> (FilePath, String) -> ReaderT (Map.Map FilePath (Set.Set D.BinPkgName)) IO T.Atoms
+packageInfo' :: DebMap -> A.Atoms -> (FilePath, String) -> ReaderT (Map.Map FilePath (Set.Set D.BinPkgName)) IO A.Atoms
 packageInfo' debVersions atoms (d, f) =
     case parseNameVersion f of
       Nothing -> return atoms
@@ -138,12 +138,12 @@ packageInfo' debVersions atoms (d, f) =
           do dev <- debOfFile ("^" ++ d </> p ++ "-" ++ v </> cdir </> "libHS" ++ p ++ "-" ++ v ++ ".a$")
              prof <- debOfFile ("^" ++ d </> p ++ "-" ++ v </> cdir </> "libHS" ++ p ++ "-" ++ v ++ "_p.a$")
              doc <- debOfFile ("/" ++ p ++ ".haddock$")
-             return $ modL T.packageInfo (Map.insert
+             return $ modL A.packageInfo (Map.insert
                                            (PackageName p)
-                                           (T.PackageInfo { T.cabalName = PackageName p
-                                                          , T.devDeb = maybe Nothing (\ x -> Just (x, debVersions ! x)) dev
-                                                          , T.profDeb = maybe Nothing (\ x -> Just (x, debVersions ! x)) prof
-                                                          , T.docDeb = maybe Nothing (\ x -> Just (x, debVersions ! x)) doc })) atoms
+                                           (A.PackageInfo { A.cabalName = PackageName p
+                                                          , A.devDeb = maybe Nothing (\ x -> Just (x, debVersions ! x)) dev
+                                                          , A.profDeb = maybe Nothing (\ x -> Just (x, debVersions ! x)) prof
+                                                          , A.docDeb = maybe Nothing (\ x -> Just (x, debVersions ! x)) doc })) atoms
 
 data Dependency_
   = BuildDepends Dependency
@@ -162,7 +162,7 @@ unboxDependency (ExtraLibs _) = Nothing -- Dependency (PackageName d) anyVersion
 -- which are build dependencies
 debDeps :: (MonadIO m, Functor m) => DebType -> Control' String -> CabalT m D.Relations
 debDeps debType control =
-    do info <- get >>= return . getL T.packageInfo
+    do info <- get >>= return . getL A.packageInfo
        cabalDeps <- cabalDependencies
        return $ interdependencies ++ otherdependencies info cabalDeps
     where
@@ -176,14 +176,14 @@ debDeps debType control =
                             Just p -> maybe Nothing
                                             (\ (s, v) -> Just [D.Rel s (Just (D.GRE v)) Nothing])
                                             (case debType of
-                                               Dev -> T.devDeb p
-                                               Prof -> T.profDeb p
-                                               Doc -> T.docDeb p)
+                                               Dev -> A.devDeb p
+                                               Prof -> A.profDeb p
+                                               Doc -> A.docDeb p)
                             Nothing -> Nothing) cabalDeps)
 
 cabalDependencies :: (MonadIO m, Functor m) => CabalT m [Dependency]
 cabalDependencies =
-    do pkgDesc <- access T.packageDescription
+    do pkgDesc <- access A.packageDescription
        atoms <- get
        return $ catMaybes $ map unboxDependency $
            allBuildDepends atoms
@@ -194,7 +194,7 @@ cabalDependencies =
 
 -- |Debian packages don't have per binary package build dependencies,
 -- so we just gather them all up here.
-allBuildDepends :: T.Atoms -> [Dependency] -> [Dependency] -> [Dependency] -> [String] -> [Dependency_]
+allBuildDepends :: A.Atoms -> [Dependency] -> [Dependency] -> [Dependency] -> [String] -> [Dependency_]
 allBuildDepends atoms buildDepends buildTools pkgconfigDepends extraLibs =
     nub $ map BuildDepends buildDepends ++
           map BuildTools buildTools ++
@@ -203,7 +203,7 @@ allBuildDepends atoms buildDepends buildTools pkgconfigDepends extraLibs =
     where
       fixDeps :: [String] -> [Relations]
       fixDeps xs = map (\ cab -> fromMaybe [[D.Rel (D.BinPkgName ("lib" ++ cab ++ "-dev")) Nothing Nothing]]
-                                           (Map.lookup cab (getL T.extraLibMap atoms))) xs
+                                           (Map.lookup cab (getL (D.extraLibMap . A.debInfo) atoms))) xs
 
 -- | Given a control file and a DebType, look for the binary deb with
 -- the corresponding suffix and return its name.
@@ -218,5 +218,5 @@ debNameFromType control debType =
 
 filterMissing :: Monad m => [[Relation]] -> CabalT m [[Relation]]
 filterMissing rels =
-    do missing <- get >>= return . getL T.missingDependencies
+    do missing <- get >>= return . getL (D.missingDependencies . A.debInfo)
        return $ filter (/= []) (List.map (filter (\ (D.Rel name _ _) -> not (Set.member name missing))) rels)

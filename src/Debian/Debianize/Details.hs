@@ -6,14 +6,17 @@ module Debian.Debianize.Details
     ( debianDefaultAtoms
     ) where
 
+import Control.Category ((.))
 import Data.Version (Version(Version))
 import Debian.Debianize.DebianName (mapCabal, splitCabal)
 import Debian.Debianize.Monad (CabalT)
 import Debian.Debianize.Prelude ((++=))
-import Debian.Debianize.Atoms as T (epochMap, execMap)
+import Debian.Debianize.Atoms as A (epochMap, debInfo)
+import Debian.Debianize.DebInfo as D (execMap)
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
 import Debian.Relation (BinPkgName(BinPkgName), Relation(Rel))
 import Distribution.Package (PackageName(PackageName))
+import Prelude hiding ((.))
 
 -- | Update the Atoms value in the CabalT state with some details about
 -- the debian repository - special cases for how some cabal packages
@@ -21,10 +24,10 @@ import Distribution.Package (PackageName(PackageName))
 debianDefaultAtoms :: Monad m => CabalT m ()
 debianDefaultAtoms =
     do -- These are the two epoch names I know about in the debian repo
-       T.epochMap ++= (PackageName "HaXml", 1)
-       T.epochMap ++= (PackageName "HTTP", 1)
+       A.epochMap ++= (PackageName "HaXml", 1)
+       A.epochMap ++= (PackageName "HTTP", 1)
        -- The hsx2hs build tool is in an an eponymous deb
-       T.execMap ++= ("hsx2hs", [[Rel (BinPkgName "hsx2hs") Nothing Nothing]])
+       (D.execMap . A.debInfo) ++= ("hsx2hs", [[Rel (BinPkgName "hsx2hs") Nothing Nothing]])
        -- For now, use deb names like libghc-cabal-ghcjs-dev for any
        -- Cabal >= 1.21, which is the ghcjs development branch of Cabal.
        mapCabal (PackageName "Cabal") (DebBase "cabal-ghcjs")

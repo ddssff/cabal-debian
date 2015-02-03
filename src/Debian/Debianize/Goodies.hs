@@ -75,21 +75,21 @@ tightDependencyFixup pairs p =
       display' = ppDisplay'
 
 -- | Add a debian binary package to the debianization containing a cabal executable file.
-doExecutable :: Monad m => BinPkgName -> A.InstallFile -> CabalT m ()
-doExecutable p f = A.executable ++= (p, f)
+doExecutable :: Monad m => BinPkgName -> D.InstallFile -> CabalT m ()
+doExecutable p f = (D.executable . A.debInfo) ++= (p, f)
 
 -- | Add a debian binary package to the debianization containing a cabal executable file set up to be a server.
-doServer :: Monad m => BinPkgName -> A.Server -> CabalT m ()
-doServer p s = A.serverInfo ++= (p, s)
+doServer :: Monad m => BinPkgName -> D.Server -> CabalT m ()
+doServer p s = (D.serverInfo . A.debInfo) ++= (p, s)
 
 -- | Add a debian binary package to the debianization containing a cabal executable file set up to be a web site.
-doWebsite :: Monad m => BinPkgName -> A.Site -> CabalT m ()
-doWebsite p w = A.website ++= (p, w)
+doWebsite :: Monad m => BinPkgName -> D.Site -> CabalT m ()
+doWebsite p w = (D.website . A.debInfo) ++= (p, w)
 
 -- | Add a debian binary package to the debianization containing a cabal executable file set up to be a backup script.
 doBackups :: Monad m => BinPkgName -> String -> CabalT m ()
 doBackups bin s =
-    do A.backups ++= (bin, s)
+    do (D.backups . A.debInfo) ++= (bin, s)
        (B.depends . B.relations . D.binaryDebDescription bin . A.debInfo) %= (++ [[Rel (BinPkgName "anacron") Nothing Nothing]])
        -- depends +++= (bin, Rel (BinPkgName "anacron") Nothing Nothing)
 
@@ -153,27 +153,27 @@ debianDescriptionBase p =
       desc = List.map addDot . stripWith null $ map (dropWhileEnd isSpace) $ lines $ Cabal.description p
       addDot line = if null line then "." else line
 
-oldClckwrksSiteFlags :: A.Site -> [String]
+oldClckwrksSiteFlags :: D.Site -> [String]
 oldClckwrksSiteFlags x =
     [ -- According to the happstack-server documentation this needs a trailing slash.
-      "--base-uri", "http://" ++ A.domain x ++ "/"
-    , "--http-port", show A.port]
-oldClckwrksServerFlags :: A.Server -> [String]
+      "--base-uri", "http://" ++ D.domain x ++ "/"
+    , "--http-port", show D.port]
+oldClckwrksServerFlags :: D.Server -> [String]
 oldClckwrksServerFlags x =
     [ -- According to the happstack-server documentation this needs a trailing slash.
-      "--base-uri", "http://" ++ A.hostname x ++ ":" ++ show (A.port x) ++ "/"
-    , "--http-port", show A.port]
+      "--base-uri", "http://" ++ D.hostname x ++ ":" ++ show (D.port x) ++ "/"
+    , "--http-port", show D.port]
 
 watchAtom :: PackageName -> Text
 watchAtom (PackageName pkgname) =
     pack $ "version=3\nhttp://hackage.haskell.org/package/" ++ pkgname ++ "/distro-monitor .*-([0-9\\.]+)\\.(?:zip|tgz|tbz|txz|(?:tar\\.(?:gz|bz2|xz)))\n"
 
-siteAtoms :: BinPkgName -> A.Site -> Atoms -> Atoms
+siteAtoms :: BinPkgName -> D.Site -> Atoms -> Atoms
 siteAtoms b site =
     execCabalM
       (do (D.atomSet . A.debInfo) %= (Set.insert $ D.InstallDir b "/etc/apache2/sites-available")
-          (D.atomSet . A.debInfo) %= (Set.insert $ D.Link b ("/etc/apache2/sites-available/" ++ A.domain site) ("/etc/apache2/sites-enabled/" ++ A.domain site))
-          (D.atomSet . A.debInfo) %= (Set.insert $ D.File b ("/etc/apache2/sites-available" </> A.domain site) apacheConfig)
+          (D.atomSet . A.debInfo) %= (Set.insert $ D.Link b ("/etc/apache2/sites-available/" ++ D.domain site) ("/etc/apache2/sites-enabled/" ++ D.domain site))
+          (D.atomSet . A.debInfo) %= (Set.insert $ D.File b ("/etc/apache2/sites-available" </> D.domain site) apacheConfig)
           (D.atomSet . A.debInfo) %= (Set.insert $ D.InstallDir b (apacheLogDirectory b))
           (D.logrotateStanza . A.debInfo) +++=
                               (b, singleton
@@ -193,16 +193,16 @@ siteAtoms b site =
                                                    , "  compress"
                                                    , "  missingok"
                                                    , "}" ]))) .
-      serverAtoms b (A.server site) True
+      serverAtoms b (D.server site) True
     where
       -- An apache site configuration file.  This is installed via a line
       -- in debianFiles.
       apacheConfig =
           Text.unlines $
                    [  "<VirtualHost *:80>"
-                   , "    ServerAdmin " <> pack (A.serverAdmin site)
-                   , "    ServerName www." <> pack (A.domain site)
-                   , "    ServerAlias " <> pack (A.domain site)
+                   , "    ServerAdmin " <> pack (D.serverAdmin site)
+                   , "    ServerName www." <> pack (D.domain site)
+                   , "    ServerAlias " <> pack (D.domain site)
                    , ""
                    , "    ErrorLog " <> pack (apacheErrorLog b)
                    , "    CustomLog " <> pack (apacheAccessLog b) <> " combined"
@@ -231,34 +231,34 @@ siteAtoms b site =
                    , "    ProxyPass / http://127.0.0.1:" <> port' <> "/ nocanon"
                    , "    ProxyPassReverse / http://127.0.0.1:" <> port' <> "/"
                    , "</VirtualHost>" ]
-      port' = pack (show (A.port (A.server site)))
+      port' = pack (show (D.port (D.server site)))
 
 -- FIXME - use Atoms
-serverAtoms :: BinPkgName -> A.Server -> Bool -> Atoms -> Atoms
+serverAtoms :: BinPkgName -> D.Server -> Bool -> Atoms -> Atoms
 serverAtoms b server' isSite =
     modL (D.postInst . A.debInfo) (insertWith (\ old new -> if old /= new then error ("serverAtoms: " ++ show old ++ " -> " ++ show new) else old) b debianPostinst) .
     modL (D.installInit . A.debInfo) (Map.insertWith (\ old new -> if old /= new then error ("serverAtoms: " ++ show old ++ " -> " ++ show new) else old) b debianInit) .
     serverLogrotate' b .
     execAtoms b exec
     where
-      exec = A.installFile server'
+      exec = D.installFile server'
       debianInit =
           Text.unlines $
                    [ "#! /bin/sh -e"
                    , ""
                    , ". /lib/lsb/init-functions"
-                   , "test -f /etc/default/" <> pack (A.destName exec) <> " && . /etc/default/" <> pack (A.destName exec)
+                   , "test -f /etc/default/" <> pack (D.destName exec) <> " && . /etc/default/" <> pack (D.destName exec)
                    , ""
                    , "case \"$1\" in"
                    , "  start)"
-                   , "    test -x /usr/bin/" <> pack (A.destName exec) <> " || exit 0"
-                   , "    log_begin_msg \"Starting " <> pack (A.destName exec) <> "...\""
+                   , "    test -x /usr/bin/" <> pack (D.destName exec) <> " || exit 0"
+                   , "    log_begin_msg \"Starting " <> pack (D.destName exec) <> "...\""
                    , "    mkdir -p " <> pack (databaseDirectory b)
                    , "    " <> startCommand
                    , "    log_end_msg $?"
                    , "    ;;"
                    , "  stop)"
-                   , "    log_begin_msg \"Stopping " <> pack (A.destName exec) <> "...\""
+                   , "    log_begin_msg \"Stopping " <> pack (D.destName exec) <> "...\""
                    , "    " <> stopCommand
                    , "    log_end_msg $?"
                    , "    ;;"
@@ -268,11 +268,11 @@ serverAtoms b server' isSite =
                    , "esac"
                    , ""
                    , "exit 0" ]
-      startCommand = pack $ showCommand "start-stop-daemon" (startOptions ++ commonOptions ++ ["--"] ++ A.serverFlags server')
+      startCommand = pack $ showCommand "start-stop-daemon" (startOptions ++ commonOptions ++ ["--"] ++ D.serverFlags server')
       stopCommand = pack $ showCommand "start-stop-daemon" (stopOptions ++ commonOptions)
-      commonOptions = ["--pidfile", "/var/run/" ++ A.destName exec]
-      startOptions = ["--start", "-b", "--make-pidfile", "-d", databaseDirectory b, "--exec", "/usr/bin" </> A.destName exec]
-      stopOptions = ["--stop", "--oknodo"] ++ if A.retry server' /= "" then ["--retry=" ++ A.retry server' ] else []
+      commonOptions = ["--pidfile", "/var/run/" ++ D.destName exec]
+      startOptions = ["--start", "-b", "--make-pidfile", "-d", databaseDirectory b, "--exec", "/usr/bin" </> D.destName exec]
+      stopOptions = ["--stop", "--oknodo"] ++ if D.retry server' /= "" then ["--retry=" ++ D.retry server' ] else []
 
       debianPostinst =
           Text.unlines $
@@ -327,22 +327,22 @@ backupAtoms b name =
                   , "    " <> pack ("/etc/cron.hourly" </> name) <> " --initialize"
                   , "    ;;"
                   , "esac" ])) .
-    execAtoms b (A.InstallFile { A.execName = name
-                               , A.destName = name
-                               , A.sourceDir = Nothing
-                               , A.destDir = Just "/etc/cron.hourly" })
+    execAtoms b (D.InstallFile { D.execName = name
+                               , D.destName = name
+                               , D.sourceDir = Nothing
+                               , D.destDir = Just "/etc/cron.hourly" })
 
 -- FIXME - use Atoms
-execAtoms :: BinPkgName -> A.InstallFile -> Atoms -> Atoms
+execAtoms :: BinPkgName -> D.InstallFile -> Atoms -> Atoms
 execAtoms b ifile r =
     modL (D.rulesFragments . A.debInfo) (Set.insert (pack ("build" </> ppDisplay b ++ ":: build-ghc-stamp\n"))) .
     fileAtoms b ifile $
     r
 
 -- FIXME - use Atoms
-fileAtoms :: BinPkgName -> A.InstallFile -> Atoms -> Atoms
+fileAtoms :: BinPkgName -> D.InstallFile -> Atoms -> Atoms
 fileAtoms b installFile' r =
-    fileAtoms' b (A.sourceDir installFile') (A.execName installFile') (A.destDir installFile') (A.destName installFile') r
+    fileAtoms' b (D.sourceDir installFile') (D.execName installFile') (D.destDir installFile') (D.destName installFile') r
 
 -- FIXME - use Atoms
 fileAtoms' :: BinPkgName -> Maybe FilePath -> String -> Maybe FilePath -> String -> Atoms -> Atoms

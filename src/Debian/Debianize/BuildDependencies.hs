@@ -77,7 +77,7 @@ allBuildDepends buildDepends' buildTools' pkgconfigDepends' extraLibs' =
       fixDeps :: Atoms -> [String] -> Relations
       fixDeps atoms xs =
           concatMap (\ cab -> fromMaybe [[D.Rel (D.BinPkgName ("lib" ++ List.map toLower cab ++ "-dev")) Nothing Nothing]]
-                                        (Map.lookup cab (getL A.extraLibMap atoms))) xs
+                                        (Map.lookup cab (getL (D.extraLibMap . A.debInfo) atoms))) xs
 
 -- The haskell-cdbs package contains the hlibrary.mk file with
 -- the rules for building haskell packages.
@@ -90,7 +90,7 @@ debianBuildDeps pkgDesc =
                   Set.map (\ hc' -> Set.map (hc',) $ hcPackageTypes hc') hcs
        cDeps <- cabalDeps hcTypePairs
        bDeps <- access (S.buildDepends . D.control . A.debInfo)
-       prof <- not <$> access A.noProfilingLibrary
+       prof <- not <$> access (D.noProfilingLibrary . A.debInfo)
        let xs = nub $ [[D.Rel (D.BinPkgName "debhelper") (Just (D.GRE (parseDebianVersion ("7.0" :: String)))) Nothing],
                        [D.Rel (D.BinPkgName "haskell-devscripts") (Just (D.GRE (parseDebianVersion ("0.8" :: String)))) Nothing],
                        anyrel "cdbs"] ++
@@ -121,7 +121,7 @@ debianBuildDepsIndep :: (MonadIO m, Functor m) => PackageDescription -> CabalT m
 debianBuildDepsIndep pkgDesc =
     do hc <- access (compilerFlavor . D.flags . A.debInfo)
        let hcs = singleton hc -- vestigial
-       doc <- not <$> access A.noDocumentationLibrary
+       doc <- not <$> access (D.noDocumentationLibrary . A.debInfo)
        bDeps <- access (S.buildDependsIndep . D.control . A.debInfo)
        cDeps <- cabalDeps
        let xs = nub $ if doc
@@ -155,7 +155,7 @@ docDependencies :: (MonadIO m, Functor m) => Dependency_ -> CabalT m D.Relations
 docDependencies (BuildDepends (Dependency name ranges)) =
     do hc <- access (compilerFlavor . D.flags . A.debInfo)
        let hcs = singleton hc -- vestigial
-       omitProfDeps <- access A.omitProfVersionDeps
+       omitProfDeps <- access (D.omitProfVersionDeps . A.debInfo)
        concat <$> mapM (\ hc' -> dependencies hc' B.Documentation name ranges omitProfDeps) (toList hcs)
 docDependencies _ = return []
 
@@ -164,15 +164,15 @@ docDependencies _ = return []
 -- references.  Also the packages associated with extra libraries.
 buildDependencies :: (MonadIO m, Functor m) => Set (CompilerFlavor, B.PackageType) -> Dependency_ -> CabalT m D.Relations
 buildDependencies hcTypePairs (BuildDepends (Dependency name ranges)) =
-    access A.omitProfVersionDeps >>= \ omitProfDeps ->
+    access (D.omitProfVersionDeps . A.debInfo) >>= \ omitProfDeps ->
     concat <$> mapM (\ (hc, typ) -> dependencies hc typ name ranges omitProfDeps) (toList hcTypePairs)
 buildDependencies _ dep@(ExtraLibs _) =
-    do mp <- access A.execMap
+    do mp <- access (D.execMap . A.debInfo)
        return $ concat $ adapt mp dep
 buildDependencies _ dep =
     case unboxDependency dep of
       Just (Dependency _name _ranges) ->
-          do mp <- get >>= return . getL A.execMap
+          do mp <- get >>= return . getL (D.execMap . A.debInfo)
              return $ concat $ adapt mp dep
       Nothing ->
           return []
@@ -383,4 +383,4 @@ canonical (Or rels) = And . List.map Or $ sequence $ List.map (concat . List.map
 filterMissing :: Monad m => [[Relation]] -> CabalT m [[Relation]]
 filterMissing rels =
     get >>= \ atoms -> return $
-    List.filter (/= []) (List.map (List.filter (\ (Rel name _ _) -> not (Set.member name (getL A.missingDependencies atoms)))) rels)
+    List.filter (/= []) (List.map (List.filter (\ (Rel name _ _) -> not (Set.member name (getL (D.missingDependencies . A.debInfo) atoms)))) rels)

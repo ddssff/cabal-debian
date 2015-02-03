@@ -186,9 +186,12 @@ Library
    Debian.GHC
    Debian.Policy
    Distribution.Version.Invert
+   Debian.Debianize.Atoms
+   Debian.Debianize.BinaryDebDescription
    Debian.Debianize.BuildDependencies
    Debian.Debianize.Bundled
    Debian.Debianize.Changelog
+   Debian.Debianize.CopyrightDescription
    Debian.Debianize.DebianName
    Debian.Debianize.DebInfo
    Debian.Debianize.Details
@@ -202,11 +205,8 @@ Library
    Debian.Debianize.Options
    Debian.Debianize.Output
    Debian.Debianize.Prelude
+   Debian.Debianize.SourceDebDescription
    Debian.Debianize.SubstVars
-   Debian.Debianize.Types.Atoms
-   Debian.Debianize.Types.BinaryDebDescription
-   Debian.Debianize.Types.CopyrightDescription
-   Debian.Debianize.Types.SourceDebDescription
    Debian.Debianize.VersionSplits
  Other-Modules:
    Debian.Orphans

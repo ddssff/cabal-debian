@@ -19,9 +19,9 @@ import Debian.Debianize.Goodies (doExecutable)
 import Debian.Debianize.InputCabalPackageDescription (flagOptions, Flags)
 import Debian.Debianize.Monad (CabalT, DebianT)
 import Debian.Debianize.Prelude ((%=), (+++=), (++=), (+=), maybeRead, (~=))
-import qualified Debian.Debianize.Types.Atoms as A
-import qualified Debian.Debianize.Types.BinaryDebDescription as B
-import qualified Debian.Debianize.Types.SourceDebDescription as S
+import qualified Debian.Debianize.Atoms as A
+import qualified Debian.Debianize.BinaryDebDescription as B
+import qualified Debian.Debianize.SourceDebDescription as S
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
 import Debian.Orphans ()
 import Debian.Policy (parseMaintainer, parseStandardsVersion, SourceFormat(Quilt3, Native3))

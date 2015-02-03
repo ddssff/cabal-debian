@@ -146,11 +146,12 @@ module Debian.Debianize
 
     -- * TBD
 
+    , module Debian.Debianize.Atoms
     , module Debian.Debianize.DebInfo
-    , module Debian.Debianize.Types.Atoms
     , module Debian.Policy
     ) where
 
+import Debian.Debianize.Atoms (apacheSite, backups, buildDir, comments, debianNameMap, debInfo, debVersion, epochMap, execMap, executable, extraDevDeps, extraLibMap, InstallFile(..), maintainerOption, makeAtoms, missingDependencies, newAtoms, noDocumentationLibrary, noProfilingLibrary, official, omitLTDeps, omitProfVersionDeps, overrideDebianNameBase, packageDescription, packageInfo, PackageInfo(..), revision, Server(..), serverInfo, showAtoms, Site(..), sourceArchitectures, sourcePackageName, uploadersOption, utilsPackageNameBase, website, xDescription)
 import Debian.Debianize.DebInfo (Atom(..), atomSet, changelog, compat, control, copyright, DebInfo(..), file, flags, install, installCabalExec, installCabalExecTo, installData, installDir, installInit, installTo, intermediateFiles, link, logrotateStanza, makeDebInfo, postInst, postRm, preInst, preRm, rulesFragments, rulesHead, rulesIncludes, rulesSettings, sourceFormat, warning, watch)
 import Debian.Debianize.DebianName (mapCabal, splitCabal)
 import Debian.Debianize.Details (debianDefaultAtoms)
@@ -162,5 +163,4 @@ import Debian.Debianize.Options (compileArgs)
 import Debian.Debianize.Output (compareDebianization, describeDebianization, doDebianizeAction, runDebianizeScript, validateDebianization, writeDebianization)
 import Debian.Debianize.Prelude ((%=), (+++=), (++=), (+=), buildDebVersionMap, debOfFile, dpkgFileMap, withCurrentDirectory, (~=), (~?=))
 import Debian.Debianize.SubstVars (substvars)
-import Debian.Debianize.Types.Atoms (apacheSite, backups, buildDir, comments, debianNameMap, debInfo, debVersion, epochMap, execMap, executable, extraDevDeps, extraLibMap, InstallFile(..), maintainerOption, makeAtoms, missingDependencies, newAtoms, noDocumentationLibrary, noProfilingLibrary, official, omitLTDeps, omitProfVersionDeps, overrideDebianNameBase, packageDescription, packageInfo, PackageInfo(..), revision, Server(..), serverInfo, showAtoms, Site(..), sourceArchitectures, sourcePackageName, uploadersOption, utilsPackageNameBase, website, xDescription)
 import Debian.Policy (accessLogBaseName, apacheAccessLog, apacheErrorLog, apacheLogDirectory, appLogBaseName, Area(..), databaseDirectory, debianPackageVersion, errorLogBaseName, fromCabalLicense, getCurrentDebianUser, getDebhelperCompatLevel, getDebianStandardsVersion, haskellMaintainer, License(..), PackageArchitectures(..), PackagePriority(..), parseMaintainer, parsePackageArchitectures, parseStandardsVersion, parseUploaders, readLicense, readPriority, readSection, readSourceFormat, Section(..), serverAccessLog, serverAppLog, serverLogDirectory, SourceFormat(..), StandardsVersion(..), toCabalLicense)

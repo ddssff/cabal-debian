@@ -3,7 +3,7 @@
 -- debianization is to be constructed.
 {-# LANGUAGE CPP, DeriveDataTypeable, TemplateHaskell #-}
 {-# OPTIONS_GHC -Wall #-}
-module Debian.Debianize.Types.Atoms
+module Debian.Debianize.Atoms
     ( Atoms
     , newAtoms
     , makeAtoms
@@ -59,7 +59,7 @@ import Data.Set as Set (Set)
 import Data.Text (Text)
 import Debian.Debianize.DebInfo (DebInfo, makeDebInfo)
 import Debian.Debianize.InputCabalPackageDescription (Flags, inputCabalization)
-import Debian.Debianize.Types.BinaryDebDescription (Canonical(canonical))
+import Debian.Debianize.BinaryDebDescription (Canonical(canonical))
 import Debian.Debianize.VersionSplits (DebBase, VersionSplits)
 import Debian.Orphans ()
 import Debian.Policy (PackageArchitectures, PackagePriority, Section)

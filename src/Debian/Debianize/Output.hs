@@ -32,8 +32,8 @@ import Debian.Debianize.InputCabalPackageDescription (dryRun, validate)
 import Debian.Debianize.Monad (DebianT, evalDebianT)
 import Debian.Debianize.Options (putEnvironmentArgs)
 import Debian.Debianize.Prelude (indent, replaceFile, zipMaps)
-import Debian.Debianize.Types.BinaryDebDescription as B (canonical, package)
-import qualified Debian.Debianize.Types.SourceDebDescription as S
+import Debian.Debianize.BinaryDebDescription as B (canonical, package)
+import qualified Debian.Debianize.SourceDebDescription as S
 import Debian.Pretty (ppDisplay, ppPrint)
 import Prelude hiding ((.), unlines, writeFile)
 import System.Directory (createDirectoryIfMissing, doesFileExist, getPermissions, Permissions(executable), setPermissions)

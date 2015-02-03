@@ -28,10 +28,10 @@ import Debian.Debianize.Input (inputDebianization)
 import Debian.Debianize.InputCabalPackageDescription (compilerFlavor, newFlags)
 import Debian.Debianize.Monad (CabalT, evalCabalT, execCabalM, execCabalT, liftCabal, execDebianT, DebianT, evalDebianT)
 import Debian.Debianize.Prelude ((%=), (++=), (+=), (~=), withCurrentDirectory)
-import Debian.Debianize.Types.Atoms as A
-import qualified Debian.Debianize.Types.BinaryDebDescription as B
-import Debian.Debianize.Types.CopyrightDescription
-import qualified Debian.Debianize.Types.SourceDebDescription as S
+import Debian.Debianize.Atoms as A
+import qualified Debian.Debianize.BinaryDebDescription as B
+import Debian.Debianize.CopyrightDescription
+import qualified Debian.Debianize.SourceDebDescription as S
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
 import Debian.Pretty (ppDisplay)
 import Debian.Policy (databaseDirectory, PackageArchitectures(All), PackagePriority(Extra), parseMaintainer, Section(MainSection), SourceFormat(Native3), StandardsVersion(..), getDebhelperCompatLevel, getDebianStandardsVersion, License(..))

@@ -30,8 +30,8 @@ import Data.Text as Text (pack, Text, unlines)
 import qualified Debian.Debianize.DebInfo as D
 import Debian.Debianize.Monad (Atoms, CabalT, DebianT, execCabalM)
 import Debian.Debianize.Prelude ((%=), (+++=), (++=), (+=), stripWith)
-import qualified Debian.Debianize.Types.Atoms as A
-import qualified Debian.Debianize.Types.BinaryDebDescription as B
+import qualified Debian.Debianize.Atoms as A
+import qualified Debian.Debianize.BinaryDebDescription as B
 import Debian.Orphans ()
 import Debian.Policy (apacheAccessLog, apacheErrorLog, apacheLogDirectory, databaseDirectory, serverAccessLog, serverAppLog)
 import Debian.Pretty (ppDisplay, ppDisplay')

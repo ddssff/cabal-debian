@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable, FlexibleInstances, TemplateHaskell #-}
 {-# OPTIONS -Wall #-}
-module Debian.Debianize.Types.BinaryDebDescription
+module Debian.Debianize.BinaryDebDescription
     ( Canonical(canonical)
     , BinaryDebDescription
     , newBinaryDebDescription

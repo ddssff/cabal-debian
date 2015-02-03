@@ -33,9 +33,9 @@ import Debian.Debianize.InputCabalPackageDescription (cabalFlagAssignments, comp
 import Debian.Debianize.Monad as Monad (CabalT, liftCabal)
 import Debian.Debianize.Options (compileCommandlineArgs, compileEnvironmentArgs)
 import Debian.Debianize.Prelude ((%=), (+=), (~=), (~?=))
-import qualified Debian.Debianize.Types.Atoms as A
-import qualified Debian.Debianize.Types.BinaryDebDescription as B
-import qualified Debian.Debianize.Types.SourceDebDescription as S
+import qualified Debian.Debianize.Atoms as A
+import qualified Debian.Debianize.BinaryDebDescription as B
+import qualified Debian.Debianize.SourceDebDescription as S
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
 import Debian.Orphans ()
 import Debian.Policy (getCurrentDebianUser, getDebhelperCompatLevel, haskellMaintainer, PackageArchitectures(Any, All), PackagePriority(Extra), parseMaintainer, parseStandardsVersion, Section(..), SourceFormat(Native3, Quilt3))

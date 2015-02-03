@@ -25,7 +25,7 @@ module Debian.Debianize.Monad
 import Control.Monad.State (evalState, evalStateT, execState, execStateT, runState, State, StateT(runStateT))
 import Data.Lens.Lazy (focus)
 import Debian.Debianize.DebInfo (DebInfo)
-import Debian.Debianize.Types.Atoms (Atoms, debInfo)
+import Debian.Debianize.Atoms (Atoms, debInfo)
 import Debian.Orphans ()
 import Prelude hiding (init, log, unlines)
 

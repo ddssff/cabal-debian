@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable, FlexibleInstances, TemplateHaskell, TypeSynonymInstances #-}
-module Debian.Debianize.Types.SourceDebDescription
+module Debian.Debianize.SourceDebDescription
     ( SourceDebDescription
     , newSourceDebDescription
     , newSourceDebDescription'
@@ -29,7 +29,7 @@ import Data.Generics (Data, Typeable)
 import Data.Lens.Template (makeLenses)
 import Data.Set as Set (empty, Set)
 import Data.Text (Text)
-import Debian.Debianize.Types.BinaryDebDescription (BinaryDebDescription, Canonical(canonical))
+import Debian.Debianize.BinaryDebDescription (BinaryDebDescription, Canonical(canonical))
 import Debian.Orphans ()
 import Debian.Policy (PackagePriority, Section, StandardsVersion)
 import Debian.Relation (Relations, SrcPkgName)

@@ -1,6 +1,6 @@
 -- | <https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/>
 {-# LANGUAGE CPP, DeriveDataTypeable, FlexibleInstances, OverloadedStrings, ScopedTypeVariables, TemplateHaskell, TupleSections #-}
-module Debian.Debianize.Types.CopyrightDescription
+module Debian.Debianize.CopyrightDescription
     ( CopyrightDescription(..)
     , FilesOrLicenseDescription(..)
     , format
@@ -16,7 +16,7 @@ module Debian.Debianize.Types.CopyrightDescription
     , filesCopyright
     , filesLicense
     , filesComment
-    , Debian.Debianize.Types.CopyrightDescription.license
+    , Debian.Debianize.CopyrightDescription.license
     , comment
     , newCopyrightDescription
     , readCopyrightDescription

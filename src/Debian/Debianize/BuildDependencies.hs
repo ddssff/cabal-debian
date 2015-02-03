@@ -22,9 +22,9 @@ import qualified Debian.Debianize.DebInfo as D
 import Debian.Debianize.DebianName (mkPkgName, mkPkgName')
 import Debian.Debianize.InputCabalPackageDescription (buildEnv, compilerFlavor, EnvSet(dependOS))
 import Debian.Debianize.Monad as Monad (Atoms, CabalT)
-import qualified Debian.Debianize.Types.Atoms as A
-import qualified Debian.Debianize.Types.BinaryDebDescription as B
-import qualified Debian.Debianize.Types.SourceDebDescription as S
+import qualified Debian.Debianize.Atoms as A
+import qualified Debian.Debianize.BinaryDebDescription as B
+import qualified Debian.Debianize.SourceDebDescription as S
 import Debian.Debianize.VersionSplits (packageRangesFromVersionSplits)
 import Debian.Orphans ()
 import Debian.Relation (BinPkgName(..), checkVersionReq, Relation(..), Relations)

@@ -103,40 +103,10 @@ defaultFlags =
     , buildEnv_ = EnvSet {cleanOS = "/", dependOS = "/", buildOS = "/"}
     }
 
-#if 1
 $(let f s = case s of
               (_ : _) | last s == '_' -> Just (init s)
               _ -> Nothing in
   nameMakeLens ''Flags f)
-#else
--- | Set how much progress messages get generated.
-verbosity :: Lens Flags Int
-verbosity = lens verbosity_ (\ b a -> a {verbosity_ = b})
-
--- | Don't write anything, just output a description of what would have happened
-dryRun :: Lens Flags Bool
-dryRun = lens dryRun_ (\ b a -> a {dryRun_ = b})
-
--- | Make sure the version number and package names of the supplied
--- and generated debianizations match.
-validate :: Lens Flags Bool
-validate = lens validate_ (\ b a -> a {validate_ = b})
-
--- | Debianize, SubstVars, or Usage.  I'm no longer sure what SubstVars does, but someone
--- may still be using it.
-debAction :: Lens Flags DebAction
-debAction = lens debAction_ (\ b a -> a {debAction_ = b})
-
--- | Cabal flag assignments to use when loading the cabal file.
-cabalFlagAssignments :: Lens Flags (Set (FlagName, Bool))
-cabalFlagAssignments = lens cabalFlagAssignments_ (\ a b -> b {cabalFlagAssignments_ = a})
-
-compilerFlavor :: Lens Flags CompilerFlavor
-compilerFlavor = lens compilerFlavor_ (\ a b -> b {compilerFlavor_ = a})
-
-buildEnv :: Lens Flags EnvSet
-buildEnv = lens buildEnv_ (\ b a -> a {buildEnv_ = b})
-#endif
 
 newFlags :: IO Flags
 newFlags = do

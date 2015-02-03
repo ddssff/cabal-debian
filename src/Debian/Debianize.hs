@@ -151,7 +151,7 @@ module Debian.Debianize
     , module Debian.Policy
     ) where
 
-import Debian.Debianize.Atoms (apacheSite, backups, buildDir, comments, debianNameMap, debInfo, debVersion, epochMap, execMap, executable, extraDevDeps, extraLibMap, InstallFile(..), maintainerOption, makeAtoms, missingDependencies, newAtoms, noDocumentationLibrary, noProfilingLibrary, official, omitLTDeps, omitProfVersionDeps, overrideDebianNameBase, packageDescription, packageInfo, PackageInfo(..), revision, Server(..), serverInfo, showAtoms, Site(..), sourceArchitectures, sourcePackageName, uploadersOption, utilsPackageNameBase, website, xDescription)
+import Debian.Debianize.Atoms (apacheSite, backups, buildDir, comments, debianNameMap, debInfo, debVersion, epochMap, execMap, executable, extraDevDeps, extraLibMap, InstallFile(..), maintainerOption, missingDependencies, newAtoms, noDocumentationLibrary, noProfilingLibrary, official, omitLTDeps, omitProfVersionDeps, overrideDebianNameBase, packageDescription, packageInfo, PackageInfo(..), revision, Server(..), serverInfo, showAtoms, Site(..), sourceArchitectures, sourcePackageName, uploadersOption, utilsPackageNameBase, website, xDescription)
 import Debian.Debianize.DebInfo (Atom(..), atomSet, changelog, compat, control, copyright, DebInfo(..), file, flags, install, installCabalExec, installCabalExecTo, installData, installDir, installInit, installTo, intermediateFiles, link, logrotateStanza, makeDebInfo, postInst, postRm, preInst, preRm, rulesFragments, rulesHead, rulesIncludes, rulesSettings, sourceFormat, warning, watch)
 import Debian.Debianize.DebianName (mapCabal, splitCabal)
 import Debian.Debianize.Details (debianDefaultAtoms)

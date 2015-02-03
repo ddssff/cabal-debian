@@ -6,7 +6,7 @@
 module Debian.Debianize.Atoms
     ( Atoms
     , newAtoms
-    , makeAtoms
+    -- , makeAtoms
     , PackageInfo(PackageInfo, cabalName, devDeb, docDeb, profDeb)
     , Site(Site, domain, server, serverAdmin)
     , Server(Server, headerMessage, hostname, installFile, port, retry,

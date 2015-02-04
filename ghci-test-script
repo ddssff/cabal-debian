@@ -1,0 +1,45 @@
+:set -isrc:../debian-repo:../autobuilder:../autobuilder-seereason
+:set -DMIN_VERSION_Cabal(a,b,c)=1
+
+-- :load "../clckwrks-dot-com/debian/Debianize"
+-- :m +Debian.Debianize.Prelude
+-- withCurrentDirectory "../clckwrks-dot-com" main
+
+-- :load "../happstack-clckwrks/happstack-dot-com/debian/Debianize"
+-- :m +Debian.Debianize.Prelude
+-- withCurrentDirectory "../happstack-clckwrks/happstack-dot-com" main
+
+:set -i../mimo
+:load "../mimo/debian/Debianize"
+withCurrentDirectory "../mimo" main
+
+-- :set -i../seereason
+-- :load "../seereason/debian/Debianize.hs"
+-- withCurrentDirectory "../seereason" main
+
+-- :set -i../appraisalscribe-data
+-- :load "../appraisalscribe-data/debian/Debianize.hs"
+-- withCurrentDirectory "../appraisalscribe-data" main
+
+-- :set -i../appraisalscribe
+-- :load "../appraisalscribe/debian/Debianize.hs"
+-- withCurrentDirectory "../appraisalscribe" main
+
+-- :set -i../archive
+-- :load "../archive/debian/Debianize.hs"
+-- withCurrentDirectory "../archive" main
+
+-- :set -i../../darcs/seereasonpartners-clckwrks/seereasonpartners-dot-com
+-- :load "../../darcs/seereasonpartners-clckwrks/seereasonpartners-dot-com/debian/Debianize.hs"
+-- :m +Debian.Debianize.Prelude
+-- withCurrentDirectory "../../darcs/seereasonpartners-clckwrks/seereasonpartners-dot-com" main
+
+-- :load ../../darcs/happstack-ghcjs/happstack-ghcjs-client/debian/Debianize.hs
+-- :m +Debian.Debianize.Prelude
+-- withCurrentDirectory "../../darcs/happstack-ghcjs/happstack-ghcjs-client" main
+
+-- :load ../../darcs/happstack-ghcjs/happstack-ghcjs-server/debian/Debianize.hs
+-- withCurrentDirectory "../../darcs/happstack-ghcjs/happstack-ghcjs-server" main
+
+-- :load ../../darcs/happstack-ghcjs/happstack-ghcjs-webmodule/debian/Debianize.hs
+-- qwithCurrentDirectory "../../darcs/happstack-ghcjs/happstack-ghcjs-webmodule" main

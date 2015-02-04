@@ -3,25 +3,31 @@ Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Files: *
 Copyright: Copyright (c) 2012, Jeremy Shaw
 License: BSD3
+
+Files: */debian
+Copyright: held by the contributors mentioned in debian/changelog
+License: BSD3
+
+License: BSD3
 Comment: Copyright (c) 2012, Jeremy Shaw
-
+ .
  All rights reserved.
-
+ .
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions are met:
-
-    * Redistributions of source code must retain the above copyright
-      notice, this list of conditions and the following disclaimer.
-
-    * Redistributions in binary form must reproduce the above
-      copyright notice, this list of conditions and the following
-      disclaimer in the documentation and/or other materials provided
-      with the distribution.
-
-    * Neither the name of Jeremy Shaw nor the names of other
-      contributors may be used to endorse or promote products derived
-      from this software without specific prior written permission.
-
+ .
+     * Redistributions of source code must retain the above copyright
+       notice, this list of conditions and the following disclaimer.
+ .
+     * Redistributions in binary form must reproduce the above
+       copyright notice, this list of conditions and the following
+       disclaimer in the documentation and/or other materials provided
+       with the distribution.
+ .
+     * Neither the name of Jeremy Shaw nor the names of other
+       contributors may be used to endorse or promote products derived
+       from this software without specific prior written permission.
+ .
  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR

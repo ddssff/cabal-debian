@@ -1,9 +1,4 @@
-Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+This package is not part of the Debian GNU/Linux distribution.
 
-Files: *
-Copyright: (c) 2010-2011 SeeReason Partners LLC
-License: AllRightsReserved
-Comment: This package is not part of the Debian GNU/Linux distribution.
-
- Copyright: (c) 2010-2011, SeeReason Partners LLC
- License: All Rights Reserved
+Copyright: (c) 2010-2011, SeeReason Partners LLC
+License: All Rights Reserved

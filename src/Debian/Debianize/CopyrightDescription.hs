@@ -25,20 +25,20 @@ module Debian.Debianize.CopyrightDescription
     , defaultCopyrightDescription
     ) where
 
-import Control.Monad.Trans (liftIO)
 import Data.Char (isSpace)
 import Data.Default (Default(def))
 import Data.Generics (Data, Typeable)
 import Data.Lens.Template (makeLenses)
-import Data.List (dropWhileEnd)
-import Data.Maybe (isJust, catMaybes, fromJust, fromMaybe, mapMaybe)
-import Data.Monoid ((<>))
-import Data.Text as Text (Text, pack, strip, unpack, null)
+import Data.List as List (dropWhileEnd, partition)
+import Data.Maybe (isJust, catMaybes, fromJust, fromMaybe, listToMaybe)
+import Data.Monoid ((<>), mempty)
+import Data.Text as Text (Text, pack, strip, unpack, null, lines, unlines, dropWhileEnd)
 import Debian.Control (Field'(Field), lookupP, Paragraph'(Paragraph), Control'(Control, unControl), parseControl)
 import Debian.Debianize.Prelude (readFileMaybe)
 import Debian.Orphans ()
 import Debian.Policy (License(..), readLicense, fromCabalLicense)
 import Debian.Pretty (PP(PP, unPP), display', ppDisplay', ppPrint)
+import qualified Distribution.License as Cabal (License(UnknownLicense))
 import qualified Distribution.PackageDescription as Cabal (PackageDescription(licenseFiles, copyright, license))
 import Network.URI (URI, parseURI)
 import Prelude hiding (init, init, log, log, unlines, readFile)
@@ -76,7 +76,7 @@ data FilesOrLicenseDescription
 
 instance Pretty (PP CopyrightDescription) where
     -- Special case encodes free format debian/copyright file
-    pPrint (PP x@(CopyrightDescription {_summaryComment = Just t})) | x {_summaryComment = Nothing} == def = text (dropWhileEnd isSpace (unpack t) <> "\n")
+    pPrint (PP x@(CopyrightDescription {_summaryComment = Just t})) | x {_summaryComment = Nothing} == def = text (List.dropWhileEnd isSpace (unpack t) <> "\n")
     pPrint x = ppPrint . toControlFile . unPP $ x
 
 instance Default CopyrightDescription where
@@ -101,7 +101,7 @@ readCopyrightDescription t =
                      Just cpy -> cpy
                      Nothing -> def { _summaryComment = Just t }
 
--- | Try to parse a structured copyright file.
+-- | Try to parse a structured copyright file
 parseCopyrightDescription :: [Paragraph' Text] -> Maybe CopyrightDescription
 parseCopyrightDescription (hd : tl) =
     let (muri :: Maybe URI) = maybe Nothing (\ (Field (_, t)) -> parseURI . unpack $ t) (lookupP "Format" hd) in
@@ -168,32 +168,69 @@ toParagraph ld@LicenseDescription {} =
 
 -- | Infer a 'CopyrightDescription' from a Cabal package description.
 -- This will try to read any copyright files listed in the cabal
--- configuration.
-defaultCopyrightDescription :: CopyrightDescription -> Cabal.PackageDescription -> IO CopyrightDescription
-defaultCopyrightDescription copyright0 pkgDesc = do
-  licenseFiles <- mapM (\ path -> liftIO (readFileMaybe path) >>= \ t -> return (path, t))
-                       (Cabal.licenseFiles pkgDesc)
+-- configuration.  Inputs include the license field from the cabal
+-- file, the contents of the license files mentioned there, and the
+-- provided @copyright0@ value.
+defaultCopyrightDescription :: Cabal.PackageDescription -> IO CopyrightDescription
+defaultCopyrightDescription pkgDesc = do
+  let (debianCopyrightPath, otherLicensePaths) = partition (== "debian/copyright") (Cabal.licenseFiles pkgDesc)
+      license = fromCabalLicense $ Cabal.license pkgDesc
+  -- This is an @Nothing@ unless debian/copyright is (for some
+  -- reason) mentioned in the cabal file.
+  debianCopyrightText <- mapM readFileMaybe debianCopyrightPath >>= return . listToMaybe . catMaybes
+  licenseCommentPairs <- mapM readFileMaybe otherLicensePaths >>= return . filter (isJust . snd) . zip otherLicensePaths
+  return $ case debianCopyrightText of
+    Just t ->
+        def { _summaryComment = Just t }
+    Nothing ->
+        -- All we have is the name of the license
+        let copyrt = fmap dots $ nothingIf (Text.null . strip) (pack (Cabal.copyright pkgDesc)) in
+        def { _filesAndLicenses =
+                  [ FilesDescription
+                    { _filesPattern = "*"
+                    , _filesCopyright = fromMaybe (pack "(No copyright field in cabal file)") copyrt
+                    , _filesLicense = license
+                    , _filesComment = mempty }
+                  , FilesDescription
+                    { _filesPattern = "*/debian"
+                    , _filesCopyright = "held by the contributors mentioned in debian/changelog"
+                    , _filesLicense = license
+                    , _filesComment = mempty } ] ++
+                  case licenseCommentPairs of
+                    [] -> []
+                    [(_, comment)] ->
+                        [ LicenseDescription
+                          { _license = license
+                          , _comment = comment } ]
+                    _ -> map (\ (path, comment) -> LicenseDescription
+                                                   { _license = fromCabalLicense (Cabal.UnknownLicense path)
+                                                   , _comment = comment }) licenseCommentPairs }
+{-
+  -- We don't really have a way to associate licenses with
+  -- file patterns, so we will just cover some simple cases,
+  -- a single license, no license, etc.
   -- It is possible we might interpret the license file path
   -- as a license name, so I hang on to it here.
-  let licenseFiles' = mapMaybe (\ (path, t1) -> maybe Nothing (\ t2 -> Just (path, t2)) t1) licenseFiles
-  return $ cabalToCopyrightDescription pkgDesc licenseFiles' copyright0
-
-cabalToCopyrightDescription :: Cabal.PackageDescription -> [(FilePath, Text)] -> CopyrightDescription -> CopyrightDescription
-cabalToCopyrightDescription pkgDesc licenseFiles cdesc =
-    let triples = zip3 (repeat (nothingIf (Text.null . strip) (pack (Cabal.copyright pkgDesc))))
-                       (repeat (Cabal.license pkgDesc))
-                       (case licenseFiles of
-                          [] -> [Nothing]
-                          xs -> map (Just. snd) xs)
-        fnls = map (\ (copyrt, license, comment) ->
-                         FilesDescription
-                                {_filesPattern = "*"
-                                , _filesCopyright = fromMaybe (pack "(No copyright field in cabal file)") copyrt
-                                , _filesLicense = fromCabalLicense license
-                                , _filesComment = comment }) triples in
-     cdesc { _filesAndLicenses = fnls }
+  return $ cabalToCopyrightDescription pkgDesc licenseComments (maybe def readCopyrightDescription debianCopyrightText)
+    where
+      cabalToCopyrightDescription :: Cabal.PackageDescription -> [Maybe Text] -> CopyrightDescription -> CopyrightDescription
+      cabalToCopyrightDescription pkgDesc licenseComments copyright0 =
+          let copyrt = fmap dots $ nothingIf (Text.null . strip) (pack (Cabal.copyright pkgDesc))
+              license = Cabal.license pkgDesc in
+          copyright0 { _filesAndLicenses =
+                           map (\ comment ->
+                                    FilesDescription
+                                    { _filesPattern = "*"
+                                    , _filesCopyright = fromMaybe (pack "(No copyright field in cabal file)") copyrt
+                                    , _filesLicense = fromCabalLicense license
+                                    , _filesComment = comment }) licenseComments }
+-}
 
 nothingIf :: (a -> Bool) -> a -> Maybe a
 nothingIf p x = if p x then Nothing else Just x
+
+-- | Replace empty lines with single dots
+dots :: Text -> Text
+dots = Text.unlines . map (\ line -> if Text.null line then "." else line) . map (Text.dropWhileEnd isSpace) . Text.lines
 
 $(makeLenses [''CopyrightDescription, ''FilesOrLicenseDescription])

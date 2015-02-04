@@ -19,7 +19,6 @@ module Debian.Debianize.CabalInfo
 
 import Control.Category ((.))
 import Control.Monad.Trans (liftIO)
-import Data.Default (def)
 import Data.Generics (Data, Typeable)
 import Data.Lens.Common (setL)
 import Data.Lens.Template (nameMakeLens)
@@ -88,7 +87,7 @@ instance Canonical CabalInfo where
 newCabalInfo :: Flags -> IO CabalInfo
 newCabalInfo flags' = do
   pkgDesc <- inputCabalization flags'
-  copyrt <- liftIO $ defaultCopyrightDescription def pkgDesc
+  copyrt <- liftIO $ defaultCopyrightDescription pkgDesc
   return $ setL (copyright . debInfo) (Just copyrt) (makeCabalInfo flags' pkgDesc)
 
 makeCabalInfo :: Flags -> PackageDescription -> CabalInfo

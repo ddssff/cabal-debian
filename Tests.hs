@@ -26,7 +26,7 @@ import Debian.Debianize.CopyrightDescription
 import Debian.Debianize.DebianName (mapCabal, splitCabal)
 import qualified Debian.Debianize.DebInfo as D
 import Debian.Debianize.Files (debianizationFileMap)
-import Debian.Debianize.Finalize (debianize, finalizeDebianization)
+import Debian.Debianize.Finalize (debianize {-, finalizeDebianization-})
 import Debian.Debianize.Goodies (doBackups, doExecutable, doServer, doWebsite, tightDependencyFixup)
 import Debian.Debianize.InputDebian (inputDebianization)
 import Debian.Debianize.Monad (CabalT, evalCabalT, execCabalM, execCabalT, liftCabal, execDebianT, DebianT, evalDebianT)
@@ -112,6 +112,7 @@ issue23 label =
                    []
                    actual)
 
+#if 0
 test1 :: String -> Test
 test1 label =
     TestLabel label $
@@ -207,6 +208,7 @@ test2 label =
                                                              "    files that were supposed to be installed into packages."],
                               logWho = "David Fox <dsf@seereason.com>",
                               logDate = "Thu, 20 Dec 2012 06:49:25 -0800"}]
+#endif
 
 testEntry :: ChangeLogEntry
 testEntry =

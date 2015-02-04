@@ -20,7 +20,6 @@ module Debian.Debianize.CopyrightDescription
     , license
     , comment
     -- * Builders
-    , newCopyrightDescription
     , readCopyrightDescription
     , parseCopyrightDescription
     , defaultCopyrightDescription
@@ -28,6 +27,7 @@ module Debian.Debianize.CopyrightDescription
 
 import Control.Monad.Trans (liftIO)
 import Data.Char (isSpace)
+import Data.Default (Default(def))
 import Data.Generics (Data, Typeable)
 import Data.Lens.Template (makeLenses)
 import Data.List (dropWhileEnd)
@@ -76,31 +76,32 @@ data FilesOrLicenseDescription
 
 instance Pretty (PP CopyrightDescription) where
     -- Special case encodes free format debian/copyright file
-    pPrint (PP x@(CopyrightDescription {_summaryComment = Just t})) | x {_summaryComment = Nothing} == newCopyrightDescription = text (dropWhileEnd isSpace (unpack t) <> "\n")
+    pPrint (PP x@(CopyrightDescription {_summaryComment = Just t})) | x {_summaryComment = Nothing} == def = text (dropWhileEnd isSpace (unpack t) <> "\n")
     pPrint x = ppPrint . toControlFile . unPP $ x
 
-newCopyrightDescription :: CopyrightDescription
-newCopyrightDescription =
-    CopyrightDescription
-    { _format = fromJust $ parseURI "http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/"
-    , _upstreamName = Nothing
-    , _upstreamContact = Nothing
-    , _upstreamSource = Nothing
-    , _disclaimer = Nothing
-    , _summaryComment = Nothing
-    , _summaryLicense = Nothing
-    , _summaryCopyright = Nothing
-    , _filesAndLicenses = [] }
+instance Default CopyrightDescription where
+    def = CopyrightDescription
+          { _format = fromJust $ parseURI "http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/"
+          , _upstreamName = Nothing
+          , _upstreamContact = Nothing
+          , _upstreamSource = Nothing
+          , _disclaimer = Nothing
+          , _summaryComment = Nothing
+          , _summaryLicense = Nothing
+          , _summaryCopyright = Nothing
+          , _filesAndLicenses = [] }
 
--- | Try to read a CopyrightDescription from a file
+-- | Read a 'CopyrightDescription' from the text one might obtain from
+-- a @debian/copyright@ file.
 readCopyrightDescription :: Text -> CopyrightDescription
 readCopyrightDescription t =
     case parseControl "debian/copyright" t of
-      Left _e -> newCopyrightDescription { _summaryComment = Just t }
+      Left _e -> def { _summaryComment = Just t }
       Right ctl -> case parseCopyrightDescription (unControl ctl) of
                      Just cpy -> cpy
-                     Nothing -> newCopyrightDescription { _summaryComment = Just t }
+                     Nothing -> def { _summaryComment = Just t }
 
+-- | Try to parse a structured copyright file.
 parseCopyrightDescription :: [Paragraph' Text] -> Maybe CopyrightDescription
 parseCopyrightDescription (hd : tl) =
     let (muri :: Maybe URI) = maybe Nothing (\ (Field (_, t)) -> parseURI . unpack $ t) (lookupP "Format" hd) in
@@ -165,6 +166,9 @@ toParagraph ld@LicenseDescription {} =
       [ Field ("License", " " <> display' (_license ld)) ] ++
       maybe [] (\ t -> [Field ("Comment", " " <> t)]) (_comment ld)
 
+-- | Infer a 'CopyrightDescription' from a Cabal package description.
+-- This will try to read any copyright files listed in the cabal
+-- configuration.
 defaultCopyrightDescription :: CopyrightDescription -> Cabal.PackageDescription -> IO CopyrightDescription
 defaultCopyrightDescription copyright0 pkgDesc = do
   licenseFiles <- mapM (\ path -> liftIO (readFileMaybe path) >>= \ t -> return (path, t))

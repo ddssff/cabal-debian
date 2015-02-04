@@ -1,6 +1,23 @@
--- | Input the Cabal package description.
+-- | The basic information required to load a Cabal or Debian package description.
 {-# LANGUAGE CPP, DeriveDataTypeable, TemplateHaskell #-}
-module Debian.Debianize.BasicInfo where
+module Debian.Debianize.BasicInfo
+    ( -- * Types
+      Flags(..)
+    , EnvSet(..)
+    , DebAction(..)
+    , DebType(..)
+      -- * Lenses
+    , verbosity
+    , dryRun
+    , validate
+    , debAction
+    , compilerFlavor
+    , cabalFlagAssignments
+    , buildEnv
+      -- * State Monad
+    , flagOptions
+    , newFlags
+    ) where
 
 import Control.Applicative ((<$>))
 import Control.Category ((.))
@@ -85,6 +102,8 @@ $(let f s = case s of
               _ -> Nothing in
   nameMakeLens ''Flags f)
 
+-- | Command line options which build a function that modifies a
+-- state monad value of type 'Flags'
 flagOptions :: MonadIO m => [OptDescr (StateT Flags m ())]
 flagOptions =
     [ Option "v" ["verbose"] (ReqArg (\ s -> verbosity ~= (read' (\ s' -> error $ "verbose: " ++ show s') s :: Int)) "number")
@@ -124,6 +143,8 @@ flagList = map tagWithValue . words
   where tagWithValue ('-':name) = (FlagName (map toLower name), False)
         tagWithValue name       = (FlagName (map toLower name), True)
 
+-- | Use 'flagOptions' to build a new 'Flags' value from the command
+-- line arguments in the environment.
 newFlags :: IO Flags
 newFlags = do
   (fns, _, _) <- getOpt Permute flagOptions <$> getArgs

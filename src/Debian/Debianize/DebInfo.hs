@@ -4,30 +4,73 @@
 {-# LANGUAGE CPP, DeriveDataTypeable, TemplateHaskell #-}
 {-# OPTIONS_GHC -Wall #-}
 module Debian.Debianize.DebInfo
-
-    ( DebInfo
+    ( -- * Types
+#if __HADDOCK__
+      -- Is this ifdef working?
+      DebInfo(..)
+#else
+      DebInfo
+#endif
     , Atom(File, Install, InstallCabalExec, InstallCabalExecTo, InstallData, InstallDir, InstallTo, Link)
-    , makeDebInfo
+    , Site(Site, domain, server, serverAdmin)
+    , Server(Server, headerMessage, hostname, installFile, port, retry, serverFlags)
+    , InstallFile(InstallFile, destDir, destName, execName, sourceDir)
+
+      -- * Lenses
     , flags
     , warning
-    , copyright
+    , sourceFormat
+    , watch
     , rulesHead
     , rulesSettings
     , rulesIncludes
     , rulesFragments
+    , copyright
+    , control
+    , intermediateFiles
+    , compat
+    , changelog
+    , installInit
+    , logrotateStanza
     , postInst
     , postRm
     , preInst
     , preRm
-    , sourceFormat
-    , watch
-    , changelog
-    , control
-    , logrotateStanza
     , atomSet
-    , installInit
-    , intermediateFiles
-    , compat
+    , noDocumentationLibrary
+    , noProfilingLibrary
+    , omitProfVersionDeps
+    , omitLTDeps
+    , buildDir
+    , sourcePackageName
+    , overrideDebianNameBase
+    , revision
+    , debVersion
+    , maintainerOption
+    , uploadersOption
+    , utilsPackageNameBase
+    , xDescriptionText
+    , comments
+    , missingDependencies
+    , extraLibMap
+    , execMap
+    , apacheSite
+    , sourceArchitectures
+    , binaryArchitectures
+    , sourcePriority
+    , binaryPriorities
+    , sourceSection
+    , binarySections
+    , executable
+    , serverInfo
+    , website
+    , backups
+    , extraDevDeps
+    , official
+
+    , binaryDebDescription
+
+      -- * Atom builders
     , link
     , install
     , installTo
@@ -37,46 +80,13 @@ module Debian.Debianize.DebInfo
     , installCabalExecTo
     , installDir
 
-    , binaryDebDescription
-
-    , Site(Site, domain, server, serverAdmin)
-    , Server(Server, headerMessage, hostname, installFile, port, retry, serverFlags)
-    , InstallFile(InstallFile, destDir, destName, execName, sourceDir)
-
-    , buildDir
-    , extraLibMap
-    , execMap
-    , maintainerOption
-    , uploadersOption
-    , executable
-    , serverInfo
-    , website
-    , backups
-    , apacheSite
-    , missingDependencies
-    , utilsPackageNameBase
-    , sourcePackageName
-    , overrideDebianNameBase
-    , revision
-    , debVersion
-    , omitProfVersionDeps
-    , omitLTDeps
-    , noProfilingLibrary
-    , noDocumentationLibrary
-    , official
-    , sourceArchitectures
-    , extraDevDeps
-    , xDescriptionText
-    , comments
-    , binaryArchitectures
-    , sourcePriority
-    , sourceSection
-    , binaryPriorities
-    , binarySections
+      -- * DebInfo Builder
+    , makeDebInfo
     ) where
 
 import Control.Category ((.))
 import Control.Monad.State (StateT)
+import Data.Default (def)
 import Data.Generics (Data, Typeable)
 import Data.Lens.Common (Lens, iso, getL)
 import Data.Lens.Lazy ((%=))
@@ -90,7 +100,7 @@ import Debian.Changes (ChangeLog)
 import Debian.Debianize.BasicInfo (Flags)
 import Debian.Debianize.Prelude (listElemLens, maybeLens)
 import Debian.Debianize.BinaryDebDescription (BinaryDebDescription, Canonical(canonical), newBinaryDebDescription, package)
-import Debian.Debianize.CopyrightDescription (CopyrightDescription, defaultCopyrightDescription, newCopyrightDescription)
+import Debian.Debianize.CopyrightDescription (CopyrightDescription, defaultCopyrightDescription)
 import qualified Debian.Debianize.SourceDebDescription as S (newSourceDebDescription, SourceDebDescription, binaryPackages)
 import Debian.Debianize.VersionSplits (DebBase)
 import Debian.Orphans ()
@@ -308,7 +318,7 @@ makeDebInfo fs =
     , rulesSettings_ = mempty
     , rulesIncludes_ = mempty
     , rulesFragments_ = mempty
-    , copyright_ = defaultCopyrightDescription newCopyrightDescription
+    , copyright_ = defaultCopyrightDescription def
     , control_ = S.newSourceDebDescription
     , intermediateFiles_ = mempty
     , compat_ = Nothing
@@ -378,6 +388,7 @@ installCabalExecTo b name dest = atomSet %= (Set.insert $ InstallCabalExecTo b n
 installDir :: Monad m => BinPkgName -> FilePath -> StateT DebInfo m ()
 installDir b dir = atomSet %= (Set.insert $ InstallDir b dir) >> return ()
 
--- | Not exported - <http://www.debian.org/doc/debian-policy/ch-controlfields.html#s-f-Package>
+-- | Lens to look up the binary deb description by name and create it if absent.
+-- <http://www.debian.org/doc/debian-policy/ch-controlfields.html#s-f-Package>
 binaryDebDescription :: BinPkgName -> Lens DebInfo BinaryDebDescription
 binaryDebDescription b = maybeLens (newBinaryDebDescription b) (iso id id) . listElemLens ((== b) . getL package) . S.binaryPackages . control

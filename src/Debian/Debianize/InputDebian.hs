@@ -52,7 +52,10 @@ inputDebianization =
        inputCabalInfoFromDirectory
        control ~= ctl
 
--- | Try to input a file and if successful add it to the debianization.
+-- | Try to input a file and if successful add it to the
+-- debianization's list of "intermediate" files, files which will
+-- simply be added to the final debianization without any
+-- understanding of their contents or purpose.
 inputDebianizationFile :: MonadIO m => FilePath -> DebianT m ()
 inputDebianizationFile path =
     do inputCabalInfoFromDirectory
@@ -249,7 +252,7 @@ readDir p line = installDir p (unpack line)
 -- | Compute the Cabal data directory for a Linux install from a Cabal
 -- package description.  This needs to match the path cabal assigns to
 -- datadir in the dist/build/autogen/Paths_packagename.hs module, or
--- perhaps the path in the cabal_debian_datadir environment variable.
+-- perhaps the path in the CABAL_DEBIAN_DATADIR environment variable.
 dataDir :: MonadIO m => CabalT m FilePath
 dataDir = do
   d <- access packageDescription

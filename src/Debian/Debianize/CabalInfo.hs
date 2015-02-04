@@ -4,16 +4,17 @@
 {-# LANGUAGE CPP, DeriveDataTypeable, TemplateHaskell #-}
 {-# OPTIONS_GHC -Wall #-}
 module Debian.Debianize.CabalInfo
-    ( CabalInfo
-    , newCabalInfo
-    -- , makeAtoms
+    ( -- * Types
+      CabalInfo
     , PackageInfo(PackageInfo, cabalName, devDeb, docDeb, profDeb)
-    , debianNameMap
-    , debInfo
+      -- * Lenses
     , packageDescription
+    , debInfo
+    , debianNameMap
     , epochMap
     , packageInfo
-    , showCabalInfo
+      -- * Builder
+    , newCabalInfo
     ) where
 
 import Data.Generics (Data, Typeable)
@@ -67,6 +68,8 @@ data CabalInfo
 instance Canonical CabalInfo where
     canonical x = x {debInfo_ = canonical (debInfo_ x)}
 
+-- | Given the 'Flags' value read the cabalization and build a new
+-- 'CabalInfo' record.
 newCabalInfo :: Flags -> IO CabalInfo
 newCabalInfo flags' = do
   pkgDesc <- inputCabalization flags'
@@ -86,9 +89,6 @@ data PackageInfo = PackageInfo { cabalName :: PackageName
                                , devDeb :: Maybe (BinPkgName, DebianVersion)
                                , profDeb :: Maybe (BinPkgName, DebianVersion)
                                , docDeb :: Maybe (BinPkgName, DebianVersion) } deriving (Eq, Ord, Show, Data, Typeable)
-
-showCabalInfo :: CabalInfo -> IO ()
-showCabalInfo x = putStrLn ("\nTop: " ++ show x ++ "\n")
 
 $(let f s = case s of
               (_ : _) | last s == '_' -> Just (init s)

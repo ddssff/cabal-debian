@@ -2,7 +2,7 @@
 {-# LANGUAGE CPP, FlexibleInstances, OverloadedStrings, ScopedTypeVariables #-}
 module Debian.Debianize.Finalize
     ( debianize
-    , finalizeDebianization -- external use deprecated - used in test script
+    -- , finalizeDebianization -- external use deprecated - used in test script
     ) where
 
 import Control.Applicative ((<$>))
@@ -55,11 +55,11 @@ import System.FilePath ((<.>), (</>), makeRelative, splitFileName, takeDirectory
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr(..))
 import Text.PrettyPrint.HughesPJClass (Pretty(pPrint))
 
--- | Given an Atoms value, get any additional configuration
--- information from the environment, read the cabal package
--- description and possibly the debian/changelog file, then generate
--- and return the new debianization (along with the data directory
--- computed from the cabal package description.)
+-- | @debianize customize@ initializes the CabalT state from the
+-- environment and the cabal package description in (and possibly the
+-- debian/changelog file) from the current directory, then runs
+-- @customize@ and finalizes the debianization so it is ready to be
+-- output.
 debianize :: (MonadIO m, Functor m) => CabalT m () -> CabalT m ()
 debianize customize =
     do compileEnvironmentArgs
@@ -74,7 +74,8 @@ finalizeDebianization =
     do date <- liftIO getCurrentLocalRFC822Time
        debhelperCompat <- liftIO getDebhelperCompatLevel
        finalizeDebianization' date debhelperCompat
-       access (verbosity . D.flags . A.debInfo) >>= \ vb -> when (vb >= 3) (get >>= liftIO . A.showCabalInfo)
+       vb <- access (verbosity . D.flags . A.debInfo)
+       when (vb >= 3) (get >>= \ x -> liftIO (putStrLn ("\nFinalized Cabal Info: " ++ show x ++ "\n")))
 
 -- | Now that we know the build and data directories, we can expand
 -- some atoms into sets of simpler atoms which can eventually be

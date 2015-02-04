@@ -113,8 +113,7 @@ module Debian.Debianize
     , module Debian.Debianize.CopyrightDescription
       -- * Combines the DebInfo record with the Cabal Package info.
     , module Debian.Debianize.CabalInfo
-      -- * State monads DebianT and CabalT that carry the DebInfo and
-      -- Atoms packaging info respectively.
+      -- * State monads DebianT and CabalT that carry the DebInfo and Atoms packaging info respectively.
     , module Debian.Debianize.Monad
       -- * Functions for maping Cabal name and version number to Debian name
     , module Debian.Debianize.DebianName
@@ -133,9 +132,9 @@ module Debian.Debianize
     , module Debian.Debianize.Finalize
       -- * Create the debianization files
     , module Debian.Debianize.Output
-      -- * Utility files
+      -- * Utility module
     , module Debian.Debianize.Prelude
-      -- * Utility files concerning Debian policy
+      -- * Utility modules concerning Debian policy
     , module Debian.Debianize.VersionSplits
     , module Debian.Policy
 {-

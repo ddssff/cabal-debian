@@ -1,7 +1,7 @@
 -- | This module holds a long list of lenses that access the Atoms
 -- record, the record that holds the input data from which the
 -- debianization is to be constructed.
-{-# LANGUAGE CPP, DeriveDataTypeable, TemplateHaskell #-}
+{-# LANGUAGE CPP, DeriveDataTypeable, OverloadedStrings, TemplateHaskell #-}
 {-# OPTIONS_GHC -Wall #-}
 module Debian.Debianize.CabalInfo
     ( -- * Types
@@ -18,27 +18,29 @@ module Debian.Debianize.CabalInfo
     ) where
 
 import Control.Category ((.))
+import Control.Monad (unless)
 import Control.Monad.State (execStateT)
 import Control.Monad.Trans (liftIO)
 import Data.Generics (Data, Typeable)
+import Data.Lens.Lazy (access)
 import Data.Lens.Template (nameMakeLens)
-import Data.List (init)
+import Data.List as List (init, null)
 import Data.Map as Map (Map)
 import Data.Monoid (Monoid(..))
-import Data.Text (null, pack, strip)
+import Data.Text as Text (null, pack, strip)
 import Debian.Debianize.BasicInfo (Flags)
-import Debian.Debianize.DebInfo as D (control, copyright, DebInfo, makeDebInfo)
+import Debian.Debianize.DebInfo as D (control, copyright, DebInfo, makeDebInfo, noTestSuite, rulesSettings)
 import Debian.Debianize.BinaryDebDescription (Canonical(canonical))
 import Debian.Debianize.CopyrightDescription (defaultCopyrightDescription)
 import Debian.Debianize.InputCabal (inputCabalization)
-import Debian.Debianize.Prelude ((~=))
+import Debian.Debianize.Prelude ((~=), (%=))
 import Debian.Debianize.SourceDebDescription as S (homepage)
 import Debian.Debianize.VersionSplits (VersionSplits)
 import Debian.Orphans ()
 import Debian.Relation (BinPkgName)
 import Debian.Version (DebianVersion)
 import Distribution.Package (PackageName)
-import Distribution.PackageDescription as Cabal (PackageDescription(homepage))
+import Distribution.PackageDescription as Cabal (PackageDescription(homepage, testSuites))
 import Prelude hiding ((.), init, init, log, log, null)
 
 -- This enormous record is a mistake - instead it should be an Atom
@@ -94,8 +96,13 @@ newCabalInfo flags' = do
   execStateT
     (do (copyright . debInfo) ~= Just copyrt
         (S.homepage . control . debInfo) ~= case strip (pack (Cabal.homepage pkgDesc)) of
-                                              x | null x -> Nothing
-                                              x -> Just x)
+                                              x | Text.null x -> Nothing
+                                              x -> Just x
+        noTests <- access (noTestSuite . debInfo)
+        unless (List.null (Cabal.testSuites pkgDesc) || noTests)
+               (do (rulesSettings . debInfo) %= (++ ["DEB_ENABLE_TESTS = yes"])
+                   -- ...
+               ))
     (makeCabalInfo flags' pkgDesc)
 
 makeCabalInfo :: Flags -> PackageDescription -> CabalInfo

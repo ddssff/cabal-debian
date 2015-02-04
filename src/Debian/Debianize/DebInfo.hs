@@ -67,6 +67,7 @@ module Debian.Debianize.DebInfo
     , backups
     , extraDevDeps
     , official
+    , noTestSuite
 
     , binaryDebDescription
 
@@ -250,6 +251,8 @@ data DebInfo
       -- reason to use this is because we don't yet know the name of the dev library package.
       , official_ :: Bool
       -- ^ Whether this packaging is created by the Debian Haskell Group
+      , noTestSuite_ :: Bool
+      -- ^ Force omission of the test suites from the debianization
       } deriving (Show, Data, Typeable)
 
 data Atom
@@ -357,6 +360,7 @@ makeDebInfo fs =
     , backups_ = mempty
     , extraDevDeps_ = mempty
     , official_ = False
+    , noTestSuite_ = False
     }
 
 instance Canonical DebInfo where

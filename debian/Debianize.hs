@@ -10,8 +10,10 @@
 import Control.Category ((.))
 import Control.Exception (throw)
 import Control.Monad.State (get)
+import Data.Default (def)
 import Data.Lens.Lazy (getL, access)
 import Data.List (intercalate)
+import Data.Maybe (fromMaybe)
 import Data.Monoid (mempty)
 import Data.Set as Set (singleton, insert)
 import Data.Text as Text (Text, pack)
@@ -67,7 +69,7 @@ main =
              (standardsVersion . control . debInfo) ~= Just (StandardsVersion 3 9 3 Nothing)
              (compat . debInfo) ~= Just 9
              (utilsPackageNameBase . debInfo) ~= Just "cabal-debian"
-             (copyright . debInfo) %= (\ f -> (\ pkgDesc -> f pkgDesc >>= \ c -> return $ copyrightFn c))
+             (copyright . debInfo) %= (Just . copyrightFn . fromMaybe def)
              (conflicts . relations . binaryDebDescription (BinPkgName "cabal-debian") . debInfo) %= (++ (rels "haskell-debian-utils (<< 3.59)"))
              (depends . relations . binaryDebDescription (BinPkgName "cabal-debian") . debInfo) %= (++ (rels "apt-file, debian-policy, debhelper, haskell-devscripts (>= 0.8.19)"))
              (depends . relations . binaryDebDescription (BinPkgName "libghc-cabal-debian-dev") . debInfo) %= (++ (rels "debian-policy"))
@@ -83,8 +85,7 @@ rels = either (throw . userError . show) id . parseRelations
 -- | Demonstrates the structure of the new copyright type.
 copyrightFn :: CopyrightDescription -> CopyrightDescription
 copyrightFn =
-    const $ newCopyrightDescription
-                    { _filesAndLicenses =       [FilesDescription { _filesPattern = "*"
+    const $ def     { _filesAndLicenses =       [FilesDescription { _filesPattern = "*"
                                                                   , _filesCopyright = pack (unlines [ "Copyright (c) 2007, David Fox"
                                                                                                     , "Copyright (c) 2007, Jeremy Shaw" ])
                                                                   , _filesLicense = OtherLicense "Proprietary"

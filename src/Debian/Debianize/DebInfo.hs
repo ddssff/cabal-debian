@@ -86,7 +86,7 @@ module Debian.Debianize.DebInfo
 
 import Control.Category ((.))
 import Control.Monad.State (StateT)
-import Data.Default (def)
+--import Data.Default (def)
 import Data.Generics (Data, Typeable)
 import Data.Lens.Common (Lens, iso, getL)
 import Data.Lens.Lazy ((%=))
@@ -100,14 +100,13 @@ import Debian.Changes (ChangeLog)
 import Debian.Debianize.BasicInfo (Flags)
 import Debian.Debianize.Prelude (listElemLens, maybeLens)
 import Debian.Debianize.BinaryDebDescription (BinaryDebDescription, Canonical(canonical), newBinaryDebDescription, package)
-import Debian.Debianize.CopyrightDescription (CopyrightDescription, defaultCopyrightDescription)
+import Debian.Debianize.CopyrightDescription (CopyrightDescription)
 import qualified Debian.Debianize.SourceDebDescription as S (newSourceDebDescription, SourceDebDescription, binaryPackages)
 import Debian.Debianize.VersionSplits (DebBase)
 import Debian.Orphans ()
 import Debian.Policy (PackageArchitectures, PackagePriority, Section, SourceFormat)
 import Debian.Relation (BinPkgName, Relations, SrcPkgName)
 import Debian.Version (DebianVersion)
-import Distribution.PackageDescription as Cabal (PackageDescription)
 import Prelude hiding ((.), init, init, log, log)
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr)
 
@@ -130,16 +129,14 @@ data DebInfo
       -- ^ The rules file include directives
       , rulesFragments_ :: Set Text
       -- ^ Additional fragments of the rules file
-      , copyright_ :: PackageDescription -> IO CopyrightDescription
-      -- ^ Copyright and license information.  This function takes a list of FilePath like
-      -- the licenseFiles field of the PackageDescription and returns a CopyrightDescription.
+      , copyright_ :: Maybe CopyrightDescription
+      -- ^ Override the copyright value computed from the cabal package description.
       , control_ :: S.SourceDebDescription
       -- ^ The parsed contents of the control file
       , intermediateFiles_ :: Set (FilePath, Text)
       -- ^ Put this text into a file with the given name in the debianization.
       , compat_ :: Maybe Int
       -- ^ The debhelper compatibility level, from debian/compat.
-      -- , copyright_ :: Maybe (Either CopyrightDescription Text)
       , changelog_ :: Maybe ChangeLog
       -- ^ The changelog, first entry contains the source package name and version
       , installInit_ :: Map BinPkgName Text
@@ -318,7 +315,7 @@ makeDebInfo fs =
     , rulesSettings_ = mempty
     , rulesIncludes_ = mempty
     , rulesFragments_ = mempty
-    , copyright_ = defaultCopyrightDescription def
+    , copyright_ = Nothing
     , control_ = S.newSourceDebDescription
     , intermediateFiles_ = mempty
     , compat_ = Nothing

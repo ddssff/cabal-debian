@@ -17,15 +17,20 @@ module Debian.Debianize.CabalInfo
     , newCabalInfo
     ) where
 
+import Control.Category ((.))
+import Control.Monad.Trans (liftIO)
+import Data.Default (def)
 import Data.Generics (Data, Typeable)
+import Data.Lens.Common (setL)
 import Data.Lens.Template (nameMakeLens)
 import Data.List (init)
 import Data.Map as Map (Map)
 import Data.Monoid (Monoid(..))
 import Debian.Debianize.BasicInfo (Flags)
-import Debian.Debianize.DebInfo (DebInfo, makeDebInfo)
-import Debian.Debianize.InputCabal (inputCabalization)
+import Debian.Debianize.DebInfo (copyright, DebInfo, makeDebInfo)
 import Debian.Debianize.BinaryDebDescription (Canonical(canonical))
+import Debian.Debianize.CopyrightDescription (defaultCopyrightDescription)
+import Debian.Debianize.InputCabal (inputCabalization)
 import Debian.Debianize.VersionSplits (VersionSplits)
 import Debian.Orphans ()
 import Debian.Relation (BinPkgName)
@@ -65,6 +70,16 @@ data CabalInfo
       -- ^ Supply some info about a cabal package.
       } deriving (Show, Data, Typeable)
 
+data PackageInfo = PackageInfo { cabalName :: PackageName
+                               , devDeb :: Maybe (BinPkgName, DebianVersion)
+                               , profDeb :: Maybe (BinPkgName, DebianVersion)
+                               , docDeb :: Maybe (BinPkgName, DebianVersion) } deriving (Eq, Ord, Show, Data, Typeable)
+
+$(let f s = case s of
+              (_ : _) | last s == '_' -> Just (init s)
+              _ -> Nothing in
+  nameMakeLens ''CabalInfo f)
+
 instance Canonical CabalInfo where
     canonical x = x {debInfo_ = canonical (debInfo_ x)}
 
@@ -73,7 +88,8 @@ instance Canonical CabalInfo where
 newCabalInfo :: Flags -> IO CabalInfo
 newCabalInfo flags' = do
   pkgDesc <- inputCabalization flags'
-  return $ makeCabalInfo flags' pkgDesc
+  copyrt <- liftIO $ defaultCopyrightDescription def pkgDesc
+  return $ setL (copyright . debInfo) (Just copyrt) (makeCabalInfo flags' pkgDesc)
 
 makeCabalInfo :: Flags -> PackageDescription -> CabalInfo
 makeCabalInfo fs pkgDesc =
@@ -84,13 +100,3 @@ makeCabalInfo fs pkgDesc =
       , debianNameMap_ = mempty
       , debInfo_ = makeDebInfo fs
       }
-
-data PackageInfo = PackageInfo { cabalName :: PackageName
-                               , devDeb :: Maybe (BinPkgName, DebianVersion)
-                               , profDeb :: Maybe (BinPkgName, DebianVersion)
-                               , docDeb :: Maybe (BinPkgName, DebianVersion) } deriving (Eq, Ord, Show, Data, Typeable)
-
-$(let f s = case s of
-              (_ : _) | last s == '_' -> Just (init s)
-              _ -> Nothing in
-  nameMakeLens ''CabalInfo f)

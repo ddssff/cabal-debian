@@ -203,7 +203,7 @@ inputCabalInfo debian name@"source/format" = liftIO (readFile (debian </> name))
 inputCabalInfo debian name@"watch" = liftIO (readFile (debian </> name)) >>= \ text -> watch ~= Just text
 inputCabalInfo debian name@"rules" = liftIO (readFile (debian </> name)) >>= \ text -> rulesHead ~= (Just $ strip text <> "\n")
 inputCabalInfo debian name@"compat" = liftIO (readFile (debian </> name)) >>= \ text -> compat ~= Just (read' (\ s -> error $ "compat: " ++ show s) (unpack text))
-inputCabalInfo debian name@"copyright" = liftIO (readFile (debian </> name)) >>= \ text -> copyright ~= (\ _ -> return (readCopyrightDescription text))
+inputCabalInfo debian name@"copyright" = liftIO (readFile (debian </> name)) >>= \ text -> copyright ~= Just (readCopyrightDescription text)
 inputCabalInfo debian name@"changelog" =
     liftIO (readFile (debian </> name)) >>= return . parseChangeLog . unpack >>= \ log -> changelog ~= Just log
 inputCabalInfo debian name =

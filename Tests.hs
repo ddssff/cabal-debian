@@ -14,6 +14,7 @@ import Data.Lens.Lazy (getL, setL)
 import Data.List (sortBy)
 import Data.Map as Map (differenceWithKey, intersectionWithKey)
 import qualified Data.Map as Map (elems, Map, toList)
+import Data.Maybe (fromMaybe)
 import Data.Monoid ((<>), mconcat, mempty)
 import Data.Set as Set (fromList, union, insert)
 import Data.Text as Text (intercalate, split, Text, unlines, unpack)
@@ -283,7 +284,7 @@ test3 label =
                                                     "",
                                                     ""])
                 (D.compat . debInfo) ~= Just 7
-                (D.copyright . debInfo) %= (\ f -> (\ pkgDesc -> f pkgDesc >>= \ c -> return $ c { _summaryComment = Just "This package was debianized by John Goerzen <jgoerzen@complete.org> on\nWed,  6 Oct 2004 09:46:14 -0500.\n\nCopyright information removed from this test data.\n" }))
+                (D.copyright . debInfo) %= (Just . id . fromMaybe (readCopyrightDescription "This package was debianized by John Goerzen <jgoerzen@complete.org> on\nWed,  6 Oct 2004 09:46:14 -0500.\n\nCopyright information removed from this test data.\n"))
                 (S.source . D.control . debInfo) ~= Just (SrcPkgName {unSrcPkgName = "haskell-devscripts"})
                 (S.maintainer . D.control . debInfo) ~= Just (NameAddr {nameAddr_name = Just "Debian Haskell Group", nameAddr_addr = "pkg-haskell-maintainers@lists.alioth.debian.org"})
                 (S.uploaders . D.control . debInfo) ~= [NameAddr {nameAddr_name = Just "Marco Silva", nameAddr_addr = "marcot@debian.org"},NameAddr {nameAddr_name = Just "Joachim Breitner", nameAddr_addr = "nomeata@debian.org"}]

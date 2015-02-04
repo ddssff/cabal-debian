@@ -18,25 +18,28 @@ module Debian.Debianize.CabalInfo
     ) where
 
 import Control.Category ((.))
+import Control.Monad.State (execStateT)
 import Control.Monad.Trans (liftIO)
 import Data.Generics (Data, Typeable)
-import Data.Lens.Common (setL)
 import Data.Lens.Template (nameMakeLens)
 import Data.List (init)
 import Data.Map as Map (Map)
 import Data.Monoid (Monoid(..))
+import Data.Text (null, pack, strip)
 import Debian.Debianize.BasicInfo (Flags)
-import Debian.Debianize.DebInfo (copyright, DebInfo, makeDebInfo)
+import Debian.Debianize.DebInfo as D (control, copyright, DebInfo, makeDebInfo)
 import Debian.Debianize.BinaryDebDescription (Canonical(canonical))
 import Debian.Debianize.CopyrightDescription (defaultCopyrightDescription)
 import Debian.Debianize.InputCabal (inputCabalization)
+import Debian.Debianize.Prelude ((~=))
+import Debian.Debianize.SourceDebDescription as S (homepage)
 import Debian.Debianize.VersionSplits (VersionSplits)
 import Debian.Orphans ()
 import Debian.Relation (BinPkgName)
 import Debian.Version (DebianVersion)
 import Distribution.Package (PackageName)
-import Distribution.PackageDescription as Cabal (PackageDescription)
-import Prelude hiding ((.), init, init, log, log)
+import Distribution.PackageDescription as Cabal (PackageDescription(homepage))
+import Prelude hiding ((.), init, init, log, log, null)
 
 -- This enormous record is a mistake - instead it should be an Atom
 -- type with lots of constructors, and the Atoms type is a set of
@@ -88,7 +91,12 @@ newCabalInfo :: Flags -> IO CabalInfo
 newCabalInfo flags' = do
   pkgDesc <- inputCabalization flags'
   copyrt <- liftIO $ defaultCopyrightDescription pkgDesc
-  return $ setL (copyright . debInfo) (Just copyrt) (makeCabalInfo flags' pkgDesc)
+  execStateT
+    (do (copyright . debInfo) ~= Just copyrt
+        (S.homepage . control . debInfo) ~= case strip (pack (Cabal.homepage pkgDesc)) of
+                                              x | null x -> Nothing
+                                              x -> Just x)
+    (makeCabalInfo flags' pkgDesc)
 
 makeCabalInfo :: Flags -> PackageDescription -> CabalInfo
 makeCabalInfo fs pkgDesc =

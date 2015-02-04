@@ -1,12 +1,15 @@
 Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 
 Files: *
-Copyright: Copyright (c) 2007, David Fox
- Copyright (c) 2007, Jeremy Shaw
+Copyright: Copyright (c) 2007-2014, David Fox, Jeremy Shaw
 License: BSD3
-Comment: All rights reserved.
- .
- The packageing was adjusted to Debian conventions by Joachim Breitner
+
+Files: */debian
+Copyright: held by the contributors mentioned in debian/changelog
+License: BSD3
+
+License: BSD3
+Comment: The packageing was adjusted to Debian conventions by Joachim Breitner
  <nomeata@debian.org> on Sat, 01 May 2010 21:16:18 +0200, and is licenced under
  the same terms as the package itself..
  .

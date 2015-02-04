@@ -225,7 +225,7 @@ Executable cabal-debian
  Build-Depends: base, Cabal >= 1.9, data-lens, mtl, pretty
  if flag(local-debian)
    Hs-Source-Dirs: src, debian-haskell
-   Build-depends: bytestring, containers, data-lens-template, deepseq, Diff, directory, exceptions, filepath, hsemail, ListLike, memoize, network, network-uri, old-locale, parsec, prettyclass, process, process-extras, pureMD5, regex-compat, regex-tdfa, set-extra, syb, template-haskell, text, time, unix, Unixutils, utf8-string
+   Build-depends: bytestring, containers, data-default, data-lens-template, deepseq, Diff, directory, exceptions, filepath, hsemail, ListLike, memoize, network, network-uri, old-locale, parsec, prettyclass, process, process-extras, pureMD5, regex-compat, regex-tdfa, set-extra, syb, template-haskell, text, time, unix, Unixutils, utf8-string
  else
    Build-depends: debian >= 3.85, cabal-debian
 
@@ -236,6 +236,6 @@ Executable cabal-debian-tests
  Build-Depends: base, Cabal >= 1.9, containers, data-lens, filepath, hsemail, HUnit, prettyclass, process, text
  if flag(local-debian)
    Hs-Source-Dirs: src, debian-haskell
-   Build-depends: bytestring, containers, data-lens-template, deepseq, Diff, directory, exceptions, filepath, hsemail, ListLike, memoize, mtl, network, network-uri, old-locale, parsec, pretty, prettyclass, process, process-extras, pureMD5, regex-compat, regex-tdfa, set-extra, syb, template-haskell, text, time, unix, Unixutils, utf8-string
+   Build-depends: bytestring, containers, data-default, data-lens-template, deepseq, Diff, directory, exceptions, filepath, hsemail, ListLike, memoize, mtl, network, network-uri, old-locale, parsec, pretty, prettyclass, process, process-extras, pureMD5, regex-compat, regex-tdfa, set-extra, syb, template-haskell, text, time, unix, Unixutils, utf8-string
  else
    Build-depends: debian >= 3.85, cabal-debian

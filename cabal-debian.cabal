@@ -2,7 +2,7 @@ Name:           cabal-debian
 Version:        4.22
 Copyright:      Copyright (c) 2007-2014, David Fox, Jeremy Shaw
 License:        BSD3
-License-File:   debian/copyright
+License-File:   LICENSE
 Author:         David Fox <dsf@seereason.com>
 Category:       Debian, Distribution, System
 Maintainer:     David Fox <dsf@seereason.com>

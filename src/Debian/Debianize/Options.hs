@@ -181,7 +181,13 @@ options =
       Option "" ["builddir"] (ReqArg (\ s -> (D.buildDir . A.debInfo) ~= Just (s </> "build")) "PATH")
              (unlines [ "Subdirectory where cabal does its build, dist/build by default, dist-ghc when"
                       , "run by haskell-devscripts.  The build subdirectory is added to match the"
-                      , "behavior of the --builddir option in the Setup script."])
+                      , "behavior of the --builddir option in the Setup script."]),
+      Option "" ["no-test-suite"] (NoArg ((D.noTestSuite . A.debInfo) ~= True))
+             "Don't build or run the test suite.",
+      Option "" ["allow-debian-self-build-deps"] (NoArg ((D.allowDebianSelfBuildDeps . A.debInfo) ~= True))
+             (unlines [ "Don't filter out self dependencies in the debian package build dependencies."
+                      , "This may occasionally be necessary for a package that relies on an older"
+                      , "version of itself to build." ])
     ] ++ map liftOpt flagOptions
 
 liftOpt :: Monad m => OptDescr (StateT Flags m ()) -> OptDescr (CabalT m ())

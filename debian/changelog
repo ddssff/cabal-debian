@@ -1,3 +1,17 @@
+haskell-cabal-debian (4.23) unstable; urgency=low
+
+  * Add DEB_ENABLE_TESTS = yes to rules file when appropriate
+  * Add test suite build dependencies when appropriate
+  * Add --no-test-suite option
+  * Add --allow-debian-self-build-deps
+  * Filter out self dependencies in the debian package space, not the
+    cabal package space.
+  * Fix generation of machine readable debian/copyright files
+  * Use the homepage value found in the cabal file
+  * Add travis build file
+
+ -- David Fox <dsf@seereason.com>  Fri, 06 Feb 2015 06:25:08 -0800
+
 haskell-cabal-debian (4.22) unstable; urgency=low
 
   * Big module reorganization for more type safety.

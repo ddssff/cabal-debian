@@ -68,6 +68,7 @@ module Debian.Debianize.DebInfo
     , extraDevDeps
     , official
     , noTestSuite
+    , allowDebianSelfBuildDeps
 
     , binaryDebDescription
 
@@ -253,6 +254,11 @@ data DebInfo
       -- ^ Whether this packaging is created by the Debian Haskell Group
       , noTestSuite_ :: Bool
       -- ^ Force omission of the test suites from the debianization
+      , allowDebianSelfBuildDeps_ :: Bool
+      -- ^ Normally self dependencies are filtered out of the debian
+      -- build dependency list because they usually reflect
+      -- interdependencies between the library and the executable in
+      -- the Cabal packages.  This flag turns off that filtering.
       } deriving (Show, Data, Typeable)
 
 data Atom
@@ -361,6 +367,7 @@ makeDebInfo fs =
     , extraDevDeps_ = mempty
     , official_ = False
     , noTestSuite_ = False
+    , allowDebianSelfBuildDeps_ = False
     }
 
 instance Canonical DebInfo where

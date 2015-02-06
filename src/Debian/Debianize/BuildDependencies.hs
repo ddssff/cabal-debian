@@ -66,14 +66,25 @@ unboxDependency (ExtraLibs _) = Nothing -- Dependency (PackageName d) anyVersion
 
 -- |Debian packages don't have per binary package build dependencies,
 -- so we just gather them all up here.
-allBuildDepends :: Monad m => [Dependency] -> [Dependency] -> [Dependency] -> [String] -> CabalT m [Dependency_]
-allBuildDepends buildDepends' buildTools' pkgconfigDepends' extraLibs' =
-    do atoms <- get
-       return $ nub $ List.map BuildDepends buildDepends' ++
-                      List.map BuildTools buildTools' ++
-                      List.map PkgConfigDepends pkgconfigDepends' ++
-                      [ExtraLibs (fixDeps atoms extraLibs')]
+allBuildDepends :: Monad m => PackageDescription -> CabalT m [Dependency_]
+allBuildDepends pkgDesc =
+    allBuildDepends'
+      (Cabal.buildDepends pkgDesc ++
+            concatMap (Cabal.targetBuildDepends . Cabal.buildInfo) (Cabal.executables pkgDesc) ++
+            concatMap (Cabal.targetBuildDepends . Cabal.testBuildInfo) (Cabal.testSuites pkgDesc))
+      (concatMap buildTools . allBuildInfo $ pkgDesc)
+      (concatMap pkgconfigDepends . allBuildInfo $ pkgDesc)
+      (concatMap extraLibs . allBuildInfo $ pkgDesc) >>=
+    return {- . List.filter (not . selfDependency (Cabal.package pkgDesc)) -}
     where
+      allBuildDepends' :: Monad m => [Dependency] -> [Dependency] -> [Dependency] -> [String] -> CabalT m [Dependency_]
+      allBuildDepends' buildDepends' buildTools' pkgconfigDepends' extraLibs' =
+          do atoms <- get
+             return $ nub $ List.map BuildDepends buildDepends' ++
+                            List.map BuildTools buildTools' ++
+                            List.map PkgConfigDepends pkgconfigDepends' ++
+                            [ExtraLibs (fixDeps atoms extraLibs')]
+
       fixDeps :: CabalInfo -> [String] -> Relations
       fixDeps atoms xs =
           concatMap (\ cab -> fromMaybe [[D.Rel (D.BinPkgName ("lib" ++ List.map toLower cab ++ "-dev")) Nothing Nothing]]
@@ -88,7 +99,7 @@ debianBuildDeps pkgDesc =
        let hcTypePairs =
                fold union empty $
                   Set.map (\ hc' -> Set.map (hc',) $ hcPackageTypes hc') hcs
-       cDeps <- cabalDeps hcTypePairs
+       cDeps <- allBuildDepends pkgDesc >>= mapM (buildDependencies hcTypePairs) >>= return . {-nub .-} concat
        bDeps <- access (S.buildDepends . D.control . A.debInfo)
        prof <- not <$> access (D.noProfilingLibrary . A.debInfo)
        let xs = nub $ [[D.Rel (D.BinPkgName "debhelper") (Just (D.GRE (parseDebianVersion ("7.0" :: String)))) Nothing],
@@ -104,13 +115,6 @@ debianBuildDeps pkgDesc =
                        cDeps
        filterMissing xs
     where
-      cabalDeps hcTypePairs =
-          do deps <- allBuildDepends
-                          (Cabal.buildDepends pkgDesc ++ concatMap (Cabal.targetBuildDepends . Cabal.buildInfo) (Cabal.executables pkgDesc))
-                          (concatMap buildTools . allBuildInfo $ pkgDesc)
-                          (concatMap pkgconfigDepends . allBuildInfo $ pkgDesc)
-                          (concatMap extraLibs . allBuildInfo $ pkgDesc)
-             mapM (buildDependencies hcTypePairs) (List.filter (not . selfDependency (Cabal.package pkgDesc)) deps) >>= return . concat
       hcPackageTypes :: CompilerFlavor -> Set B.PackageType
       hcPackageTypes GHC = fromList [B.Development, B.Profiling]
       hcPackageTypes GHCJS = fromList [B.Development]
@@ -123,30 +127,13 @@ debianBuildDepsIndep pkgDesc =
        let hcs = singleton hc -- vestigial
        doc <- not <$> access (D.noDocumentationLibrary . A.debInfo)
        bDeps <- access (S.buildDependsIndep . D.control . A.debInfo)
-       cDeps <- cabalDeps
+       cDeps <- allBuildDepends pkgDesc >>= mapM docDependencies
        let xs = nub $ if doc
                       then (if member GHC hcs then [anyrel "ghc-doc"] else []) ++
                            (if member GHCJS hcs then [anyrel "ghcjs"] else []) ++
                            bDeps ++ concat cDeps
                       else []
        filterMissing xs
-    where
-      cabalDeps =
-          do deps <- allBuildDepends
-                           (Cabal.buildDepends pkgDesc) (concatMap buildTools . allBuildInfo $ pkgDesc)
-                           (concatMap pkgconfigDepends . allBuildInfo $ pkgDesc) (concatMap extraLibs . allBuildInfo $ pkgDesc)
-             let deps' = List.filter (not . selfDependency (Cabal.package pkgDesc)) deps
-             mapM docDependencies deps'
-{-
-      cabalDeps deb =
-          concat . List.map (\ x -> evalDebM (docDependencies x) deb)
-                     $ List.filter (not . selfDependency (Cabal.package pkgDesc))
-                     $ evalDebM
-                         (allBuildDepends
-                           (Cabal.buildDepends pkgDesc) (concatMap buildTools . allBuildInfo $ pkgDesc)
-                           (concatMap pkgconfigDepends . allBuildInfo $ pkgDesc) (concatMap extraLibs . allBuildInfo $ pkgDesc))
-                         deb
--}
 
 -- | The documentation dependencies for a package include the
 -- documentation package for any libraries which are build

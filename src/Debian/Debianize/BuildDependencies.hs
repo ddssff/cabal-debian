@@ -31,10 +31,10 @@ import Debian.Relation (BinPkgName(..), checkVersionReq, Relation(..), Relations
 import qualified Debian.Relation as D (BinPkgName(BinPkgName), Relation(..), Relations, VersionReq(EEQ, GRE, LTE, SGR, SLT))
 import Debian.Version (DebianVersion, parseDebianVersion)
 import Distribution.Compiler (CompilerFlavor(..))
-import Distribution.Package (Dependency(..), PackageIdentifier(..), PackageName(PackageName))
+import Distribution.Package (Dependency(..), PackageName(PackageName))
 import Distribution.PackageDescription (PackageDescription)
-import Distribution.PackageDescription as Cabal (allBuildInfo, BuildInfo(..), BuildInfo(buildTools, extraLibs, pkgconfigDepends), Executable(..))
-import qualified Distribution.PackageDescription as Cabal (PackageDescription(buildDepends, executables, package))
+import Distribution.PackageDescription as Cabal (allBuildInfo, BuildInfo(..), BuildInfo(buildTools, extraLibs, pkgconfigDepends), Executable(..), TestSuite(..))
+import qualified Distribution.PackageDescription as Cabal (PackageDescription(buildDepends, executables, testSuites))
 import Distribution.Version (anyVersion, asVersionIntervals, earlierVersion, foldVersionRange', fromVersionIntervals, intersectVersionRanges, isNoVersion, laterVersion, orEarlierVersion, orLaterVersion, toVersionIntervals, unionVersionRanges, VersionRange, withinVersion)
 import Distribution.Version.Invert (invertVersionRange)
 import Prelude hiding ((.), init, log, map, unlines, unlines, writeFile)
@@ -50,13 +50,19 @@ data Dependency_
   | ExtraLibs Relations
     deriving (Eq, Show)
 
--- | In cabal a self dependency probably means the library is needed
--- while building the executables.  In debian it would mean that the
--- package needs an earlier version of itself to build, so we use this
--- to filter such dependencies out.
-selfDependency :: PackageIdentifier -> Dependency_ -> Bool
-selfDependency pkgId (BuildDepends (Dependency name _)) = name == pkgName pkgId
-selfDependency _ _ = False
+-- | Naive conversion of Cabal build dependencies to Debian
+-- dependencies will usually result in a self dependency, due to the
+-- fact that a Cabal executable often depends on the associated
+-- library to build.  Due to the fact that Debian build dependencies
+-- are global to the package, this results in unwanted self
+-- dependencies, which usually need to be filtered out.
+-- Unfortunately, some Debian packages actually do depend on an
+-- earlier version of themselves to build (e.g. most compilers.)  So a
+-- command line option is probably necessary.
+--
+-- selfDependency :: PackageIdentifier -> Dependency_ -> Bool
+-- selfDependency pkgId (BuildDepends (Dependency name _)) = name == pkgName pkgId
+-- selfDependency _ _ = False
 
 unboxDependency :: Dependency_ -> Maybe Dependency
 unboxDependency (BuildDepends d) = Just d

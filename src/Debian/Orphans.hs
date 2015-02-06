@@ -11,7 +11,10 @@ import Data.Version (showVersion, Version(..))
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(..))
 import Debian.Pretty (PP(PP, unPP))
 import Debian.Relation (ArchitectureReq(..), Relation(..), VersionReq(..))
-import Distribution.Compiler (AbiTag(..), CompilerId(..))
+#if MIN_VERSION_Cabal(1,22,0)
+import Distribution.Compiler (AbiTag(..))
+#endif
+import Distribution.Compiler (CompilerId(..))
 import Distribution.License (License(..))
 import Distribution.PackageDescription (Executable(..), PackageDescription(package))
 import Distribution.Simple.Compiler (Compiler(..))
@@ -24,10 +27,12 @@ import Text.PrettyPrint.HughesPJClass (hcat, Pretty(pPrint), text)
 deriving instance Typeable Compiler
 deriving instance Typeable CompilerId
 
+#if MIN_VERSION_Cabal(1,22,0)
 deriving instance Typeable AbiTag
 deriving instance Data AbiTag
 deriving instance Eq AbiTag
 deriving instance Ord AbiTag
+#endif
 
 deriving instance Data Compiler
 deriving instance Data CompilerId

@@ -13,7 +13,10 @@ import Debian.Debianize.BasicInfo (Flags, buildEnv, dependOS, verbosity, compile
 import Debian.Debianize.Prelude (intToVerbosity')
 import Debian.GHC (newestAvailableCompilerId)
 import Debian.Orphans ()
-import Distribution.Compiler (AbiTag(NoAbiTag), CompilerId, unknownCompilerInfo)
+#if MIN_VERSION_Cabal(1,22,0)
+import Distribution.Compiler (AbiTag(NoAbiTag))
+#endif
+import Distribution.Compiler (CompilerId, unknownCompilerInfo)
 import Distribution.Package (Dependency, Package(packageId))
 import Distribution.PackageDescription as Cabal (FlagName, PackageDescription)
 import Distribution.PackageDescription.Configuration (finalizePackageDescription)
@@ -48,7 +51,12 @@ inputCabalization flags =
 inputCabalization' :: Verbosity -> Set (FlagName, Bool) -> CompilerId -> IO (Either [Dependency] PackageDescription)
 inputCabalization' vb flags cid = do
   genPkgDesc <- defaultPackageDesc vb >>= readPackageDescription vb
-  let cid' = unknownCompilerInfo cid NoAbiTag
+  let cid' =
+#if MIN_VERSION_Cabal(1,22,0)
+             unknownCompilerInfo cid NoAbiTag
+#else
+             cid
+#endif
   let finalized = finalizePackageDescription (toList flags) (const True) (Platform buildArch Cabal.buildOS) cid' [] genPkgDesc
   either (return . Left)
          (\ (pkgDesc, _) -> do bracket (setFileCreationMask 0o022) setFileCreationMask $ \ _ -> autoreconf vb pkgDesc

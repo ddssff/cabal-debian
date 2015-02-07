@@ -77,7 +77,7 @@ allBuildDepends noTestSuite pkgDesc =
     allBuildDepends'
       (Cabal.buildDepends pkgDesc ++
             concatMap (Cabal.targetBuildDepends . Cabal.buildInfo) (Cabal.executables pkgDesc) ++
-            (if noTestSuite then [] else concatMap (Cabal.targetBuildDepends . Cabal.testBuildInfo) (Cabal.testSuites pkgDesc)))
+            (if noTestSuite then [] else concatMap (Cabal.targetBuildDepends . Cabal.testBuildInfo) $ filter Cabal.testEnabled $ (Cabal.testSuites pkgDesc)))
       (concatMap buildTools . allBuildInfo $ pkgDesc)
       (concatMap pkgconfigDepends . allBuildInfo $ pkgDesc)
       (concatMap extraLibs . allBuildInfo $ pkgDesc) >>=

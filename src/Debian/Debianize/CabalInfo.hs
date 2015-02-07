@@ -100,7 +100,7 @@ newCabalInfo flags' = do
                                               x -> Just x
         noTests <- access (noTestSuite . debInfo)
         unless (List.null (Cabal.testSuites pkgDesc) || noTests)
-               (do (rulesSettings . debInfo) %= (++ ["DEB_ENABLE_TESTS = yes"])
+               (do (rulesSettings . debInfo) %= (++ ["DEB_ENABLE_TESTS = yes", "DEB_BUILD_OPTIONS += nocheck"])
                    -- ...
                ))
     (makeCabalInfo flags' pkgDesc)

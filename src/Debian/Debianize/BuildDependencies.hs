@@ -12,7 +12,7 @@ import Control.Monad.Trans (MonadIO)
 import Data.Char (isSpace, toLower)
 import Data.Function (on)
 import Data.Lens.Lazy (access, getL)
-import Data.List as List (filter, map, minimumBy, nub)
+import Data.List as List (filter, groupBy, map, minimumBy, nub, sortBy)
 import Data.Map as Map (lookup, Map)
 import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing)
 import Data.Set as Set (empty, fold, fromList, map, member, Set, singleton, toList, union)
@@ -75,11 +75,12 @@ unboxDependency (ExtraLibs _) = Nothing -- Dependency (PackageName d) anyVersion
 allBuildDepends :: Monad m => Bool -> PackageDescription -> CabalT m [Dependency_]
 allBuildDepends noTestSuite pkgDesc =
     allBuildDepends'
-      (Cabal.buildDepends pkgDesc ++
+      (mergeCabalDependencies $
+       Cabal.buildDepends pkgDesc ++
             concatMap (Cabal.targetBuildDepends . Cabal.buildInfo) (Cabal.executables pkgDesc) ++
             (if noTestSuite then [] else concatMap (Cabal.targetBuildDepends . Cabal.testBuildInfo) $ filter Cabal.testEnabled $ (Cabal.testSuites pkgDesc)))
-      (concatMap buildTools . allBuildInfo $ pkgDesc)
-      (concatMap pkgconfigDepends . allBuildInfo $ pkgDesc)
+      (mergeCabalDependencies $ concatMap buildTools $ allBuildInfo pkgDesc)
+      (mergeCabalDependencies $ concatMap pkgconfigDepends $ allBuildInfo pkgDesc)
       (concatMap extraLibs . allBuildInfo $ pkgDesc) >>=
     return {- . List.filter (not . selfDependency (Cabal.package pkgDesc)) -}
     where
@@ -95,6 +96,13 @@ allBuildDepends noTestSuite pkgDesc =
       fixDeps atoms xs =
           concatMap (\ cab -> fromMaybe [[D.Rel (D.BinPkgName ("lib" ++ List.map toLower cab ++ "-dev")) Nothing Nothing]]
                                         (Map.lookup cab (getL (D.extraLibMap . A.debInfo) atoms))) xs
+
+-- | Take the intersection of all the dependencies on a given package name
+mergeCabalDependencies :: [Dependency] -> [Dependency]
+mergeCabalDependencies =
+    List.map (foldl1 (\ (Dependency name range1) (Dependency _ range2) -> Dependency name (intersectVersionRanges range1 range2))) . groupBy ((==) `on` dependencyPackage) . sortBy (compare `on` dependencyPackage)
+    where
+      dependencyPackage (Dependency x _) = x
 
 -- The haskell-cdbs package contains the hlibrary.mk file with
 -- the rules for building haskell packages.

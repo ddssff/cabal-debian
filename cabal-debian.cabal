@@ -210,6 +210,7 @@ Library
    Debian.Debianize.SourceDebDescription
    Debian.Debianize.SubstVars
    Debian.Debianize.VersionSplits
+   Paths_cabal_debian
  Other-Modules:
    Debian.Orphans
  if flag(local-debian)

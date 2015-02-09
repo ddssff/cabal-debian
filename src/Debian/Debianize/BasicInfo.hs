@@ -113,7 +113,9 @@ flagOptions =
       Option "h?" ["help"] (NoArg (debAction ~= Usage))
              "Show this help text",
       Option "" ["ghc"] (NoArg (compilerFlavor ~= GHC)) "Generate packages for GHC - same as --with-compiler GHC",
+#if MIN_VERSION_Cabal(1,22,0)
       Option "" ["ghcjs"] (NoArg (compilerFlavor ~= GHCJS)) "Generate packages for GHCJS - same as --with-compiler GHCJS",
+#endif
       Option "" ["hugs"] (NoArg (compilerFlavor ~= Hugs)) "Generate packages for Hugs - same as --with-compiler GHC",
       Option "" ["with-compiler"] (ReqArg (\ s -> maybe (error $ "Invalid compiler id: " ++ show s)
                                                         (\ hc -> compilerFlavor ~= hc)

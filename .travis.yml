@@ -1,14 +1,15 @@
 language: haskell
 before_install:
 env:
- - GHCVER=7.4.2 CABALVER=1.18
  - GHCVER=7.6.3 CABALVER=1.18
  - GHCVER=7.8.4 CABALVER=1.18
+ - GHCVER=7.8.4 CABALVER=1.22
  - GHCVER=7.10.1 CABALVER=1.22
  - GHCVER=head  CABALVER=head
 
 matrix:
   allow_failures:
+   - env: GHCVER=7.10.1 CABALVER=1.18
    - env: GHCVER=7.10.1 CABALVER=1.22
    - env: GHCVER=head  CABALVER=head
 
@@ -18,11 +19,10 @@ before_install:
  - travis_retry sudo apt-get install cabal-install-$CABALVER ghc-$GHCVER
  - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$HOME/.cabal/bin:$PATH
  - cabal --version
- - cabal install happy alex
 
 install:
  - travis_retry cabal update
- - cabal install --only-dependencies --enable-tests
+ - cabal install --only-dependencies --enable-tests --constraint="Cabal==$CABALVER.*"
 
 script:
  - cabal configure --enable-tests

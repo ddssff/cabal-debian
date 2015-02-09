@@ -101,20 +101,16 @@
    VersionSplits.hs
 -}
 module Debian.Debianize
-    ( -- * Basic information needed to input a Cabal package description.
+    ( -- * Collect information about desired debianization
       module Debian.Debianize.BasicInfo
-      -- * Description of a Debian package 
     , module Debian.Debianize.DebInfo
-      -- * Description of a Debian package's source paragraph
     , module Debian.Debianize.SourceDebDescription
-      -- * Description of a Debian package's binary paragraph
     , module Debian.Debianize.BinaryDebDescription
-      -- * Description of a Debian copyright file
     , module Debian.Debianize.CopyrightDescription
-      -- * Combines the DebInfo record with the Cabal Package info.
     , module Debian.Debianize.CabalInfo
-      -- * State monads DebianT and CabalT that carry the DebInfo and Atoms packaging info respectively.
+      -- * State monads to carry the collected information, command line options
     , module Debian.Debianize.Monad
+    , module Debian.Debianize.Options
       -- * Functions for maping Cabal name and version number to Debian name
     , module Debian.Debianize.DebianName
       -- * Specific details about the particular packages and versions in the Debian repo
@@ -122,19 +118,14 @@ module Debian.Debianize
       -- * Functions to configure some useful packaging idioms - web server packages,
       -- tight install dependencies, etc.
     , module Debian.Debianize.Goodies
-      -- * Input a debianization.
+      -- * IO functions for reading debian or cabal packaging info
     , module Debian.Debianize.InputDebian
-      -- * Input a Cabal package description
     , module Debian.Debianize.InputCabal
-      -- * Command line options for the CabalT state monad.
-    , module Debian.Debianize.Options
-      -- * Finish computing the debianization
+      -- * Finish computing the debianization and output the result
     , module Debian.Debianize.Finalize
-      -- * Create the debianization files
     , module Debian.Debianize.Output
-      -- * Utility module
+      -- * Utility functions
     , module Debian.Debianize.Prelude
-      -- * Utility modules concerning Debian policy
     , module Debian.Debianize.VersionSplits
     , module Debian.Policy
 {-

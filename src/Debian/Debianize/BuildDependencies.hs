@@ -125,14 +125,18 @@ debianBuildDeps pkgDesc =
                                               then [anyrel "ghc-prof"]
                                               else []
                        else []) ++
+#if MIN_VERSION_Cabal(1,22,0)
                       (if member GHCJS hcs then [anyrel "ghcjs"] else []) ++
+#endif
                        bDeps ++
                        cDeps
        filterMissing xs
     where
       hcPackageTypes :: CompilerFlavor -> Set B.PackageType
       hcPackageTypes GHC = fromList [B.Development, B.Profiling]
+#if MIN_VERSION_Cabal(1,22,0)
       hcPackageTypes GHCJS = fromList [B.Development]
+#endif
       hcPackageTypes hc = error $ "Unsupported compiler flavor: " ++ show hc
 
 
@@ -146,7 +150,9 @@ debianBuildDepsIndep pkgDesc =
        cDeps <- allBuildDepends noTestSuite pkgDesc >>= mapM docDependencies
        let xs = nub $ if doc
                       then (if member GHC hcs then [anyrel "ghc-doc"] else []) ++
+#if MIN_VERSION_Cabal(1,22,0)
                            (if member GHCJS hcs then [anyrel "ghcjs"] else []) ++
+#endif
                            bDeps ++ concat cDeps
                       else []
        filterMissing xs
@@ -334,10 +340,12 @@ doBundled typ name hc rels =
       compilerPackageName GHC B.Profiling = D.BinPkgName "ghc-prof"
       compilerPackageName GHC B.Development = D.BinPkgName "ghc"
       compilerPackageName GHC _ = D.BinPkgName "ghc" -- whatevs
+#if MIN_VERSION_Cabal(1,22,0)
       compilerPackageName GHCJS B.Documentation = D.BinPkgName "ghcjs"
       compilerPackageName GHCJS B.Profiling = error "Profiling not supported for GHCJS"
       compilerPackageName GHCJS B.Development = D.BinPkgName "ghcjs"
       compilerPackageName GHCJS _ = D.BinPkgName "ghcjs" -- whatevs
+#endif
       compilerPackageName x _ = error $ "Unsupported compiler flavor: " ++ show x
 
       -- FIXME: we are assuming here that ghc conflicts with all the

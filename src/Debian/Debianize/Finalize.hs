@@ -46,7 +46,10 @@ import qualified Debian.Relation as D (BinPkgName(BinPkgName), Relation(..))
 import Debian.Release (parseReleaseName)
 import Debian.Time (getCurrentLocalRFC822Time)
 import Debian.Version (buildDebianVersion, DebianVersion, parseDebianVersion)
-import Distribution.Compiler (CompilerFlavor(GHC), CompilerFlavor(GHCJS))
+import Distribution.Compiler (CompilerFlavor(GHC))
+#if MIN_VERSION_Cabal(1,22,0)
+import Distribution.Compiler (CompilerFlavor(GHCJS))
+#endif
 import Distribution.Package (Dependency(..), PackageIdentifier(..), PackageName(PackageName))
 import Distribution.PackageDescription (FlagName(FlagName), PackageDescription)
 import Distribution.PackageDescription as Cabal (allBuildInfo, author, BuildInfo(buildable, extraLibs), Executable(buildInfo, exeName), maintainer)
@@ -490,10 +493,14 @@ expandAtoms =
     do hc <- access (compilerFlavor . D.flags . A.debInfo)
        case hc of
          GHC -> (cabalFlagAssignments . D.flags . A.debInfo) %= (Set.union (Set.fromList (flagList "--ghc")))
+#if MIN_VERSION_Cabal(1,22,0)
          GHCJS -> (cabalFlagAssignments . D.flags . A.debInfo) %= (Set.union (Set.fromList (flagList "--ghcjs")))
+#endif
        builddir <- access (D.buildDir . A.debInfo) >>= return . fromMaybe (case hc of
                                                                GHC -> "dist-ghc/build"
+#if MIN_VERSION_Cabal(1,22,0)
                                                                GHCJS -> "dist-ghcjs/build"
+#endif
                                                                _ -> error $ "Unexpected compiler: " ++ show hc)
        dDir <- dataDir
        expandApacheSites
@@ -525,6 +532,7 @@ expandAtoms =
           where
             doAtom :: Monad m => CompilerFlavor -> D.Atom -> CabalT m ()
             doAtom GHC (D.InstallCabalExec b name dest) = (D.atomSet . A.debInfo) %= (Set.insert $ D.Install b (builddir </> name </> name) dest)
+#if MIN_VERSION_Cabal(1,22,0)
             -- A GHCJS executable is a directory with files, copy them
             -- all into place.
             doAtom GHCJS (D.InstallCabalExec b name dest) =
@@ -533,6 +541,7 @@ expandAtoms =
                         [ pack ("binary-fixup" </> ppDisplay b) <> "::"
                         , pack ("\t(cd " <> builddir </> name <> " && find " <> name <.> "jsexe" <> " -type f) |\\\n" <>
                                        "\t  while read i; do install -Dp " <> builddir </> name </> "$$i debian" </> ppDisplay b </> makeRelative "/" dest </> "$$i; done\n") ])
+#endif
             doAtom _ _ = return ()
 
       -- Turn A.InstallCabalExecTo into a make rule

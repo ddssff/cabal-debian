@@ -39,7 +39,11 @@ import Debian.Orphans ()
 import Debian.Policy (License(..), readLicense, fromCabalLicense)
 import Debian.Pretty (PP(PP, unPP), display', ppDisplay', ppPrint)
 import qualified Distribution.License as Cabal (License(UnknownLicense))
+#if MIN_VERSION_Cabal(1,20,0)
 import qualified Distribution.PackageDescription as Cabal (PackageDescription(licenseFiles, copyright, license))
+#else
+import qualified Distribution.PackageDescription as Cabal (PackageDescription(licenseFile, copyright, license))
+#endif
 import Network.URI (URI, parseURI)
 import Prelude hiding (init, init, log, log, unlines, readFile)
 import Text.PrettyPrint.HughesPJClass (Pretty(pPrint), text)
@@ -173,7 +177,11 @@ toParagraph ld@LicenseDescription {} =
 -- provided @copyright0@ value.
 defaultCopyrightDescription :: Cabal.PackageDescription -> IO CopyrightDescription
 defaultCopyrightDescription pkgDesc = do
+#if MIN_VERSION_Cabal(1,20,0)
   let (debianCopyrightPath, otherLicensePaths) = partition (== "debian/copyright") (Cabal.licenseFiles pkgDesc)
+#else
+  let (debianCopyrightPath, otherLicensePaths) = partition (== "debian/copyright") [Cabal.licenseFile pkgDesc]
+#endif
       license = fromCabalLicense $ Cabal.license pkgDesc
   -- This is an @Nothing@ unless debian/copyright is (for some
   -- reason) mentioned in the cabal file.

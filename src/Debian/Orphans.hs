@@ -14,12 +14,12 @@ import Debian.Relation (ArchitectureReq(..), Relation(..), VersionReq(..))
 #if MIN_VERSION_Cabal(1,22,0)
 import Distribution.Compiler (AbiTag(..))
 #endif
-import Distribution.Compiler (CompilerId(..))
+import Distribution.Compiler (CompilerId(..), CompilerFlavor(..))
 import Distribution.License (License(..))
 import Distribution.PackageDescription (Executable(..), PackageDescription(package))
 import Distribution.Simple.Compiler (Compiler(..))
 import Distribution.Version (foldVersionRange', VersionRange(..))
-import Language.Haskell.Extension (Language(..))
+import Language.Haskell.Extension (Language(..), Extension(..), KnownExtension(..))
 import Network.URI (URI)
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr(..))
 import Text.PrettyPrint.HughesPJClass (hcat, Pretty(pPrint), text)
@@ -42,6 +42,10 @@ deriving instance Eq Compiler
 deriving instance Ord Compiler
 deriving instance Ord NameAddr
 deriving instance Ord License
+#if !MIN_VERSION_Cabal(1,21,1)
+deriving instance Ord KnownExtension
+deriving instance Ord Extension
+#endif
 
 instance Ord Executable where
     compare = compare `on` exeName
@@ -66,6 +70,15 @@ deriving instance Typeable VersionReq
 
 deriving instance Ord ChangeLog
 deriving instance Ord ChangeLogEntry
+
+#if !MIN_VERSION_Cabal(1,18,0)
+deriving instance Data CompilerFlavor
+deriving instance Data Language
+deriving instance Data Version
+deriving instance Typeable CompilerFlavor
+deriving instance Typeable Extension
+deriving instance Typeable Language
+#endif
 
 -- Convert from license to RPM-friendly description.  The strings are
 -- taken from TagsCheck.py in the rpmlint distribution.

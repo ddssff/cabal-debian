@@ -52,7 +52,7 @@ import Debian.Debianize.Prelude (read')
 import Debian.Pretty (PP(..))
 import Debian.Relation (BinPkgName)
 import Debian.Version (DebianVersion, parseDebianVersion, version)
-import qualified Distribution.License as Cabal (License(AGPL, AllRightsReserved, Apache, BSD2, BSD3, BSD4, GPL, LGPL, MIT, MPL, OtherLicense, PublicDomain, UnknownLicense, UnspecifiedLicense))
+import qualified Distribution.License as Cabal (License(..))
 import System.Environment (getEnvironment)
 import System.FilePath ((</>))
 import System.Process (readProcess)
@@ -367,11 +367,15 @@ fromCabalLicense x =
       Cabal.Apache mver -> Apache
       Cabal.PublicDomain -> Public_Domain
       Cabal.AllRightsReserved -> OtherLicense "AllRightsReserved"
-      Cabal.BSD2 -> BSD_2_Clause
-      Cabal.MPL ver -> MPL
-      Cabal.UnspecifiedLicense -> OtherLicense (show x)
       Cabal.OtherLicense -> OtherLicense (show x)
       Cabal.UnknownLicense s -> OtherLicense (show x)
+#if MIN_VERSION_Cabal(1,20,0)
+      Cabal.MPL ver -> MPL
+#if MIN_VERSION_Cabal(1,22,0)
+      Cabal.BSD2 -> BSD_2_Clause
+      Cabal.UnspecifiedLicense -> OtherLicense (show x)
+#endif
+#endif
 
 -- | Convert a Debian license to a Cabal license.  Additional cases
 -- and corrections welcome.
@@ -379,7 +383,9 @@ toCabalLicense :: License -> Cabal.License
 toCabalLicense x =
     -- This needs to be finished
     case x of
+#if MIN_VERSION_Cabal(1,22,0)
       BSD_2_Clause -> Cabal.BSD2
+#endif
       BSD_3_Clause -> Cabal.BSD3
       BSD_4_Clause -> Cabal.BSD4
       OtherLicense s -> Cabal.UnknownLicense s

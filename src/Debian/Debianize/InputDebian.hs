@@ -34,7 +34,7 @@ import Debian.Orphans ()
 import Debian.Policy (parseMaintainer, parsePackageArchitectures, parseStandardsVersion, parseUploaders, readPriority, readSection, readSourceFormat, Section(..))
 import Debian.Relation (BinPkgName(..), parseRelations, Relations, SrcPkgName(..))
 import Debug.Trace (trace)
-import Distribution.Package (PackageIdentifier(..), PackageName(unPackageName))
+import Distribution.Package (PackageIdentifier(..), PackageName(..))
 import qualified Distribution.PackageDescription as Cabal (dataDir, PackageDescription(package))
 import Prelude hiding ((.), break, lines, log, null, readFile, sum, words)
 import System.Directory (doesFileExist)
@@ -257,5 +257,5 @@ dataDir :: MonadIO m => CabalT m FilePath
 dataDir = do
   d <- access packageDescription
   return $ case Cabal.dataDir d of
-             [] -> "usr/share" </> (unPackageName $ pkgName $ Cabal.package d)
+             [] -> "usr/share" </> ((\ (PackageName x) -> x) $ pkgName $ Cabal.package d)
              x -> x

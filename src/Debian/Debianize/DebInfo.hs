@@ -1,7 +1,7 @@
 -- | This module holds a long list of lenses that access the Atoms
 -- record, the record that holds the input data from which the
 -- debianization is to be constructed.
-{-# LANGUAGE CPP, DeriveDataTypeable, TemplateHaskell #-}
+{-# LANGUAGE CPP, DeriveDataTypeable, Rank2Types, TemplateHaskell #-}
 {-# OPTIONS_GHC -Wall #-}
 module Debian.Debianize.DebInfo
     ( -- * Types
@@ -86,14 +86,13 @@ module Debian.Debianize.DebInfo
     , makeDebInfo
     ) where
 
+import OldLens (Lens, iso, getL, (%=))
+
 import Control.Category ((.))
 import Control.Monad.State (StateT)
 --import Data.Default (def)
 import Data.Generics (Data, Typeable)
-import Data.Lens.Common (Lens, iso, getL)
-import Data.Lens.Lazy ((%=))
-import Data.Lens.Template (nameMakeLens)
-import Data.List (init)
+import Control.Lens.TH (makeLenses)
 import Data.Map as Map (Map)
 import Data.Monoid (Monoid(..))
 import Data.Set as Set (insert, Set)
@@ -115,60 +114,60 @@ import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr)
 -- | Information required to represent a non-cabal debianization.
 data DebInfo
     = DebInfo
-      { flags_ :: Flags
+      { _flags :: Flags
       -- ^ Information regarding mode of operation - verbosity, dry-run, usage, etc
-      , warning_ :: Set Text
+      , _warning :: Set Text
       -- ^ A warning to be reported later
-      , sourceFormat_ :: Maybe SourceFormat
+      , _sourceFormat :: Maybe SourceFormat
       -- ^ Write debian/source/format
-      , watch_ :: Maybe Text
+      , _watch :: Maybe Text
       -- ^ the @debian\/watch@ file
-      , rulesHead_ :: Maybe Text
+      , _rulesHead :: Maybe Text
       -- ^ The rules file header
-      , rulesSettings_ :: [Text]
+      , _rulesSettings :: [Text]
       -- ^ The rules file assignments
-      , rulesIncludes_ :: [Text]
+      , _rulesIncludes :: [Text]
       -- ^ The rules file include directives
-      , rulesFragments_ :: Set Text
+      , _rulesFragments :: Set Text
       -- ^ Additional fragments of the rules file
-      , copyright_ :: Maybe CopyrightDescription
+      , _copyright :: Maybe CopyrightDescription
       -- ^ Override the copyright value computed from the cabal package description.
-      , control_ :: S.SourceDebDescription
+      , _control :: S.SourceDebDescription
       -- ^ The parsed contents of the control file
-      , intermediateFiles_ :: Set (FilePath, Text)
+      , _intermediateFiles :: Set (FilePath, Text)
       -- ^ Put this text into a file with the given name in the debianization.
-      , compat_ :: Maybe Int
+      , _compat :: Maybe Int
       -- ^ The debhelper compatibility level, from debian/compat.
-      , changelog_ :: Maybe ChangeLog
+      , _changelog :: Maybe ChangeLog
       -- ^ The changelog, first entry contains the source package name and version
-      , installInit_ :: Map BinPkgName Text
+      , _installInit :: Map BinPkgName Text
       -- ^ Add an init.d file to the binary package
-      , logrotateStanza_ :: Map BinPkgName (Set Text)
+      , _logrotateStanza :: Map BinPkgName (Set Text)
       -- ^ Add a stanza of a logrotate file to the binary package
-      , postInst_ :: Map BinPkgName Text
+      , _postInst :: Map BinPkgName Text
       -- ^ Map of @debian/postinst@ scripts - to be run after install,
       -- should contain #DEBHELPER# line before exit 0
-      , postRm_ :: Map BinPkgName Text
+      , _postRm :: Map BinPkgName Text
       -- ^ Map of @debian/postrm@ scripts - scripts to run after
       -- remove, should contain #DEBHELPER# line before exit 0
-      , preInst_ :: Map BinPkgName Text
+      , _preInst :: Map BinPkgName Text
       -- ^ Map of @debian/preinst@ scripts - to be run before install,
       -- should contain #DEBHELPER# line before exit 0
-      , preRm_ :: Map BinPkgName Text
+      , _preRm :: Map BinPkgName Text
       -- ^ Map of @debian/prerm@ scripts - to be run before remove,
       -- should contain #DEBHELPER# line before exit 0
-      , atomSet_ :: Set Atom
+      , _atomSet :: Set Atom
       -- ^ set of items describing file installation requests
-      , noDocumentationLibrary_ :: Bool
+      , _noDocumentationLibrary :: Bool
       -- ^ Do not produce a libghc-foo-doc package.
-      , noProfilingLibrary_ :: Bool
+      , _noProfilingLibrary :: Bool
       -- ^ Do not produce a libghc-foo-prof package.
-      , omitProfVersionDeps_ :: Bool
+      , _omitProfVersionDeps :: Bool
       -- ^ If present, Do not put the version dependencies on the prof packages that we put on the dev packages.
-      , omitLTDeps_ :: Bool
+      , _omitLTDeps :: Bool
       -- ^ If present, don't generate the << dependency when we see a cabal
       -- equals dependency.  (The implementation of this was somehow lost.)
-      , buildDir_ :: Maybe FilePath
+      , _buildDir :: Maybe FilePath
       -- ^ The build directory used by cabal, typically dist/build when
       -- building manually or dist-ghc/build when building using GHC and
       -- haskell-devscripts.  This value is used to locate files
@@ -176,19 +175,19 @@ data DebInfo
       -- the --builddir option of runhaskell Setup appends the "/build"
       -- to the value it receives, so, yes, try not to get confused.
       -- FIXME: make this FilePath or Maybe FilePath
-      , sourcePackageName_ :: Maybe SrcPkgName
+      , _sourcePackageName :: Maybe SrcPkgName
       -- ^ Name to give to the debian source package.  If not supplied
       -- the name is constructed from the cabal package name.  Note that
       -- DebianNameMap could encode this information if we already knew
       -- the cabal package name, but we can't assume that.
-      , overrideDebianNameBase_ :: Maybe DebBase
+      , _overrideDebianNameBase :: Maybe DebBase
       -- ^ If given, use this name for the base of the debian binary
       -- packages - the string between 'libghc-' and '-dev'.  Normally
       -- this is derived from the hackage package name.
-      , revision_ :: Maybe String
+      , _revision :: Maybe String
       -- ^ Specify the revision string to use when converting the
       -- cabal version to debian.
-      , debVersion_ :: Maybe DebianVersion
+      , _debVersion :: Maybe DebianVersion
       -- ^ Specify the exact debian version of the resulting package,
       -- including epoch.  One use case is to work around the the
       -- "buildN" versions that are often uploaded to the debian and
@@ -197,64 +196,64 @@ data DebInfo
       -- version 0.3.0.0-1build3, we need to specify
       -- debVersion="0.3.0.0-1build3" or the version we produce will
       -- look older than the one already available upstream.
-      , maintainerOption_ :: Maybe NameAddr
-      , uploadersOption_ :: [NameAddr]
+      , _maintainerOption :: Maybe NameAddr
+      , _uploadersOption :: [NameAddr]
       -- ^ Value for the maintainer field in the control file.  Note that
       -- the cabal maintainer field can have multiple addresses, but debian
       -- only one.  If this is not explicitly set, it is obtained from the
       -- cabal file, and if it is not there then from the environment.  As a
       -- last resort, there is a hard coded string in here somewhere.
-      , utilsPackageNameBase_ :: Maybe String
+      , _utilsPackageNameBase :: Maybe String
       -- ^ Name of a package that will get left-over data files and executables.
       -- If there are more than one, each package will get those files.
-      , xDescriptionText_ :: Maybe Text
+      , _xDescriptionText :: Maybe Text
       -- ^ The text for the X-Description field of the Source package stanza.
-      , comments_ :: Maybe [[Text]]
+      , _comments :: Maybe [[Text]]
       -- ^ Each element is a comment to be added to the changelog, where the
       -- element's text elements are the lines of the comment.
-      , missingDependencies_ :: Set BinPkgName
+      , _missingDependencies :: Set BinPkgName
       -- ^ Lets cabal-debian know that a package it might expect to exist
       -- actually does not, so omit all uses in resulting debianization.
-      , extraLibMap_ :: Map String Relations
+      , _extraLibMap :: Map String Relations
       -- ^ Map a cabal Extra-Library name to a debian binary package name,
       -- e.g. @ExtraLibMapping extraLibMap "cryptopp" "libcrypto-dev"@ adds a
       -- build dependency *and* a regular dependency on @libcrypto-dev@ to
       -- any package that has @cryptopp@ in its cabal Extra-Library list.
-      , execMap_ :: Map String Relations
+      , _execMap :: Map String Relations
       -- ^ Map a cabal Build-Tool name to a debian binary package name,
       -- e.g. @ExecMapping "trhsx" "haskell-hsx-utils"@ adds a build
       -- dependency on @haskell-hsx-utils@ to any package that has @trhsx@ in its
       -- cabal build-tool list.
-      , apacheSite_ :: Map BinPkgName (String, FilePath, Text)
+      , _apacheSite :: Map BinPkgName (String, FilePath, Text)
       -- ^ Have Apache configure a site using PACKAGE, DOMAIN, LOGDIR, and APACHECONFIGFILE
-      , sourceArchitectures_ :: Maybe PackageArchitectures
+      , _sourceArchitectures :: Maybe PackageArchitectures
       -- ^ Set the Architecture field of the source package
-      , binaryArchitectures_ :: Map BinPkgName PackageArchitectures
+      , _binaryArchitectures :: Map BinPkgName PackageArchitectures
       -- ^ Set the Architecture field of a binary package
-      , sourcePriority_ :: Maybe PackagePriority
+      , _sourcePriority :: Maybe PackagePriority
       -- ^ Set the Priority field of the source package
-      , binaryPriorities_ :: Map BinPkgName PackagePriority
+      , _binaryPriorities :: Map BinPkgName PackagePriority
       -- ^ Set the Priority field of a binary package
-      , sourceSection_ :: Maybe Section
+      , _sourceSection :: Maybe Section
       -- ^ Set the Section field of the source package
-      , binarySections_ :: Map BinPkgName Section
+      , _binarySections :: Map BinPkgName Section
       -- ^ Set the Section field of a binary package
-      , executable_ :: Map BinPkgName InstallFile
+      , _executable :: Map BinPkgName InstallFile
       -- ^ Create a binary package to hold a cabal executable
-      , serverInfo_ :: Map BinPkgName Server
+      , _serverInfo :: Map BinPkgName Server
       -- ^ Like DHExecutable, but configure the executable as a server process
-      , website_ :: Map BinPkgName Site
+      , _website :: Map BinPkgName Site
       -- ^ Like DHServer, but configure the server as a web server
-      , backups_ :: Map BinPkgName String
+      , _backups :: Map BinPkgName String
       -- ^ Configure the executable to do incremental backups
-      , extraDevDeps_ :: Relations
+      , _extraDevDeps :: Relations
       -- ^ Limited version of Depends, put a dependency on the dev library package.  The only
       -- reason to use this is because we don't yet know the name of the dev library package.
-      , official_ :: Bool
+      , _official :: Bool
       -- ^ Whether this packaging is created by the Debian Haskell Group
-      , noTestSuite_ :: Bool
+      , _noTestSuite :: Bool
       -- ^ Force omission of the test suites from the debianization
-      , allowDebianSelfBuildDeps_ :: Bool
+      , _allowDebianSelfBuildDeps :: Bool
       -- ^ Normally self dependencies are filtered out of the debian
       -- build dependency list because they usually reflect
       -- interdependencies between the library and the executable in
@@ -316,67 +315,64 @@ data Server
 makeDebInfo :: Flags -> DebInfo
 makeDebInfo fs =
     DebInfo
-    { flags_ = fs
-    , warning_ = mempty
-    , sourceFormat_ = Nothing
-    , watch_ = Nothing
-    , rulesHead_ = Nothing
-    , rulesSettings_ = mempty
-    , rulesIncludes_ = mempty
-    , rulesFragments_ = mempty
-    , copyright_ = Nothing
-    , control_ = S.newSourceDebDescription
-    , intermediateFiles_ = mempty
-    , compat_ = Nothing
-    , changelog_ = Nothing
-    , installInit_ = mempty
-    , logrotateStanza_ = mempty
-    , postInst_ = mempty
-    , postRm_ = mempty
-    , preInst_ = mempty
-    , preRm_ = mempty
-    , atomSet_ = mempty
-    , noDocumentationLibrary_ = False
-    , noProfilingLibrary_ = False
-    , omitProfVersionDeps_ = False
-    , omitLTDeps_ = False
-    , buildDir_ = Nothing
-    , sourcePackageName_ = Nothing
-    , overrideDebianNameBase_ = Nothing
-    , revision_ = Nothing
-    , debVersion_ = Nothing
-    , maintainerOption_ = Nothing
-    , uploadersOption_ = []
-    , utilsPackageNameBase_ = Nothing
-    , xDescriptionText_ = Nothing
-    , comments_ = Nothing
-    , missingDependencies_ = mempty
-    , extraLibMap_ = mempty
-    , execMap_ = mempty
-    , apacheSite_ = mempty
-    , sourceArchitectures_ = Nothing
-    , binaryArchitectures_ = mempty
-    , sourcePriority_ = Nothing
-    , binaryPriorities_ = mempty
-    , sourceSection_ = Nothing
-    , binarySections_ = mempty
-    , executable_ = mempty
-    , serverInfo_ = mempty
-    , website_ = mempty
-    , backups_ = mempty
-    , extraDevDeps_ = mempty
-    , official_ = False
-    , noTestSuite_ = False
-    , allowDebianSelfBuildDeps_ = False
+    { _flags = fs
+    , _warning = mempty
+    , _sourceFormat = Nothing
+    , _watch = Nothing
+    , _rulesHead = Nothing
+    , _rulesSettings = mempty
+    , _rulesIncludes = mempty
+    , _rulesFragments = mempty
+    , _copyright = Nothing
+    , _control = S.newSourceDebDescription
+    , _intermediateFiles = mempty
+    , _compat = Nothing
+    , _changelog = Nothing
+    , _installInit = mempty
+    , _logrotateStanza = mempty
+    , _postInst = mempty
+    , _postRm = mempty
+    , _preInst = mempty
+    , _preRm = mempty
+    , _atomSet = mempty
+    , _noDocumentationLibrary = False
+    , _noProfilingLibrary = False
+    , _omitProfVersionDeps = False
+    , _omitLTDeps = False
+    , _buildDir = Nothing
+    , _sourcePackageName = Nothing
+    , _overrideDebianNameBase = Nothing
+    , _revision = Nothing
+    , _debVersion = Nothing
+    , _maintainerOption = Nothing
+    , _uploadersOption = []
+    , _utilsPackageNameBase = Nothing
+    , _xDescriptionText = Nothing
+    , _comments = Nothing
+    , _missingDependencies = mempty
+    , _extraLibMap = mempty
+    , _execMap = mempty
+    , _apacheSite = mempty
+    , _sourceArchitectures = Nothing
+    , _binaryArchitectures = mempty
+    , _sourcePriority = Nothing
+    , _binaryPriorities = mempty
+    , _sourceSection = Nothing
+    , _binarySections = mempty
+    , _executable = mempty
+    , _serverInfo = mempty
+    , _website = mempty
+    , _backups = mempty
+    , _extraDevDeps = mempty
+    , _official = False
+    , _noTestSuite = False
+    , _allowDebianSelfBuildDeps = False
     }
 
 instance Canonical DebInfo where
-    canonical x = x {control_ = canonical (control_ x)}
+    canonical x = x {_control = canonical (_control x)}
 
-$(let f s = case s of
-              (_ : _) | last s == '_' -> Just (init s)
-              _ -> Nothing in
-  nameMakeLens ''DebInfo f)
+$(makeLenses ''DebInfo)
 
 -- We need (%=_)
 link :: Monad m => BinPkgName -> FilePath -> FilePath -> StateT DebInfo m ()
@@ -399,4 +395,5 @@ installDir b dir = atomSet %= (Set.insert $ InstallDir b dir) >> return ()
 -- | Lens to look up the binary deb description by name and create it if absent.
 -- <http://www.debian.org/doc/debian-policy/ch-controlfields.html#s-f-Package>
 binaryDebDescription :: BinPkgName -> Lens DebInfo BinaryDebDescription
-binaryDebDescription b = maybeLens (newBinaryDebDescription b) (iso id id) . listElemLens ((== b) . getL package) . S.binaryPackages . control
+binaryDebDescription b =
+    control . S.binaryPackages . listElemLens ((== b) . getL package) . maybeLens (newBinaryDebDescription b) (iso id id)

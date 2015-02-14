@@ -1,6 +1,6 @@
 -- | Functions and instances used by but not related to cabal-debian.
 -- These could conceivably be moved into more general libraries.
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances, Rank2Types, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wall -fno-warn-orphans #-}
 module Debian.Debianize.Prelude
     ( curry3
@@ -44,6 +44,9 @@ module Debian.Debianize.Prelude
     , fromSingleton
     ) where
 
+import OldLens (getL, lens, Lens, modL, setL)
+import qualified OldLens as Lens ((%=), (~=))
+
 import Control.Applicative ((<$>))
 import Control.Category ((.))
 import Control.Exception as E (bracket, catch, throw, try)
@@ -51,8 +54,6 @@ import Control.Monad (when)
 import Control.Monad.Reader (ask, ReaderT)
 import Control.Monad.State (get, MonadState, put, StateT)
 import Data.Char (isSpace)
-import Data.Lens.Lazy (getL, lens, Lens, modL, setL)
-import qualified Data.Lens.Lazy as Lens ((%=), (~=))
 import Data.List as List (dropWhileEnd, intersperse, isSuffixOf, lines, map)
 import Data.Map as Map (empty, findWithDefault, foldWithKey, fromList, insert, insertWith, lookup, map, Map)
 import Data.Maybe (catMaybes, fromJust, fromMaybe, listToMaybe, mapMaybe)

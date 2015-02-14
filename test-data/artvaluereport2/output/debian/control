@@ -129,8 +129,6 @@ Build-Depends: debhelper (>= 7.0)
                , libghc-web-routes-hsp-prof
                , libghc-web-routes-th-dev
                , libghc-web-routes-th-prof
-               , libghc-extra-dev
-               , libghc-extra-prof
 Build-Depends-Indep: ghc-doc
                      , libjs-jquery-ui (<< 1.10)
                      , libjs-jquery

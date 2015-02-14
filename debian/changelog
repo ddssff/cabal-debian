@@ -1,3 +1,10 @@
+haskell-cabal-debian (4.24) unstable; urgency=low
+
+  * Convert from old data-lens package to lens.
+  * Implement --allow-debian-self-build-deps
+
+ -- David Fox <dsf@seereason.com>  Sat, 14 Feb 2015 06:15:01 -0800
+
 haskell-cabal-debian (4.23.1) unstable; urgency=low
 
   * ifdefs for Cabal-1.18, 1.20, and 1.22, ghc-7.6, and 7.8.

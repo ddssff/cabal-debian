@@ -7,13 +7,14 @@ module Debian.Debianize.SubstVars
     ( substvars
     ) where
 
+import OldLens (access, getL, modL)
+
 import Control.Category ((.))
 import Control.Exception (SomeException, try)
 import Control.Monad (foldM)
 import Control.Monad.Reader (ReaderT(runReaderT))
 import Control.Monad.State (get)
 import Control.Monad.Trans (lift, liftIO, MonadIO)
-import Data.Lens.Lazy (access, getL, modL)
 import Data.List (intercalate, isPrefixOf, isSuffixOf, nub, partition, unlines)
 import Data.List as List (map)
 import qualified Data.Map as Map (insert, lookup, Map)
@@ -75,7 +76,7 @@ substvars' debType control =
           do old <- liftIO $ readFile path'
              deps <- debDeps debType control
              new <- addDeps old deps
-             dry <- get >>= return . getL (dryRun . D.flags . A.debInfo)
+             dry <- get >>= return . getL (A.debInfo . D.flags . dryRun)
              liftIO (diffFile path' (pack new) >>= maybe (putStrLn ("cabal-debian substvars: No updates found for " ++ show path'))
                                                        (\ diff -> if dry then putStr diff else replaceFile path' new))
       ([], Nothing) -> return ()
@@ -203,7 +204,7 @@ allBuildDepends atoms buildDepends buildTools pkgconfigDepends extraLibs =
     where
       fixDeps :: [String] -> [Relations]
       fixDeps xs = map (\ cab -> fromMaybe [[D.Rel (D.BinPkgName ("lib" ++ cab ++ "-dev")) Nothing Nothing]]
-                                           (Map.lookup cab (getL (D.extraLibMap . A.debInfo) atoms))) xs
+                                           (Map.lookup cab (getL (A.debInfo . D.extraLibMap) atoms))) xs
 
 -- | Given a control file and a DebType, look for the binary deb with
 -- the corresponding suffix and return its name.
@@ -218,5 +219,5 @@ debNameFromType control debType =
 
 filterMissing :: Monad m => [[Relation]] -> CabalT m [[Relation]]
 filterMissing rels =
-    do missing <- get >>= return . getL (D.missingDependencies . A.debInfo)
+    do missing <- get >>= return . getL (A.debInfo . D.missingDependencies)
        return $ filter (/= []) (List.map (filter (\ (D.Rel name _ _) -> not (Set.member name missing))) rels)

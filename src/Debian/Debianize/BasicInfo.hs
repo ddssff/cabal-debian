@@ -26,7 +26,7 @@ import Control.Monad.Trans (MonadIO)
 import Data.Char (toLower, toUpper)
 import Data.Default (Default(def))
 import Data.Generics (Data, Typeable)
-import Data.Lens.Template (nameMakeLens)
+import Control.Lens.TH (makeLenses)
 import Data.Monoid (Monoid(..))
 import Data.Set as Set (fromList, Set, union)
 import Debian.Debianize.Prelude ((%=), read', (~=))
@@ -43,30 +43,30 @@ import Text.Read (readMaybe)
 -- or a cabal file from the IO monad.
 data Flags = Flags
     {
-      verbosity_ :: Int
+      _verbosity :: Int
     -- ^ Run with progress messages at the given level of verboseness.
-    , dryRun_ :: Bool
+    , _dryRun :: Bool
     -- ^ Don't write any files or create any directories, just explain
     -- what would have been done.
-    , validate_ :: Bool
+    , _validate :: Bool
     -- ^ Fail if the debianization already present doesn't match the
     -- one we are going to generate closely enough that it is safe to
     -- debianize during the run of dpkg-buildpackage, when Setup
     -- configure is run.  Specifically, the version number in the top
     -- changelog entry must match, and the sets of package names in
     -- the control file must match.
-    , debAction_ :: DebAction
+    , _debAction :: DebAction
     -- ^ What to do - Usage, Debianize or Substvar
-    , compilerFlavor_ :: CompilerFlavor
+    , _compilerFlavor :: CompilerFlavor
     -- ^ Which compiler should we generate library packages for?  In theory a single
     -- deb could handle multiple compiler flavors, but the support tools are not ready
     -- for this as of right now (28 Jan 2015.)
-    , cabalFlagAssignments_ :: Set (FlagName, Bool)
+    , _cabalFlagAssignments :: Set (FlagName, Bool)
     -- ^ Flags to pass to Cabal function finalizePackageDescription,
     -- this can be used to control the flags in the cabal file.  It
     -- can be supplied to the cabal-debian binary using the --flags
     -- option.
-    , buildEnv_ :: EnvSet
+    , _buildEnv :: EnvSet
     -- ^ Directory containing the build environment for which the
     -- debianization will be generated.  This determines which
     -- compiler will be available, which in turn determines which
@@ -87,20 +87,17 @@ data DebType = Dev | Prof | Doc deriving (Eq, Ord, Read, Show, Data, Typeable)
 
 instance Default Flags where
     def = Flags
-          { verbosity_ = 1
-          , debAction_ = Debianize
-          , dryRun_ = False
-          , validate_ = False
-          , compilerFlavor_ = GHC
-          , cabalFlagAssignments_ = mempty
-          , buildEnv_ = EnvSet {cleanOS = "/", dependOS = "/", buildOS = "/"}
+          { _verbosity = 1
+          , _debAction = Debianize
+          , _dryRun = False
+          , _validate = False
+          , _compilerFlavor = GHC
+          , _cabalFlagAssignments = mempty
+          , _buildEnv = EnvSet {cleanOS = "/", dependOS = "/", buildOS = "/"}
           }
 
 -- Build the lenses
-$(let f s = case s of
-              (_ : _) | last s == '_' -> Just (init s)
-              _ -> Nothing in
-  nameMakeLens ''Flags f)
+$(makeLenses ''Flags)
 
 -- | Command line options which build a function that modifies a
 -- state monad value of type 'Flags'

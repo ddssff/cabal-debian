@@ -18,9 +18,10 @@ module Debian.Debianize.Goodies
     , execAtoms
     ) where
 
+import OldLens (access, modL)
+
 import Control.Category ((.))
 import Data.Char (isSpace)
-import Data.Lens.Lazy (access, modL)
 import Data.List as List (dropWhileEnd, intercalate, intersperse, map)
 import Data.Map as Map (insertWith)
 import Data.Maybe (fromMaybe)
@@ -76,21 +77,21 @@ tightDependencyFixup pairs p =
 
 -- | Add a debian binary package to the debianization containing a cabal executable file.
 doExecutable :: Monad m => BinPkgName -> D.InstallFile -> CabalT m ()
-doExecutable p f = (D.executable . A.debInfo) ++= (p, f)
+doExecutable p f = (A.debInfo . D.executable) ++= (p, f)
 
 -- | Add a debian binary package to the debianization containing a cabal executable file set up to be a server.
 doServer :: Monad m => BinPkgName -> D.Server -> CabalT m ()
-doServer p s = (D.serverInfo . A.debInfo) ++= (p, s)
+doServer p s = (A.debInfo . D.serverInfo) ++= (p, s)
 
 -- | Add a debian binary package to the debianization containing a cabal executable file set up to be a web site.
 doWebsite :: Monad m => BinPkgName -> D.Site -> CabalT m ()
-doWebsite p w = (D.website . A.debInfo) ++= (p, w)
+doWebsite p w = (A.debInfo . D.website) ++= (p, w)
 
 -- | Add a debian binary package to the debianization containing a cabal executable file set up to be a backup script.
 doBackups :: Monad m => BinPkgName -> String -> CabalT m ()
 doBackups bin s =
-    do (D.backups . A.debInfo) ++= (bin, s)
-       (B.depends . B.relations . D.binaryDebDescription bin . A.debInfo) %= (++ [[Rel (BinPkgName "anacron") Nothing Nothing]])
+    do (A.debInfo . D.backups) ++= (bin, s)
+       (A.debInfo . D.binaryDebDescription bin . B.relations . B.depends) %= (++ [[Rel (BinPkgName "anacron") Nothing Nothing]])
        -- depends +++= (bin, Rel (BinPkgName "anacron") Nothing Nothing)
 
 describe :: Monad m => CabalT m Text
@@ -171,11 +172,11 @@ watchAtom (PackageName pkgname) =
 siteAtoms :: BinPkgName -> D.Site -> CabalInfo -> CabalInfo
 siteAtoms b site =
     execCabalM
-      (do (D.atomSet . A.debInfo) %= (Set.insert $ D.InstallDir b "/etc/apache2/sites-available")
-          (D.atomSet . A.debInfo) %= (Set.insert $ D.Link b ("/etc/apache2/sites-available/" ++ D.domain site) ("/etc/apache2/sites-enabled/" ++ D.domain site))
-          (D.atomSet . A.debInfo) %= (Set.insert $ D.File b ("/etc/apache2/sites-available" </> D.domain site) apacheConfig)
-          (D.atomSet . A.debInfo) %= (Set.insert $ D.InstallDir b (apacheLogDirectory b))
-          (D.logrotateStanza . A.debInfo) +++=
+      (do (A.debInfo . D.atomSet) %= (Set.insert $ D.InstallDir b "/etc/apache2/sites-available")
+          (A.debInfo . D.atomSet) %= (Set.insert $ D.Link b ("/etc/apache2/sites-available/" ++ D.domain site) ("/etc/apache2/sites-enabled/" ++ D.domain site))
+          (A.debInfo . D.atomSet) %= (Set.insert $ D.File b ("/etc/apache2/sites-available" </> D.domain site) apacheConfig)
+          (A.debInfo . D.atomSet) %= (Set.insert $ D.InstallDir b (apacheLogDirectory b))
+          (A.debInfo . D.logrotateStanza) +++=
                               (b, singleton
                                    (Text.unlines $ [ pack (apacheAccessLog b) <> " {"
                                                    , "  copytruncate" -- hslogger doesn't notice when the log is rotated, maybe this will help
@@ -184,7 +185,7 @@ siteAtoms b site =
                                                    , "  compress"
                                                    , "  missingok"
                                                    , "}"]))
-          (D.logrotateStanza . A.debInfo) +++=
+          (A.debInfo . D.logrotateStanza) +++=
                               (b, singleton
                                    (Text.unlines $ [ pack (apacheErrorLog b) <> " {"
                                                    , "  copytruncate"
@@ -235,8 +236,8 @@ siteAtoms b site =
 
 serverAtoms :: BinPkgName -> D.Server -> Bool -> CabalInfo -> CabalInfo
 serverAtoms b server' isSite =
-    modL (D.postInst . A.debInfo) (insertWith (\ old new -> if old /= new then error ("serverAtoms: " ++ show old ++ " -> " ++ show new) else old) b debianPostinst) .
-    modL (D.installInit . A.debInfo) (Map.insertWith (\ old new -> if old /= new then error ("serverAtoms: " ++ show old ++ " -> " ++ show new) else old) b debianInit) .
+    modL (A.debInfo . D.postInst) (insertWith (\ old new -> if old /= new then error ("serverAtoms: " ++ show old ++ " -> " ++ show new) else old) b debianPostinst) .
+    modL (A.debInfo . D.installInit) (Map.insertWith (\ old new -> if old /= new then error ("serverAtoms: " ++ show old ++ " -> " ++ show new) else old) b debianInit) .
     serverLogrotate' b .
     execAtoms b exec
     where
@@ -300,13 +301,13 @@ serverAtoms b server' isSite =
 -- in debianFiles.
 serverLogrotate' :: BinPkgName -> CabalInfo -> CabalInfo
 serverLogrotate' b =
-    modL (D.logrotateStanza . A.debInfo) (insertWith Set.union b (singleton (Text.unlines $ [ pack (serverAccessLog b) <> " {"
+    modL (A.debInfo . D.logrotateStanza) (insertWith Set.union b (singleton (Text.unlines $ [ pack (serverAccessLog b) <> " {"
                                  , "  weekly"
                                  , "  rotate 5"
                                  , "  compress"
                                  , "  missingok"
                                  , "}" ]))) .
-    modL (D.logrotateStanza . A.debInfo) (insertWith Set.union b (singleton (Text.unlines $ [ pack (serverAppLog b) <> " {"
+    modL (A.debInfo . D.logrotateStanza) (insertWith Set.union b (singleton (Text.unlines $ [ pack (serverAppLog b) <> " {"
                                  , "  weekly"
                                  , "  rotate 5"
                                  , "  compress"
@@ -315,7 +316,7 @@ serverLogrotate' b =
 
 backupAtoms :: BinPkgName -> String -> CabalInfo -> CabalInfo
 backupAtoms b name =
-    modL (D.postInst . A.debInfo) (insertWith (\ old new -> if old /= new then error $ "backupAtoms: " ++ show old ++ " -> " ++ show new else old) b
+    modL (A.debInfo . D.postInst) (insertWith (\ old new -> if old /= new then error $ "backupAtoms: " ++ show old ++ " -> " ++ show new else old) b
                  (Text.unlines $
                   [ "#!/bin/sh"
                   , ""
@@ -331,7 +332,7 @@ backupAtoms b name =
 
 execAtoms :: BinPkgName -> D.InstallFile -> CabalInfo -> CabalInfo
 execAtoms b ifile r =
-    modL (D.rulesFragments . A.debInfo) (Set.insert (pack ("build" </> ppDisplay b ++ ":: build-ghc-stamp\n"))) .
+    modL (A.debInfo . D.rulesFragments) (Set.insert (pack ("build" </> ppDisplay b ++ ":: build-ghc-stamp\n"))) .
     fileAtoms b ifile $
     r
 
@@ -342,9 +343,9 @@ fileAtoms b installFile' r =
 fileAtoms' :: BinPkgName -> Maybe FilePath -> String -> Maybe FilePath -> String -> CabalInfo -> CabalInfo
 fileAtoms' b sourceDir' execName' destDir' destName' r =
     case (sourceDir', execName' == destName') of
-      (Nothing, True) -> execCabalM ((D.atomSet . A.debInfo) %= (Set.insert $ D.InstallCabalExec b execName' d)) r
-      (Just s, True) -> execCabalM ((D.atomSet . A.debInfo) %= (Set.insert $ D.Install b (s </> execName') d)) r
-      (Nothing, False) -> execCabalM ((D.atomSet . A.debInfo) %= (Set.insert $ D.InstallCabalExecTo b execName' (d </> destName'))) r
-      (Just s, False) -> execCabalM ((D.atomSet . A.debInfo) %= (Set.insert $ D.InstallTo b (s </> execName') (d </> destName'))) r
+      (Nothing, True) -> execCabalM ((A.debInfo . D.atomSet) %= (Set.insert $ D.InstallCabalExec b execName' d)) r
+      (Just s, True) -> execCabalM ((A.debInfo . D.atomSet) %= (Set.insert $ D.Install b (s </> execName') d)) r
+      (Nothing, False) -> execCabalM ((A.debInfo . D.atomSet) %= (Set.insert $ D.InstallCabalExecTo b execName' (d </> destName'))) r
+      (Just s, False) -> execCabalM ((A.debInfo . D.atomSet) %= (Set.insert $ D.InstallTo b (s </> execName') (d </> destName'))) r
     where
       d = fromMaybe "usr/bin" destDir'

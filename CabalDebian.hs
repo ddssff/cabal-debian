@@ -7,8 +7,9 @@
 -- be accessed using the command line interface.
 
 import Control.Category ((.))
+import Control.Lens (view)
+import Control.Monad.State (get)
 import Control.Monad.Trans (MonadIO, liftIO)
-import Data.Lens.Lazy (access)
 import Data.List as List (unlines)
 import Debian.Debianize.BasicInfo (DebAction(Debianize, SubstVar, Usage), debAction, newFlags)
 import Debian.Debianize.CabalInfo (newCabalInfo, debInfo)
@@ -33,7 +34,7 @@ cabalDebianMain init =
     -- taking.  Much of this will be repeated in the call to debianize.
     do atoms <- liftIO $ newFlags >>= newCabalInfo
        evalCabalT (do debianize init
-                      action <- access (debAction . flags . debInfo)
+                      action <- get >>= return . view (debInfo . flags . debAction)
                       finish action) atoms
     where
       finish :: forall m. (MonadIO m, Functor m) => DebAction -> CabalT m ()

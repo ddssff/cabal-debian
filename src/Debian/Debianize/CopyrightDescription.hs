@@ -28,7 +28,7 @@ module Debian.Debianize.CopyrightDescription
 import Data.Char (isSpace)
 import Data.Default (Default(def))
 import Data.Generics (Data, Typeable)
-import Data.Lens.Template (makeLenses)
+import Control.Lens.TH (makeLenses)
 import Data.List as List (dropWhileEnd, partition)
 import Data.Maybe (isJust, catMaybes, fromJust, fromMaybe, listToMaybe)
 import Data.Monoid ((<>), mempty)
@@ -241,4 +241,5 @@ nothingIf p x = if p x then Nothing else Just x
 dots :: Text -> Text
 dots = Text.unlines . map (\ line -> if Text.null line then "." else line) . map (Text.dropWhileEnd isSpace) . Text.lines
 
-$(makeLenses [''CopyrightDescription, ''FilesOrLicenseDescription])
+$(makeLenses ''CopyrightDescription)
+$(makeLenses ''FilesOrLicenseDescription)

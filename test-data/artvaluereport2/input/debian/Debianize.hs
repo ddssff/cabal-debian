@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP, OverloadedStrings #-}
 
-import Control.Category ((.))
-import Data.Lens.Lazy (getL, modL, access)
+import OldLens hiding ((~=), (%=))
+
 import Data.Maybe (fromMaybe)
 import Data.Monoid (mempty)
 import Data.Set as Set (singleton, insert)
@@ -19,7 +19,6 @@ import Debian.Pretty (ppDisplay)
 import Debian.Policy (databaseDirectory, PackageArchitectures(All), StandardsVersion(StandardsVersion))
 import Debian.Relation (BinPkgName(BinPkgName), Relation(Rel), SrcPkgName(..), VersionReq(SLT))
 import Debian.Version (parseDebianVersion)
-import Prelude hiding ((.))
 
 -- This looks somewhat like a "real" Debianize.hs file except that (1) it
 -- expects to be run from the cabal-debian source directory and (2) it returns
@@ -28,7 +27,7 @@ import Prelude hiding ((.))
 -- to copyFirstLogEntry in real life, this is to make sure old and new match.
 main :: IO ()
 main =
-    do log <- withCurrentDirectory "test-data/artvaluereport2/input" $ newFlags >>= newCabalInfo >>= evalCabalT (liftCabal inputChangeLog >> access (changelog . debInfo))
+    do log <- withCurrentDirectory "test-data/artvaluereport2/input" $ newFlags >>= newCabalInfo >>= evalCabalT (liftCabal inputChangeLog >> access (debInfo . changelog))
        new <- withCurrentDirectory "test-data/artvaluereport2/input" $ newFlags >>= newCabalInfo >>= execCabalT (debianize (debianDefaults >> customize log {- >> removeFirstLogEntry -}))
        old <- withCurrentDirectory "test-data/artvaluereport2/output" $ newFlags >>= execDebianT inputDebianization . makeDebInfo
        -- The newest log entry gets modified when the Debianization is
@@ -37,10 +36,10 @@ main =
     where
       customize :: Maybe ChangeLog -> CabalT IO ()
       customize log =
-          do (revision . debInfo) ~= Nothing
-             (sourceFormat . debInfo) ~= Just Native3
-             (changelog . debInfo) ~?= log
-             (atomSet . debInfo) %= (Set.insert $ InstallCabalExec (BinPkgName "appraisalscope") "lookatareport" "usr/bin")
+          do (debInfo . revision) ~= Nothing
+             (debInfo . sourceFormat) ~= Just Native3
+             (debInfo . changelog) ~?= log
+             (debInfo . atomSet) %= (Set.insert $ InstallCabalExec (BinPkgName "appraisalscope") "lookatareport" "usr/bin")
              doExecutable (BinPkgName "appraisalscope") (InstallFile {execName = "appraisalscope", sourceDir = Nothing, destDir = Nothing, destName = "appraisalscope"})
              doServer (BinPkgName "artvaluereport2-development") (theServer (BinPkgName "artvaluereport2-development"))
              doServer (BinPkgName "artvaluereport2-staging") (theServer (BinPkgName "artvaluereport2-staging"))
@@ -48,7 +47,7 @@ main =
              doBackups (BinPkgName "artvaluereport2-backups") "artvaluereport2-backups"
              -- This should go into the "real" data directory.  And maybe a different icon for each server?
              -- install (BinPkgName "artvaluereport2-server") ("theme/ArtValueReport_SunsetSpectrum.ico", "usr/share/artvaluereport2-data")
-             (description . binaryDebDescription (BinPkgName "artvaluereport2-backups") . debInfo) ~=
+             (debInfo . binaryDebDescription (BinPkgName "artvaluereport2-backups") . description) ~=
                      Just (Text.intercalate "\n"
                                   [ "backup program for the appraisalreportonline.com site"
                                   , "  Install this somewhere other than where the server is running get"
@@ -56,31 +55,31 @@ main =
              addDep (BinPkgName "artvaluereport2-production") (BinPkgName "apache2")
              addServerData
              addServerDeps
-             (description . binaryDebDescription (BinPkgName "appraisalscope") . debInfo) ~= Just "Offline manipulation of appraisal database"
-             (buildDependsIndep . control . debInfo) %= (++ [[Rel (BinPkgName "libjs-jquery-ui") (Just (SLT (parseDebianVersion ("1.10" :: String)))) Nothing]])
-             (buildDependsIndep . control . debInfo) %= (++ [[Rel (BinPkgName "libjs-jquery") Nothing Nothing]])
-             (buildDependsIndep . control . debInfo) %= (++ [[Rel (BinPkgName "libjs-jcrop") Nothing Nothing]])
-             (architecture . binaryDebDescription (BinPkgName "artvaluereport2-staging") . debInfo) ~= Just All
-             (architecture . binaryDebDescription (BinPkgName "artvaluereport2-production") . debInfo) ~= Just All
-             (architecture . binaryDebDescription (BinPkgName "artvaluereport2-development") . debInfo) ~= Just All
+             (debInfo . binaryDebDescription (BinPkgName "appraisalscope") . description) ~= Just "Offline manipulation of appraisal database"
+             (debInfo . control . buildDependsIndep) %= (++ [[Rel (BinPkgName "libjs-jquery-ui") (Just (SLT (parseDebianVersion ("1.10" :: String)))) Nothing]])
+             (debInfo . control . buildDependsIndep) %= (++ [[Rel (BinPkgName "libjs-jquery") Nothing Nothing]])
+             (debInfo . control . buildDependsIndep) %= (++ [[Rel (BinPkgName "libjs-jcrop") Nothing Nothing]])
+             (debInfo . binaryDebDescription (BinPkgName "artvaluereport2-staging") . architecture) ~= Just All
+             (debInfo . binaryDebDescription (BinPkgName "artvaluereport2-production") . architecture) ~= Just All
+             (debInfo . binaryDebDescription (BinPkgName "artvaluereport2-development") . architecture) ~= Just All
              -- utilsPackageNames [BinPkgName "artvaluereport2-server"]
-             (sourcePackageName . debInfo) ~= Just (SrcPkgName "haskell-artvaluereport2")
-             (standardsVersion . control . debInfo) ~= Just (StandardsVersion 3 9 1 Nothing)
-             (homepage . control . debInfo) ~= Just "http://appraisalreportonline.com"
-             (compat . debInfo) ~= Just 7
+             (debInfo . sourcePackageName) ~= Just (SrcPkgName "haskell-artvaluereport2")
+             (debInfo . control . standardsVersion) ~= Just (StandardsVersion 3 9 1 Nothing)
+             (debInfo . control . homepage) ~= Just "http://appraisalreportonline.com"
+             (debInfo . compat) ~= Just 7
 
       addServerDeps :: CabalT IO ()
       addServerDeps = mapM_ addDeps (map BinPkgName ["artvaluereport2-development", "artvaluereport2-staging", "artvaluereport2-production"])
       addDeps p = mapM_ (addDep p) (map BinPkgName ["libjpeg-progs", "libjs-jcrop", "libjs-jquery", "libjs-jquery-ui", "netpbm", "texlive-fonts-extra", "texlive-fonts-recommended", "texlive-latex-extra", "texlive-latex-recommended"])
-      addDep p dep = (depends . relations . binaryDebDescription p . debInfo) %= (++ [[Rel dep Nothing Nothing]])
+      addDep p dep = (debInfo . binaryDebDescription p . relations . depends) %= (++ [[Rel dep Nothing Nothing]])
 
       addServerData :: CabalT IO ()
       addServerData = mapM_ addData (map BinPkgName ["artvaluereport2-development", "artvaluereport2-staging", "artvaluereport2-production"])
       addData p =
-          do (atomSet . debInfo) %= (Set.insert $ InstallData p "theme/ArtValueReport_SunsetSpectrum.ico" "ArtValueReport_SunsetSpectrum.ico")
+          do (debInfo . atomSet) %= (Set.insert $ InstallData p "theme/ArtValueReport_SunsetSpectrum.ico" "ArtValueReport_SunsetSpectrum.ico")
              mapM_ (addDataFile p) ["Udon.js", "flexbox.css", "DataTables-1.8.2", "html5sortable", "jGFeed", "searchMag.png",
                                     "Clouds.jpg", "tweaks.css", "verticalTabs.css", "blueprint", "jquery.blockUI", "jquery.tinyscrollbar"]
-      addDataFile p path = (atomSet . debInfo) %= (Set.insert $ InstallData p path path)
+      addDataFile p path = (debInfo . atomSet) %= (Set.insert $ InstallData p path path)
 
       theSite :: BinPkgName -> Site
       theSite deb =
@@ -134,7 +133,7 @@ anyrel :: BinPkgName -> Relation
 anyrel b = Rel b Nothing Nothing
 
 removeFirstLogEntry :: Monad m => CabalT m ()
-removeFirstLogEntry = (changelog . debInfo) %= fmap (\ (ChangeLog (_ : tl)) -> ChangeLog tl)
+removeFirstLogEntry = (debInfo . changelog) %= fmap (\ (ChangeLog (_ : tl)) -> ChangeLog tl)
 
 copyFirstLogEntry :: DebInfo -> DebInfo -> DebInfo
 copyFirstLogEntry deb1 deb2 =

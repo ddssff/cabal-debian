@@ -25,8 +25,8 @@ module Debian.Debianize.SourceDebDescription
     , XFieldDest(..)
     ) where
 
+import Control.Lens.TH (makeLenses)
 import Data.Generics (Data, Typeable)
-import Data.Lens.Template (makeLenses)
 import Data.Set as Set (empty, Set)
 import Data.Text (Text)
 import Debian.Debianize.BinaryDebDescription (BinaryDebDescription, Canonical(canonical))
@@ -133,4 +133,4 @@ data XFieldDest
     | C -- ^ Field will be copied to the upload control (.changes) file
     deriving (Eq, Ord, Read, Show, Data, Typeable)
 
-$(makeLenses [''SourceDebDescription])
+$(makeLenses ''SourceDebDescription)

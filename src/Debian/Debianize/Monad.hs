@@ -21,8 +21,9 @@ module Debian.Debianize.Monad
     , liftCabal
     ) where
 
+import OldLens (focus)
+
 import Control.Monad.State (evalState, evalStateT, execState, execStateT, runState, State, StateT(runStateT))
-import Data.Lens.Lazy (focus)
 import Debian.Debianize.DebInfo (DebInfo)
 import Debian.Debianize.CabalInfo (CabalInfo, debInfo)
 import Debian.Orphans ()

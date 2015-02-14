@@ -17,14 +17,15 @@ module Debian.Debianize.CabalInfo
     , newCabalInfo
     ) where
 
+import OldLens (access)
+
 import Control.Category ((.))
+import Control.Lens.TH (makeLenses)
 import Control.Monad (unless)
 import Control.Monad.State (execStateT)
 import Control.Monad.Trans (liftIO)
 import Data.Generics (Data, Typeable)
-import Data.Lens.Lazy (access)
-import Data.Lens.Template (nameMakeLens)
-import Data.List as List (init, null)
+import Data.List as List (null)
 import Data.Map as Map (Map)
 import Data.Monoid (Monoid(..))
 import Data.Text as Text (null, pack, strip)
@@ -59,18 +60,18 @@ import Prelude hiding ((.), init, init, log, log, null)
 -- debianization is finalized.
 data CabalInfo
     = CabalInfo
-      { packageDescription_ :: PackageDescription
+      { _packageDescription :: PackageDescription
       -- ^ The result of reading a cabal configuration file.
-      , debInfo_ :: DebInfo
+      , _debInfo :: DebInfo
       -- ^ Information required to represent a non-cabal debianization.
-      , debianNameMap_ :: Map PackageName VersionSplits
+      , _debianNameMap :: Map PackageName VersionSplits
       -- ^ Mapping from cabal package name and version to debian source
       -- package name.  This allows different ranges of cabal versions to
       -- map to different debian source package names.
-      , epochMap_ :: Map PackageName Int
+      , _epochMap :: Map PackageName Int
       -- ^ Specify epoch numbers for the debian package generated from a
       -- cabal package.  Example: @EpochMapping (PackageName "HTTP") 1@.
-      , packageInfo_ :: Map PackageName PackageInfo
+      , _packageInfo :: Map PackageName PackageInfo
       -- ^ Supply some info about a cabal package.
       } deriving (Show, Data, Typeable)
 
@@ -79,13 +80,10 @@ data PackageInfo = PackageInfo { cabalName :: PackageName
                                , profDeb :: Maybe (BinPkgName, DebianVersion)
                                , docDeb :: Maybe (BinPkgName, DebianVersion) } deriving (Eq, Ord, Show, Data, Typeable)
 
-$(let f s = case s of
-              (_ : _) | last s == '_' -> Just (init s)
-              _ -> Nothing in
-  nameMakeLens ''CabalInfo f)
+$(makeLenses ''CabalInfo)
 
 instance Canonical CabalInfo where
-    canonical x = x {debInfo_ = canonical (debInfo_ x)}
+    canonical x = x {_debInfo = canonical (_debInfo x)}
 
 -- | Given the 'Flags' value read the cabalization and build a new
 -- 'CabalInfo' record.
@@ -94,13 +92,13 @@ newCabalInfo flags' = do
   pkgDesc <- inputCabalization flags'
   copyrt <- liftIO $ defaultCopyrightDescription pkgDesc
   execStateT
-    (do (copyright . debInfo) ~= Just copyrt
-        (S.homepage . control . debInfo) ~= case strip (pack (Cabal.homepage pkgDesc)) of
+    (do (debInfo . copyright) ~= Just copyrt
+        (debInfo . control . S.homepage) ~= case strip (pack (Cabal.homepage pkgDesc)) of
                                               x | Text.null x -> Nothing
                                               x -> Just x
-        noTests <- access (noTestSuite . debInfo)
+        noTests <- access (debInfo . noTestSuite)
         unless (List.null (Cabal.testSuites pkgDesc) || noTests)
-               (do (rulesSettings . debInfo) %= (++ ["DEB_ENABLE_TESTS = yes", "DEB_BUILD_OPTIONS += nocheck"])
+               (do (debInfo . rulesSettings) %= (++ ["DEB_ENABLE_TESTS = yes", "DEB_BUILD_OPTIONS += nocheck"])
                    -- ...
                ))
     (makeCabalInfo flags' pkgDesc)
@@ -108,9 +106,9 @@ newCabalInfo flags' = do
 makeCabalInfo :: Flags -> PackageDescription -> CabalInfo
 makeCabalInfo fs pkgDesc =
     CabalInfo
-      { packageDescription_ = pkgDesc
-      , epochMap_ = mempty
-      , packageInfo_ = mempty
-      , debianNameMap_ = mempty
-      , debInfo_ = makeDebInfo fs
+      { _packageDescription = pkgDesc
+      , _epochMap = mempty
+      , _packageInfo = mempty
+      , _debianNameMap = mempty
+      , _debInfo = makeDebInfo fs
       }

@@ -7,11 +7,11 @@
 --
 -- Be sure to run it with the local-debian flag turned off!
 
-import Control.Category ((.))
+import OldLens hiding ((%=), (~=))
+
 import Control.Exception (throw)
 import Control.Monad.State (get)
 import Data.Default (def)
-import Data.Lens.Lazy (getL, access)
 import Data.List (intercalate)
 import Data.Map as Map (insert)
 import Data.Maybe (fromMaybe)
@@ -39,7 +39,7 @@ import Debian.Policy (SourceFormat(Native3), StandardsVersion(StandardsVersion),
 import Debian.Relation (BinPkgName(BinPkgName), Relation(Rel), VersionReq(SLT, GRE), Relations, parseRelations)
 import Debian.Version (parseDebianVersion)
 import Distribution.Compiler(CompilerFlavor(GHC))
-import Prelude hiding (log, (.))
+import Prelude hiding (log)
 import System.Directory (copyFile)
 
 main :: IO ()
@@ -50,10 +50,10 @@ main =
        -- This is both a debianization script and a unit test - it
        -- makes sure the debianization generated matches the one
        -- checked into version control.
-       log <- newFlags >>= newCabalInfo >>= evalCabalT (liftCabal inputChangeLog >> access (changelog . debInfo))
+       log <- newFlags >>= newCabalInfo >>= evalCabalT (liftCabal inputChangeLog >> access (debInfo . changelog))
        old <- newFlags >>= execDebianT inputDebianization . makeDebInfo
        new <- newFlags >>= newCabalInfo >>= execCabalT (debianize (do debianDefaults
-                                                                      (changelog . debInfo) ~?= log
+                                                                      (debInfo . changelog) ~?= log
                                                                       customize
                                                                       copyFirstLogEntry old))
        diff <- compareDebianization old (getL debInfo new)
@@ -66,19 +66,19 @@ main =
     where
       customize :: Monad m => CabalT m ()
       customize =
-          do (sourceFormat . debInfo) ~= Just Native3
-             (standardsVersion . control . debInfo) ~= Just (StandardsVersion 3 9 3 Nothing)
-             (compat . debInfo) ~= Just 9
-             (utilsPackageNameBase . debInfo) ~= Just "cabal-debian"
+          do (debInfo . sourceFormat) ~= Just Native3
+             (debInfo . control . standardsVersion) ~= Just (StandardsVersion 3 9 3 Nothing)
+             (debInfo . compat) ~= Just 9
+             (debInfo . utilsPackageNameBase) ~= Just "cabal-debian"
              -- (copyright . debInfo) %= (Just . copyrightFn . fromMaybe def)
              -- (conflicts . relations . binaryDebDescription (BinPkgName "cabal-debian") . debInfo) %= (++ (rels "haskell-debian-utils (<< 3.59)"))
-             (depends . relations . binaryDebDescription (BinPkgName "cabal-debian") . debInfo) %= (++ (rels "apt-file, debian-policy, debhelper, haskell-devscripts (>= 0.8.19)"))
-             (depends . relations . binaryDebDescription (BinPkgName "libghc-cabal-debian-dev") . debInfo) %= (++ (rels "debian-policy"))
-             (executable . debInfo) %= (Map.insert (BinPkgName "cabal-debian-tests") (InstallFile "cabal-debian-tests" Nothing Nothing "cabal-debian-tests"))
-             (atomSet . debInfo) %= (Set.insert $ InstallCabalExec (BinPkgName "cabal-debian") "cabal-debian" "usr/bin")
-             (utilsPackageNameBase . debInfo) ~= Just "cabal-debian"
+             (debInfo . binaryDebDescription (BinPkgName "cabal-debian") . relations . depends) %= (++ (rels "apt-file, debian-policy, debhelper, haskell-devscripts (>= 0.8.19)"))
+             (debInfo . binaryDebDescription (BinPkgName "libghc-cabal-debian-dev") . relations . depends) %= (++ (rels "debian-policy"))
+             (debInfo . executable) %= (Map.insert (BinPkgName "cabal-debian-tests") (InstallFile "cabal-debian-tests" Nothing Nothing "cabal-debian-tests"))
+             (debInfo . atomSet) %= (Set.insert $ InstallCabalExec (BinPkgName "cabal-debian") "cabal-debian" "usr/bin")
+             (debInfo . utilsPackageNameBase) ~= Just "cabal-debian"
              -- extraDevDeps (BinPkgName "debian-policy")
-             (homepage . control . debInfo) ~= Just (pack "https://github.com/ddssff/cabal-debian")
+             (debInfo . control . homepage) ~= Just (pack "https://github.com/ddssff/cabal-debian")
 
 rels :: String -> Relations
 rels = either (throw . userError . show) id . parseRelations
@@ -90,8 +90,8 @@ copyFirstLogEntry :: Monad m => DebInfo -> CabalT m ()
 copyFirstLogEntry src =
     do dst <- get
        let Just (ChangeLog (hd1 : _)) = getL changelog src
-           Just (ChangeLog (_ : tl2)) = getL (changelog . debInfo) dst
-       (changelog . debInfo) ~= Just (ChangeLog (hd1 : tl2))
+           Just (ChangeLog (_ : tl2)) = getL (debInfo . changelog) dst
+       (debInfo . changelog) ~= Just (ChangeLog (hd1 : tl2))
 {-
     get >>= \ dst -> 
 copyFirstLogEntry :: Atoms -> Atoms -> Atoms

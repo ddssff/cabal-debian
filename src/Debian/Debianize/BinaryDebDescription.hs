@@ -30,7 +30,7 @@ module Debian.Debianize.BinaryDebDescription
 
 import Data.Function (on)
 import Data.Generics (Data, Typeable)
-import Data.Lens.Template (makeLenses)
+import Control.Lens.TH (makeLenses)
 import Data.List (sort, sortBy)
 import Data.Monoid (Monoid(..))
 import Data.Text (Text)
@@ -137,4 +137,5 @@ newPackageRelations =
       , _replaces = []
       , _builtUsing = [] }
 
-$(makeLenses [''BinaryDebDescription, ''PackageRelations])
+$(makeLenses ''BinaryDebDescription)
+$(makeLenses ''PackageRelations)

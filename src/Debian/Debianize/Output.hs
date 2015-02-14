@@ -14,13 +14,14 @@ module Debian.Debianize.Output
     , validateDebianization
     ) where
 
+import OldLens (getL)
+
 import Control.Category ((.))
 import Control.Exception as E (throw)
 import Control.Monad.State (get)
 import Control.Monad.Trans (liftIO, MonadIO)
 import Data.Algorithm.Diff.Context (contextDiff)
 import Data.Algorithm.Diff.Pretty (prettyDiff)
-import Data.Lens.Lazy (getL)
 import Data.Map as Map (elems, toList)
 import Data.Maybe (fromMaybe)
 import Data.Text as Text (split, Text, unpack)
@@ -73,11 +74,11 @@ doDebianizeAction :: (MonadIO m, Functor m) => DebianT m ()
 doDebianizeAction =
     do new <- get
        case () of
-         _ | getL (validate . D.flags) new ->
+         _ | getL (D.flags . validate) new ->
                do inputDebianization
                   old <- get
                   return $ validateDebianization old new
-         _ | getL (dryRun . D.flags) new ->
+         _ | getL (D.flags . dryRun) new ->
                do inputDebianization
                   old <- get
                   diff <- liftIO $ compareDebianization old new
@@ -133,9 +134,9 @@ validateDebianization old new =
     where
       oldVersion = logVersion (head (unChangeLog (fromMaybe (error "Missing changelog") (getL D.changelog old))))
       newVersion = logVersion (head (unChangeLog (fromMaybe (error "Missing changelog") (getL D.changelog new))))
-      oldSource = getL (S.source . D.control) old
-      newSource = getL (S.source . D.control) new
-      oldPackages = map (getL B.package) $ getL (S.binaryPackages . D.control) old
-      newPackages = map (getL B.package) $ getL (S.binaryPackages . D.control) new
+      oldSource = getL (D.control . S.source) old
+      newSource = getL (D.control . S.source) new
+      oldPackages = map (getL B.package) $ getL (D.control . S.binaryPackages) old
+      newPackages = map (getL B.package) $ getL (D.control . S.binaryPackages) new
       unChangeLog :: ChangeLog -> [ChangeLogEntry]
       unChangeLog (ChangeLog x) = x

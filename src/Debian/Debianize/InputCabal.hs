@@ -4,10 +4,11 @@ module Debian.Debianize.InputCabal
     ( inputCabalization
     ) where
 
+import OldLens (getL)
+
 import Control.Category ((.))
 import Control.Exception (bracket)
 import Control.Monad (when)
-import Data.Lens.Common (getL)
 import Data.Set as Set (Set, toList)
 import Debian.Debianize.BasicInfo (Flags, buildEnv, dependOS, verbosity, compilerFlavor, cabalFlagAssignments)
 import Debian.Debianize.Prelude (intToVerbosity')

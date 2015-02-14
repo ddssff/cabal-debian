@@ -6,12 +6,13 @@ module Debian.Debianize.Files
     ( debianizationFileMap
     ) where
 
+import OldLens (access, getL)
+
 import Control.Applicative ((<$>))
 import Control.Category ((.))
 import Control.Monad.Trans (lift)
 import Control.Monad.Writer (execWriterT, tell, WriterT)
 import Data.Char (isSpace)
-import Data.Lens.Lazy (access, getL)
 import Data.List as List (dropWhile, dropWhileEnd, map)
 import Data.Map as Map (fromListWithKey, insertWith, map, Map, mapKeys, toList)
 import Data.Maybe (fromMaybe)

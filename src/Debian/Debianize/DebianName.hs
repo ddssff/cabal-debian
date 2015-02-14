@@ -11,10 +11,11 @@ module Debian.Debianize.DebianName
     , remapCabal
     ) where
 
+import OldLens (access)
+
 import Control.Applicative ((<$>))
 import Control.Category ((.))
 import Data.Char (toLower)
-import Data.Lens.Lazy (access)
 import Data.Map as Map (alter, lookup)
 import Data.Version (showVersion, Version)
 import Debian.Debianize.Monad (CabalT)
@@ -44,8 +45,8 @@ debianName :: (Monad m, Functor m, PkgName name) => PackageType -> CompilerFlavo
 debianName typ cfl =
     do base <-
            case (typ, cfl) of
-             (Utilities, GHC) -> access (utilsPackageNameBase . debInfo) >>= maybe (((\ base -> "haskell-" ++ base ++ "-utils") . unDebBase) <$> debianNameBase) return
-             (Utilities, _) -> access (utilsPackageNameBase . debInfo) >>= maybe (((\ base -> base ++ "-utils") . unDebBase) <$> debianNameBase) return
+             (Utilities, GHC) -> access (debInfo . utilsPackageNameBase) >>= maybe (((\ base -> "haskell-" ++ base ++ "-utils") . unDebBase) <$> debianNameBase) return
+             (Utilities, _) -> access (debInfo . utilsPackageNameBase) >>= maybe (((\ base -> base ++ "-utils") . unDebBase) <$> debianNameBase) return
              _ -> unDebBase <$> debianNameBase
        return $ mkPkgName' cfl typ (DebBase base)
 
@@ -55,7 +56,7 @@ debianName typ cfl =
 -- is >= v.
 debianNameBase :: Monad m => CabalT m DebBase
 debianNameBase =
-    do nameBase <- access (D.overrideDebianNameBase . debInfo)
+    do nameBase <- access (debInfo . D.overrideDebianNameBase)
        pkgDesc <- access packageDescription
        let pkgId = Cabal.package pkgDesc
        nameMap <- access A.debianNameMap

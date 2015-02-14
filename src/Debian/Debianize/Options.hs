@@ -186,9 +186,12 @@ options =
       Option "" ["no-test-suite"] (NoArg ((A.debInfo . D.noTestSuite) ~= True))
              "Don't build or run the test suite.",
       Option "" ["allow-debian-self-build-deps"] (NoArg ((A.debInfo . D.allowDebianSelfBuildDeps) ~= True))
-             (unlines [ "Don't filter out self dependencies in the debian package build dependencies."
+             (unlines [ "Set this to allow self dependencies in the debian package build dependencies."
                       , "This may occasionally be necessary for a package that relies on an older"
-                      , "version of itself to build." ])
+                      , "version of itself to build.  It is True by default so that packages which"
+                      , "have cabal dependencies on themselves don't get debian self dependencie."
+                      , "Cabal self dependencies are now the norm, as when an executable in a package"
+                      , "build depends on a library in the same package." ])
     ] ++ map liftOpt flagOptions
 
 liftOpt :: Monad m => OptDescr (StateT Flags m ()) -> OptDescr (CabalT m ())

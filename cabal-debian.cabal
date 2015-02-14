@@ -182,7 +182,6 @@ Library
  Exposed-Modules:
    Data.Algorithm.Diff.Context
    Data.Algorithm.Diff.Pretty
-   Debian.Debianize
    Debian.GHC
    Debian.Policy
    Distribution.Version.Invert

@@ -28,10 +28,6 @@ debianDefaults =
        A.epochMap ++= (PackageName "HTTP", 1)
        -- The hsx2hs build tool is in an an eponymous deb
        (A.debInfo . D.execMap) ++= ("hsx2hs", [[Rel (BinPkgName "hsx2hs") Nothing Nothing]])
-       -- For now, use deb names like libghc-cabal-ghcjs-dev for any
-       -- Cabal >= 1.21, which is the ghcjs development branch of Cabal.
-       mapCabal (PackageName "Cabal") (DebBase "cabal-ghcjs")
-       splitCabal (PackageName "Cabal") (DebBase "cabal") (Version [1,21] [])
        -- The parsec debs are suffixed with either "2" or "3"
        mapCabal (PackageName "parsec") (DebBase "parsec3")
        splitCabal (PackageName "parsec") (DebBase "parsec2") (Version [3] [])

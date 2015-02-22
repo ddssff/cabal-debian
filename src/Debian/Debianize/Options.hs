@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, Rank2Types #-}
+{-# LANGUAGE CPP, RankNTypes #-}
 module Debian.Debianize.Options
     ( options
     , compileArgs

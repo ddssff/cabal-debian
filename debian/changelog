@@ -1,3 +1,9 @@
+haskell-cabal-debian (4.24.1) unstable; urgency=low
+
+  * Don't assign the name "cabal-ghcjs" to newer Cabal library versions
+
+ -- David Fox <dsf@seereason.com>  Sun, 22 Feb 2015 06:08:28 -0800
+
 haskell-cabal-debian (4.24) unstable; urgency=low
 
   * Convert from old data-lens package to lens.

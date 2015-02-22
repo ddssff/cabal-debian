@@ -31,7 +31,7 @@ import Debian.Debianize.Changelog (dropFutureEntries)
 import qualified Debian.Debianize.DebInfo as D
 import Debian.Debianize.DebianName (debianName, debianNameBase)
 import Debian.Debianize.Goodies (backupAtoms, describe, execAtoms, serverAtoms, siteAtoms, watchAtom)
-import Debian.Debianize.InputDebian (dataDir, inputChangeLog)
+import Debian.Debianize.InputDebian (dataTop, dataDest, inputChangeLog)
 import Debian.Debianize.Monad as Monad (CabalT, liftCabal)
 import Debian.Debianize.Options (compileCommandlineArgs, compileEnvironmentArgs)
 import Debian.Debianize.Prelude ((%=), (+=), (~=), (~?=))
@@ -54,7 +54,7 @@ import Distribution.Compiler (CompilerFlavor(GHCJS))
 import Distribution.Package (Dependency(..), PackageIdentifier(..), PackageName(PackageName))
 import Distribution.PackageDescription (FlagName(FlagName), PackageDescription)
 import Distribution.PackageDescription as Cabal (allBuildInfo, author, BuildInfo(buildable, extraLibs), Executable(buildInfo, exeName), maintainer)
-import qualified Distribution.PackageDescription as Cabal (PackageDescription(dataDir, dataFiles, executables, library, package))
+import qualified Distribution.PackageDescription as Cabal (PackageDescription(dataFiles, executables, library, package))
 import Paths_cabal_debian (version)
 import Prelude hiding ((.), init, log, map, unlines, unlines, writeFile)
 import System.Environment (getProgName)
@@ -451,7 +451,7 @@ makeUtilsPackage pkgDesc hc =
        let installedData = Set.map (\ a -> (a, a)) $ Set.unions (Map.elems installedDataMap)
            installedExec = Set.unions (Map.elems installedExecMap)
 
-       let prefixPath = Cabal.dataDir pkgDesc
+       prefixPath <- dataTop
        let dataFilePaths = Set.fromList (zip (List.map (prefixPath </>) (Cabal.dataFiles pkgDesc)) (Cabal.dataFiles pkgDesc)) :: Set (FilePath, FilePath)
            execFilePaths = Set.map Cabal.exeName (Set.filter (Cabal.buildable . Cabal.buildInfo) (Set.fromList (Cabal.executables pkgDesc))) :: Set FilePath
        let availableData = Set.union installedData dataFilePaths
@@ -504,11 +504,11 @@ expandAtoms =
                                                                GHCJS -> "dist-ghcjs/build"
 #endif
                                                                _ -> error $ "Unexpected compiler: " ++ show hc)
-       dDir <- dataDir
+       dDest <- dataDest
        expandApacheSites
        expandInstallCabalExecs builddir
        expandInstallCabalExecTo builddir
-       expandInstallData dDir
+       expandInstallData dDest
        expandInstallTo
        expandFile
        expandWebsite
@@ -564,14 +564,14 @@ expandAtoms =
 
       -- Turn A.InstallData into either an Install or an InstallTo
       expandInstallData :: Monad m => FilePath -> CabalT m ()
-      expandInstallData dDir =
+      expandInstallData dDest =
           access (A.debInfo . D.atomSet) >>= List.mapM_ doAtom . Set.toList
           where
             doAtom :: Monad m => D.Atom -> CabalT m ()
             doAtom (D.InstallData b from dest) =
                 if takeFileName from == takeFileName dest
-                then (A.debInfo . D.atomSet) %= (Set.insert $ D.Install b from (dDir </> makeRelative "/" (takeDirectory dest)))
-                else (A.debInfo . D.atomSet) %= (Set.insert $ D.InstallTo b from (dDir </> makeRelative "/" dest))
+                then (A.debInfo . D.atomSet) %= (Set.insert $ D.Install b from (dDest </> makeRelative "/" (takeDirectory dest)))
+                else (A.debInfo . D.atomSet) %= (Set.insert $ D.InstallTo b from (dDest </> makeRelative "/" dest))
             doAtom _ = return ()
 
       -- Turn A.InstallTo into a make rule

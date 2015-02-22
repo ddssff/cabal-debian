@@ -5,7 +5,8 @@ module Debian.Debianize.InputDebian
     ( inputDebianization
     , inputDebianizationFile
     , inputChangeLog
-    , dataDir
+    , dataDest
+    , dataTop
     ) where
 
 import OldLens (access, modL, setL)
@@ -250,13 +251,20 @@ readDir p line = installDir p (unpack line)
 -- chroot "/" task = task
 -- chroot root task = useEnv root (return . force) task
 
--- | Compute the Cabal data directory for a Linux install from a Cabal
--- package description.  This needs to match the path cabal assigns to
--- datadir in the dist/build/autogen/Paths_packagename.hs module, or
--- perhaps the path in the CABAL_DEBIAN_DATADIR environment variable.
-dataDir :: MonadIO m => CabalT m FilePath
-dataDir = do
+-- | Where to put the installed data files.  Computes the destination
+-- directory from a Cabal package description.  This needs to match
+-- the path cabal assigns to datadir in the
+-- dist/build/autogen/Paths_packagename.hs module, or perhaps the path
+-- in the CABAL_DEBIAN_DATADIR environment variable.
+dataDest :: MonadIO m => CabalT m FilePath
+dataDest = do
+  d <- access packageDescription
+  return $ "usr/share" </> ((\ (PackageName x) -> x) $ pkgName $ Cabal.package d)
+
+-- | Where to look for the data-files
+dataTop :: MonadIO m => CabalT m FilePath
+dataTop = do
   d <- access packageDescription
   return $ case Cabal.dataDir d of
-             [] -> "usr/share" </> ((\ (PackageName x) -> x) $ pkgName $ Cabal.package d)
+             "" -> "."
              x -> x

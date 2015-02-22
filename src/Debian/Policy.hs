@@ -373,6 +373,7 @@ fromCabalLicense x =
       Cabal.MPL ver -> MPL
 #if MIN_VERSION_Cabal(1,22,0)
       Cabal.BSD2 -> BSD_2_Clause
+      Cabal.ISC -> OtherLicense (show x)
       Cabal.UnspecifiedLicense -> OtherLicense (show x)
 #endif
 #endif

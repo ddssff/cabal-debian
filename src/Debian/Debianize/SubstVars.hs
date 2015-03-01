@@ -28,7 +28,7 @@ import Debian.Debianize.Monad (CabalT)
 import Debian.Debianize.Prelude ((!), buildDebVersionMap, cond, DebMap, debOfFile, diffFile, dpkgFileMap, modifyM, replaceFile, showDeps)
 import qualified Debian.Debianize.CabalInfo as A (CabalInfo, debInfo, packageDescription, packageInfo, PackageInfo(PackageInfo, cabalName, devDeb, docDeb, profDeb))
 import Debian.Orphans ()
-import Debian.Pretty (ppDisplay)
+import Debian.Pretty (ppShow)
 import Debian.Relation (BinPkgName(BinPkgName), Relation, Relations)
 import qualified Debian.Relation as D (BinPkgName(BinPkgName), ParseRelations(parseRelations), Relation(Rel), Relations, VersionReq(GRE))
 import Distribution.Compiler (buildCompilerId)
@@ -82,7 +82,7 @@ substvars' debType control =
       ([], Nothing) -> return ()
       (missing, _) ->
           liftIO $ die ("These debian packages need to be added to the build dependency list so the required cabal " ++
-                        "packages are available:\n  " ++ intercalate "\n  " (map (ppDisplay . fst) missing) ++
+                        "packages are available:\n  " ++ intercalate "\n  " (map (ppShow . fst) missing) ++
                         "\nIf this is an obsolete package you may need to withdraw the old versions from the\n" ++
                         "upstream repository, and uninstall and purge it from your local system.")
     where

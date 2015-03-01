@@ -35,7 +35,7 @@ import qualified Debian.Debianize.CabalInfo as A
 import qualified Debian.Debianize.BinaryDebDescription as B
 import Debian.Orphans ()
 import Debian.Policy (apacheAccessLog, apacheErrorLog, apacheLogDirectory, databaseDirectory, serverAccessLog, serverAppLog)
-import Debian.Pretty (ppDisplay, ppDisplay')
+import Debian.Pretty (ppShow, ppText)
 import Debian.Relation (BinPkgName(BinPkgName), Relation(Rel))
 import Distribution.Package (PackageName(PackageName))
 import Distribution.PackageDescription as Cabal (PackageDescription(package, synopsis, description))
@@ -73,7 +73,7 @@ tightDependencyFixup pairs p =
       equals (installed, dependent) = "\tdpkg-query -W -f='" <> display' dependent <> " (=$${Version})' " <>  display' installed <> " >> debian/" <> name <> ".substvars"
       newer  (installed, dependent) = "\tdpkg-query -W -f='" <> display' dependent <> " (>>$${Version})' " <> display' installed <> " >> debian/" <> name <> ".substvars"
       name = display' p
-      display' = ppDisplay'
+      display' = ppText
 
 -- | Add a debian binary package to the debianization containing a cabal executable file.
 doExecutable :: Monad m => BinPkgName -> D.InstallFile -> CabalT m ()
@@ -143,7 +143,7 @@ debianDescriptionBase p =
       -- If we have a one line description and no synopsis, use
       -- the description as the synopsis.
       synop' = if null synop && length desc /= 1
-               then "WARNING: No synopsis available for package " ++ ppDisplay (package p)
+               then "WARNING: No synopsis available for package " ++ ppShow (package p)
                else synop
       synop :: String
       -- I don't know why (unwords . words) was applied here.  Maybe I'll find out when
@@ -332,7 +332,7 @@ backupAtoms b name =
 
 execAtoms :: BinPkgName -> D.InstallFile -> CabalInfo -> CabalInfo
 execAtoms b ifile r =
-    modL (A.debInfo . D.rulesFragments) (Set.insert (pack ("build" </> ppDisplay b ++ ":: build-ghc-stamp\n"))) .
+    modL (A.debInfo . D.rulesFragments) (Set.insert (pack ("build" </> ppShow b ++ ":: build-ghc-stamp\n"))) .
     fileAtoms b ifile $
     r
 

@@ -35,7 +35,7 @@ import Debian.Debianize.Options (putEnvironmentArgs)
 import Debian.Debianize.Prelude (indent, replaceFile, zipMaps)
 import Debian.Debianize.BinaryDebDescription as B (canonical, package)
 import qualified Debian.Debianize.SourceDebDescription as S
-import Debian.Pretty (ppDisplay, ppPrint)
+import Debian.Pretty (ppShow, ppPrint)
 import Prelude hiding ((.), unlines, writeFile)
 import System.Directory (createDirectoryIfMissing, doesFileExist, getPermissions, Permissions(executable), setPermissions)
 import System.Exit (ExitCode(ExitSuccess))
@@ -127,8 +127,8 @@ compareDebianization old new =
 validateDebianization :: D.DebInfo -> D.DebInfo -> ()
 validateDebianization old new =
     case () of
-      _ | oldVersion /= newVersion -> throw (userError ("Version mismatch, expected " ++ ppDisplay oldVersion ++ ", found " ++ ppDisplay newVersion))
-        | oldSource /= newSource -> throw (userError ("Source mismatch, expected " ++ ppDisplay oldSource ++ ", found " ++ ppDisplay newSource))
+      _ | oldVersion /= newVersion -> throw (userError ("Version mismatch, expected " ++ ppShow oldVersion ++ ", found " ++ ppShow newVersion))
+        | oldSource /= newSource -> throw (userError ("Source mismatch, expected " ++ ppShow oldSource ++ ", found " ++ ppShow newSource))
         | oldPackages /= newPackages -> throw (userError ("Package mismatch, expected " ++ show (map ppPrint oldPackages) ++ ", found " ++ show (map ppPrint newPackages)))
         | True -> ()
     where

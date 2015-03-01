@@ -34,7 +34,7 @@ import Debian.Debianize.Monad (CabalT, evalCabalT, execCabalM, execCabalT, liftC
 import Debian.Debianize.Prelude ((%=), (++=), (+=), (~=), withCurrentDirectory)
 import qualified Debian.Debianize.SourceDebDescription as S
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
-import Debian.Pretty (ppDisplay)
+import Debian.Pretty (ppShow)
 import Debian.Policy (databaseDirectory, PackageArchitectures(All), PackagePriority(Extra), parseMaintainer, Section(MainSection), SourceFormat(Native3), StandardsVersion(..), getDebhelperCompatLevel, getDebianStandardsVersion, License(..))
 import Debian.Relation (BinPkgName(..), Relation(..), SrcPkgName(..), VersionReq(..))
 import Debian.Release (ReleaseName(ReleaseName, relName))
@@ -474,7 +474,7 @@ test4 label =
                      ]
                  , D.installFile =
                      D.InstallFile { D.execName   = "clckwrks-dot-com-server"
-                                   , D.destName   = ppDisplay deb
+                                   , D.destName   = ppShow deb
                                    , D.sourceDir  = Nothing
                                    , D.destDir    = Nothing }
                  }
@@ -563,7 +563,7 @@ test5 label =
                      ]
                  , D.installFile =
                      D.InstallFile { D.execName   = "creativeprompts-server"
-                                 , D.destName   = ppDisplay deb
+                                 , D.destName   = ppShow deb
                                  , D.sourceDir  = Nothing
                                  , D.destDir    = Nothing }
                  }

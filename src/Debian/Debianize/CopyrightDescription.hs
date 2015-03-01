@@ -37,7 +37,7 @@ import Debian.Control (Field'(Field), lookupP, Paragraph'(Paragraph), Control'(C
 import Debian.Debianize.Prelude (readFileMaybe)
 import Debian.Orphans ()
 import Debian.Policy (License(..), readLicense, fromCabalLicense)
-import Debian.Pretty (PP(PP, unPP), display', ppDisplay', ppPrint)
+import Debian.Pretty (prettyText, ppText)
 import qualified Distribution.License as Cabal (License(UnknownLicense))
 #if MIN_VERSION_Cabal(1,20,0)
 import qualified Distribution.PackageDescription as Cabal (PackageDescription(licenseFiles, copyright, license))
@@ -78,10 +78,10 @@ data FilesOrLicenseDescription
       , _comment :: Maybe Text
       } deriving (Eq, Ord, Show, Data, Typeable)
 
-instance Pretty (PP CopyrightDescription) where
+instance Pretty CopyrightDescription where
     -- Special case encodes free format debian/copyright file
-    pPrint (PP x@(CopyrightDescription {_summaryComment = Just t})) | x {_summaryComment = Nothing} == def = text (List.dropWhileEnd isSpace (unpack t) <> "\n")
-    pPrint x = ppPrint . toControlFile . unPP $ x
+    pPrint x@(CopyrightDescription {_summaryComment = Just t}) | x {_summaryComment = Nothing} == def = text (List.dropWhileEnd isSpace (unpack t) <> "\n")
+    pPrint x = pPrint . toControlFile $ x
 
 instance Default CopyrightDescription where
     def = CopyrightDescription
@@ -148,12 +148,12 @@ toControlFile :: CopyrightDescription -> Control' Text
 toControlFile d =
     Control
     ( Paragraph
-      ( [ Field ("Format", (" " <> ppDisplay' (_format d))) ] ++
+      ( [ Field ("Format", (" " <> ppText (_format d))) ] ++
         maybe [] (\x -> [Field ("Upstream-Name", " " <> x)]) (_upstreamName d) ++
         maybe [] (\x -> [Field ("Upstream-Contact", " " <> x)]) (_upstreamContact d) ++
         maybe [] (\x -> [Field ("Source", " " <> x)]) (_upstreamSource d) ++
         maybe [] (\x -> [Field ("Disclaimer", " " <> x)]) (_disclaimer d) ++
-        maybe [] (\x -> [Field ("License", " " <> display' x)]) (_summaryLicense d) ++
+        maybe [] (\x -> [Field ("License", " " <> prettyText x)]) (_summaryLicense d) ++
         maybe [] (\x -> [Field ("Copyright", " " <> x)]) (_summaryCopyright d) ++
         maybe [] (\x -> [Field ("Comment", " " <> x)]) (_summaryComment d)) :
       map toParagraph (_filesAndLicenses d) )
@@ -163,11 +163,11 @@ toParagraph fd@FilesDescription {} =
     Paragraph $
       [ Field ("Files", " " <> pack (_filesPattern fd))
       , Field ("Copyright", " " <> _filesCopyright fd)
-      , Field ("License", " " <> display' (_filesLicense fd)) ] ++
+      , Field ("License", " " <> prettyText (_filesLicense fd)) ] ++
       maybe [] (\ t -> [Field ("Comment", " " <> t)]) (_filesComment fd)
 toParagraph ld@LicenseDescription {} =
     Paragraph $
-      [ Field ("License", " " <> display' (_license ld)) ] ++
+      [ Field ("License", " " <> prettyText (_license ld)) ] ++
       maybe [] (\ t -> [Field ("Comment", " " <> t)]) (_comment ld)
 
 -- | Infer a 'CopyrightDescription' from a Cabal package description.

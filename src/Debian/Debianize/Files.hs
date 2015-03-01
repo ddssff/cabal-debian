@@ -27,7 +27,7 @@ import Debian.Debianize.Prelude (showDeps')
 import qualified Debian.Debianize.BinaryDebDescription as B (architecture, BinaryDebDescription, binaryPriority, binarySection, breaks, builtUsing, conflicts, depends, description, essential, package, PackageRelations, preDepends, provides, recommends, relations, replaces, suggests)
 import Debian.Debianize.CopyrightDescription (CopyrightDescription)
 import qualified Debian.Debianize.SourceDebDescription as S (binaryPackages, buildConflicts, buildConflictsIndep, buildDepends, buildDependsIndep, dmUploadAllowed, homepage, maintainer, priority, section, source, SourceDebDescription, standardsVersion, uploaders, vcsFields, VersionControlSpec(VCSArch, VCSBrowser, VCSBzr, VCSCvs, VCSDarcs, VCSGit, VCSHg, VCSMtn, VCSSvn), xDescription, XField(XField), XFieldDest(B, C, S), xFields)
-import Debian.Pretty (PP(..), ppDisplay, ppDisplay', ppPrint)
+import Debian.Pretty (PP(..), ppShow, prettyText, ppText, ppPrint)
 import Debian.Relation (BinPkgName(BinPkgName), Relations)
 import Distribution.PackageDescription (PackageDescription)
 import Prelude hiding ((.), dropWhile, init, log, unlines, writeFile)
@@ -70,7 +70,7 @@ debianizationFileMap =
 
 sourceFormatFiles :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
 sourceFormatFiles =
-    maybe [] (\ x -> [("debian/source/format", pack (ppDisplay x))]) <$> (lift $ access D.sourceFormat)
+    maybe [] (\ x -> [("debian/source/format", pack (ppShow x))]) <$> (lift $ access D.sourceFormat)
 
 watchFile :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
 watchFile = maybe [] (\ x -> [("debian/watch", x)]) <$> (lift $ access D.watch)
@@ -156,7 +156,7 @@ changelog =
 control :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
 control =
     do d <- lift $ access D.control
-       return [("debian/control", ppDisplay' (controlFile d))]
+       return [("debian/control", prettyText (controlFile d))]
 
 compat :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
 compat =
@@ -166,7 +166,7 @@ compat =
 copyright :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
 copyright =
     do copyrt <- lift $ access (D.copyright)
-       return [("debian/copyright", ppDisplay' copyrt)]
+       return [("debian/copyright", prettyText copyrt)]
 
 instance Pretty (PP (PackageDescription -> IO CopyrightDescription)) where
     pPrint _ = text "<function>"
@@ -207,10 +207,10 @@ controlFile src =
           where
             ensureDescription t =
                 case List.dropWhileEnd Text.null (List.dropWhile Text.null (List.map (Text.dropWhileEnd isSpace) (Text.lines t))) of
-                  [] -> "WARNING: No description available for package " <> ppDisplay' (getL B.package bin)
+                  [] -> "WARNING: No description available for package " <> ppText (getL B.package bin)
                   (short : long) ->
                       Text.intercalate "\n"
-                        ((if Text.null (Text.dropWhile isSpace short) then ("WARNING: No short description available for package " <> ppDisplay' (getL B.package bin)) else short) : long)
+                        ((if Text.null (Text.dropWhile isSpace short) then ("WARNING: No short description available for package " <> ppText (getL B.package bin)) else short) : long)
       mField tag = maybe [] (\ x -> [Field (tag, " " <> (show . ppPrint $ x))])
       lField _ [] = []
       lField tag xs = [Field (tag, " " <> (show . ppPrint $ xs))]

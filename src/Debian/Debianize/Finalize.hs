@@ -41,7 +41,7 @@ import qualified Debian.Debianize.SourceDebDescription as S
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
 import Debian.Orphans ()
 import Debian.Policy (getCurrentDebianUser, getDebhelperCompatLevel, haskellMaintainer, PackageArchitectures(Any, All), PackagePriority(Extra), parseMaintainer, parseStandardsVersion, Section(..), SourceFormat(Native3, Quilt3))
-import Debian.Pretty (PP(..), ppDisplay)
+import Debian.Pretty (PP(..), ppShow)
 import Debian.Relation (BinPkgName, BinPkgName(BinPkgName), Relation(Rel), Relations, SrcPkgName(SrcPkgName))
 import qualified Debian.Relation as D (BinPkgName(BinPkgName), Relation(..))
 import Debian.Release (parseReleaseName)
@@ -157,13 +157,13 @@ debianVersion =
        debVer <- access (A.debInfo . D.debVersion)
        case debVer of
          Just override
-             | override < parseDebianVersion (ppDisplay (pkgVersion pkgId)) ->
-                 error ("Version from --deb-version (" ++ ppDisplay override ++
-                        ") is older than hackage version (" ++ ppDisplay (pkgVersion pkgId) ++
+             | override < parseDebianVersion (ppShow (pkgVersion pkgId)) ->
+                 error ("Version from --deb-version (" ++ ppShow override ++
+                        ") is older than hackage version (" ++ ppShow (pkgVersion pkgId) ++
                         "), maybe you need to unpin this package?")
          Just override -> return override
          Nothing ->
-             do let ver = ppDisplay (pkgVersion pkgId)
+             do let ver = ppShow (pkgVersion pkgId)
                 rev <- access (A.debInfo . D.revision)
                 let rev'  = case rev of Nothing -> Nothing
                                         Just "" -> Nothing
@@ -301,7 +301,7 @@ finalizeChangelog date =
                                  , logUrgency = "low"
                                  , logComments =
                                      List.unlines $ List.map (("  * " <>) . List.intercalate "\n    " . List.map unpack) (fromMaybe [[msg]] cmts)
-                                 , logWho = ppDisplay maint
+                                 , logWho = ppShow maint
                                  , logDate = date } in
           -- Creating new log entry for version
           Just (ChangeLog (entry : maybe [] (\ (ChangeLog entries) -> entries) log))
@@ -477,7 +477,7 @@ makeUtilsPackage pkgDesc hc =
        when (not (Set.null utilsData && Set.null utilsExec)) $ do
          (A.debInfo . D.binaryDebDescription b . B.description) ~?= Just desc
          -- This is really for all binary debs except the libraries - I'm not sure why
-         (A.debInfo . D.rulesFragments)+= (pack ("build" </> ppDisplay b ++ ":: build-ghc-stamp\n"))
+         (A.debInfo . D.rulesFragments)+= (pack ("build" </> ppShow b ++ ":: build-ghc-stamp\n"))
          (A.debInfo . D.binaryDebDescription b . B.architecture) ~?= Just (if Set.null utilsExec then All else Any)
          (A.debInfo . D.binaryDebDescription b . B.binarySection) ~?= Just (MainSection "misc")
          binaryPackageRelations b B.Utilities
@@ -540,9 +540,9 @@ expandAtoms =
             doAtom GHCJS (D.InstallCabalExec b name dest) =
                 (A.debInfo . D.rulesFragments) +=
                      (Text.unlines
-                        [ pack ("binary-fixup" </> ppDisplay b) <> "::"
+                        [ pack ("binary-fixup" </> ppShow b) <> "::"
                         , pack ("\t(cd " <> builddir </> name <> " && find " <> name <.> "jsexe" <> " -type f) |\\\n" <>
-                                       "\t  while read i; do install -Dp " <> builddir </> name </> "$$i debian" </> ppDisplay b </> makeRelative "/" dest </> "$$i; done\n") ])
+                                       "\t  while read i; do install -Dp " <> builddir </> name </> "$$i debian" </> ppShow b </> makeRelative "/" dest </> "$$i; done\n") ])
 #endif
             doAtom _ _ = return ()
 
@@ -556,9 +556,9 @@ expandAtoms =
             doAtom GHC (D.InstallCabalExecTo b name dest) =
                 (A.debInfo . D.rulesFragments) +=
                                      (Text.unlines
-                                       [ pack ("binary-fixup" </> ppDisplay b) <> "::"
+                                       [ pack ("binary-fixup" </> ppShow b) <> "::"
                                        , "\tinstall -Dps " <> pack (builddir </> name </> name) <> " "
-                                                           <> pack ("debian" </> ppDisplay b </> makeRelative "/" dest) ])
+                                                           <> pack ("debian" </> ppShow b </> makeRelative "/" dest) ])
             doAtom hc (D.InstallCabalExecTo b name dest) = error $ "expandInstallCabalExecTo " ++ show hc ++ " " ++ show (D.InstallCabalExecTo b name dest)
             doAtom _ _ = return ()
 
@@ -582,8 +582,8 @@ expandAtoms =
             doAtom :: Monad m => D.Atom -> CabalT m ()
             doAtom (D.InstallTo b from dest) =
                 (A.debInfo . D.rulesFragments) +=
-                                    (Text.unlines [ pack ("binary-fixup" </> ppDisplay b) <> "::"
-                                                  , "\tinstall -Dp " <> pack from <> " " <> pack ("debian" </> ppDisplay b </> makeRelative "/" dest) ])
+                                    (Text.unlines [ pack ("binary-fixup" </> ppShow b) <> "::"
+                                                  , "\tinstall -Dp " <> pack from <> " " <> pack ("debian" </> ppShow b </> makeRelative "/" dest) ])
             doAtom _ = return ()
 
       -- Turn A.File into an intermediateFile and an A.Install

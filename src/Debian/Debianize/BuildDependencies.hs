@@ -27,6 +27,7 @@ import qualified Debian.Debianize.BinaryDebDescription as B
 import qualified Debian.Debianize.CabalInfo as A
 import qualified Debian.Debianize.SourceDebDescription as S
 import Debian.Debianize.VersionSplits (packageRangesFromVersionSplits)
+import Debian.GHC (compilerPackageName)
 import Debian.Orphans ()
 import Debian.Relation (BinPkgName(..), checkVersionReq, Relation(..), Relations)
 import qualified Debian.Relation as D (BinPkgName(BinPkgName), Relation(..), Relations, VersionReq(EEQ, GRE, LTE, SGR, SLT))
@@ -122,9 +123,7 @@ debianBuildDeps pkgDesc =
                        [D.Rel (D.BinPkgName "haskell-devscripts") (Just (D.GRE (parseDebianVersion ("0.8" :: String)))) Nothing],
                        anyrel "cdbs"] ++
                       (if member GHC hcs
-                       then [anyrel "ghc"] ++ if prof
-                                              then [anyrel "ghc-prof"]
-                                              else []
+                       then [anyrel' (compilerPackageName GHC B.Development)] ++ if prof then [anyrel' (compilerPackageName GHC B.Profiling)] else []
                        else []) ++
 #if MIN_VERSION_Cabal(1,22,0)
                       (if member GHCJS hcs then [anyrel "ghcjs"] else []) ++
@@ -150,7 +149,7 @@ debianBuildDepsIndep pkgDesc =
        bDeps <- access (A.debInfo . D.control . S.buildDependsIndep)
        cDeps <- allBuildDepends noTestSuite pkgDesc >>= mapM docDependencies
        let xs = nub $ if doc
-                      then (if member GHC hcs then [anyrel "ghc-doc"] else []) ++
+                      then (if member GHC hcs then [anyrel' (compilerPackageName GHC B.Documentation)] else []) ++
 #if MIN_VERSION_Cabal(1,22,0)
                            (if member GHCJS hcs then [anyrel "ghcjs"] else []) ++
 #endif
@@ -337,18 +336,6 @@ doBundled typ name hc rels =
                    Just (D.LTE lver) | Just lver < pver -> compilerDependency ++ libraryDependency
                    Just (D.EEQ lver) | Just lver < pver -> compilerDependency ++ libraryDependency
                    _ -> libraryDependency ++ compilerDependency
-      compilerPackageName GHC B.Documentation = D.BinPkgName "ghc-doc"
-      compilerPackageName GHC B.Profiling = D.BinPkgName "ghc-prof"
-      compilerPackageName GHC B.Development = D.BinPkgName "ghc"
-      compilerPackageName GHC _ = D.BinPkgName "ghc" -- whatevs
-#if MIN_VERSION_Cabal(1,22,0)
-      compilerPackageName GHCJS B.Documentation = D.BinPkgName "ghcjs"
-      compilerPackageName GHCJS B.Profiling = error "Profiling not supported for GHCJS"
-      compilerPackageName GHCJS B.Development = D.BinPkgName "ghcjs"
-      compilerPackageName GHCJS _ = D.BinPkgName "ghcjs" -- whatevs
-#endif
-      compilerPackageName x _ = error $ "Unsupported compiler flavor: " ++ show x
-
       -- FIXME: we are assuming here that ghc conflicts with all the
       -- library packages it provides but it no longer conflicts with
       -- libghc-cabal-dev.  We can now check these conflicts using the

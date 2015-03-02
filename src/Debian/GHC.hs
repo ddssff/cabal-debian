@@ -9,6 +9,7 @@ module Debian.GHC
     -- , ghcNewestAvailableVersion'
     -- , ghcNewestAvailableVersion
     -- , compilerIdFromDebianVersion
+    , compilerPackageName
     ) where
 
 import Control.DeepSeq (force)
@@ -18,6 +19,7 @@ import Data.Char (isSpace, toLower, toUpper)
 import Data.Function.Memoize (deriveMemoizable, memoize2)
 import Data.Maybe (fromMaybe)
 import Data.Version (showVersion, Version(Version))
+import Debian.Debianize.BinaryDebDescription (PackageType(..))
 import Debian.Relation (BinPkgName(BinPkgName))
 import Debian.Version (DebianVersion, parseDebianVersion)
 import Distribution.Compiler (CompilerFlavor(..), CompilerId(CompilerId))
@@ -60,9 +62,8 @@ newestAvailable' root (BinPkgName name) = do
 
 newestAvailableCompiler :: FilePath -> CompilerFlavor -> DebianVersion
 newestAvailableCompiler root hc =
-    case debName hc of
-      Nothing -> error $ "newestAvailableCompiler - Unsupported CompilerFlavor: " ++ show hc
-      Just pkg -> fromMaybe (error $ "newestAvailableCompiler - No versions of " ++ show hc ++ " available in " ++ show root) (newestAvailable root pkg)
+    fromMaybe (error $ "newestAvailableCompiler - No versions of " ++ show hc ++ " available in " ++ show root)
+              (newestAvailable root (compilerPackageName hc Development))
 
 newestAvailableCompilerId :: FilePath -> CompilerFlavor -> CompilerId
 newestAvailableCompilerId root hc = compilerIdFromDebianVersion hc (newestAvailableCompiler root hc)
@@ -124,8 +125,23 @@ compilerFlavorOption f =
       readHC :: String -> a -> a
       readHC s = maybe (error $ "Invalid CompilerFlavor: " ++ show s) f (readMaybe (map toUpper s))
 
+{-
 debName :: CompilerFlavor -> Maybe BinPkgName
 debName hc =
     case map toLower (show hc) of
       s | any isSpace s -> Nothing
       s -> Just (BinPkgName s)
+-}
+
+compilerPackageName :: CompilerFlavor -> PackageType -> BinPkgName
+compilerPackageName GHC Documentation = BinPkgName "ghc-doc" -- "ghc-7.10.1-htmldocs"
+compilerPackageName GHC Profiling = BinPkgName "ghc-prof" -- "ghc-7.10.1-prof"
+compilerPackageName GHC Development = BinPkgName "ghc" -- "ghc-7.10.1"
+compilerPackageName GHC _ = BinPkgName "ghc" -- "ghc-7.10.1" -- whatevs
+#if MIN_VERSION_Cabal(1,22,0)
+compilerPackageName GHCJS Documentation = BinPkgName "ghcjs"
+compilerPackageName GHCJS Profiling = error "Profiling not supported for GHCJS"
+compilerPackageName GHCJS Development = BinPkgName "ghcjs"
+compilerPackageName GHCJS _ = BinPkgName "ghcjs" -- whatevs
+#endif
+compilerPackageName x _ = error $ "Unsupported compiler flavor: " ++ show x

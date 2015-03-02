@@ -274,9 +274,13 @@ Executable cabal-debian
  Main-is: CabalDebian.hs
  ghc-options: -threaded -Wall -O2
  Build-Depends: base, cabal-debian, Cabal >= 1.9, lens, mtl, pretty
+ if !flag(local-debian)
+   Build-Depends: debian >= 3.87
 
 Executable cabal-debian-tests
  Hs-Source-Dirs: .
  Main-is: Tests.hs
  ghc-options: -threaded -Wall -O2
  Build-Depends: base, cabal-debian, Cabal >= 1.9, containers, filepath, hsemail, HUnit, lens, prettyclass, process, text
+ if !flag(local-debian)
+   Build-Depends: debian >= 3.87

@@ -21,7 +21,7 @@ import OldLens (access)
 
 import Control.Category ((.))
 import Control.Lens.TH (makeLenses)
-import Control.Monad (unless)
+import Control.Monad (unless, when)
 import Control.Monad.State (execStateT)
 import Control.Monad.Trans (liftIO)
 import Data.Generics (Data, Typeable)
@@ -30,7 +30,7 @@ import Data.Map as Map (Map)
 import Data.Monoid (Monoid(..))
 import Data.Text as Text (null, pack, strip)
 import Debian.Debianize.BasicInfo (Flags)
-import Debian.Debianize.DebInfo as D (control, copyright, DebInfo, makeDebInfo, noTestSuite, rulesSettings)
+import Debian.Debianize.DebInfo as D (control, copyright, DebInfo, makeDebInfo, noTestSuite, rulesSettings, official)
 import Debian.Debianize.BinaryDebDescription (Canonical(canonical))
 import Debian.Debianize.CopyrightDescription (defaultCopyrightDescription)
 import Debian.Debianize.InputCabal (inputCabalization)
@@ -97,10 +97,10 @@ newCabalInfo flags' = do
                                               x | Text.null x -> Nothing
                                               x -> Just x
         noTests <- access (debInfo . noTestSuite)
+        official' <- access (debInfo . official)
         unless (List.null (Cabal.testSuites pkgDesc) || noTests)
-               (do (debInfo . rulesSettings) %= (++ ["DEB_ENABLE_TESTS = yes", "DEB_BUILD_OPTIONS += nocheck"])
-                   -- ...
-               ))
+               (do (debInfo . rulesSettings) %= (++ ["DEB_ENABLE_TESTS = yes"])
+                   when official' ((debInfo . rulesSettings) %= (++ ["DEB_BUILD_OPTIONS += nocheck"]))))
     (makeCabalInfo flags' pkgDesc)
 
 makeCabalInfo :: Flags -> PackageDescription -> CabalInfo

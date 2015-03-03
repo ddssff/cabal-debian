@@ -1,3 +1,11 @@
+haskell-cabal-debian (4.24.3) unstable; urgency=low
+
+  * Always include the test suite build dependencies in debian/control,
+    even if the testEnabled flag is set to False (at the moment it seems
+    as if it always is.)
+
+ -- David Fox <dsf@seereason.com>  Mon, 02 Mar 2015 17:33:52 -0800
+
 haskell-cabal-debian (4.24.2) unstable; urgency=low
 
   * Distinguish between the place we find the data files (dataTop) and the

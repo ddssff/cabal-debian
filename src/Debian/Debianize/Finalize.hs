@@ -335,7 +335,7 @@ officialSettings =
     do pkgDesc <- access A.packageDescription
        let PackageName cabal = pkgName (Cabal.package pkgDesc)
 
-       (A.debInfo . D.control . S.standardsVersion) ~?= Just (parseStandardsVersion "3.9.5")
+       (A.debInfo . D.control . S.standardsVersion) ~?= Just (parseStandardsVersion "3.9.6")
        (A.debInfo . D.control . S.homepage) ~?= Just ("http://hackage.haskell.org/package/" <> pack cabal)
        (A.debInfo . D.omitProfVersionDeps) ~= True
        SrcPkgName src <- access (A.debInfo . D.sourcePackageName) >>= maybe (error "officialSettings: no sourcePackageName") return

@@ -39,7 +39,7 @@ import Debian.Orphans ()
 import Debian.Policy (License(..), readLicense, fromCabalLicense)
 import Debian.Pretty (prettyText, ppText)
 import qualified Distribution.License as Cabal (License(UnknownLicense))
-import qualified Distribution.Package as Cabal (pkgName, unPackageName)
+import qualified Distribution.Package as Cabal
 #if MIN_VERSION_Cabal(1,20,0)
 import qualified Distribution.PackageDescription as Cabal (PackageDescription(licenseFiles, copyright, license, package, maintainer))
 #else
@@ -48,6 +48,8 @@ import qualified Distribution.PackageDescription as Cabal (PackageDescription(li
 import Network.URI (URI, parseURI)
 import Prelude hiding (init, init, log, log, unlines, readFile)
 import Text.PrettyPrint.HughesPJClass (Pretty(pPrint), text)
+
+unPackageName (Cabal.PackageName x) = x
 
 -- | Description of the machine readable debian/copyright file.  A
 -- special case is used to represeent the old style free format file -
@@ -217,7 +219,7 @@ defaultCopyrightDescription pkgDesc = do
   let (debianCopyrightPath, otherLicensePaths) = partition (== "debian/copyright") [Cabal.licenseFile pkgDesc]
 #endif
       license = fromCabalLicense $ Cabal.license pkgDesc
-      pkgname = Cabal.unPackageName . Cabal.pkgName . Cabal.package $ pkgDesc
+      pkgname = unPackageName . Cabal.pkgName . Cabal.package $ pkgDesc
       maintainer = Cabal.maintainer $ pkgDesc
   -- This is an @Nothing@ unless debian/copyright is (for some
   -- reason) mentioned in the cabal file.

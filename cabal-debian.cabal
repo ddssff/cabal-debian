@@ -1,5 +1,5 @@
 Name:           cabal-debian
-Version:        4.24.4
+Version:        4.24.4.1
 Copyright:      Copyright (c) 2007-2014, David Fox, Jeremy Shaw
 License:        BSD3
 License-File:   LICENSE
@@ -154,7 +154,7 @@ Library
   GHC-Options: -Wall -O2
   Build-Depends:
     base < 5,
-    Cabal >= 1.9,
+    Cabal >= 1.18,
     containers,
     data-default,
     deepseq,
@@ -273,7 +273,7 @@ Executable cabal-debian
  Hs-Source-Dirs: .
  Main-is: CabalDebian.hs
  ghc-options: -threaded -Wall -O2
- Build-Depends: base, cabal-debian, Cabal >= 1.9, lens, mtl, pretty
+ Build-Depends: base, cabal-debian, Cabal >= 1.18, lens, mtl, pretty
  if !flag(local-debian)
    Build-Depends: debian >= 3.87
 
@@ -281,6 +281,6 @@ Executable cabal-debian-tests
  Hs-Source-Dirs: .
  Main-is: Tests.hs
  ghc-options: -threaded -Wall -O2
- Build-Depends: base, cabal-debian, Cabal >= 1.9, containers, filepath, hsemail, HUnit, lens, prettyclass, process, text
+ Build-Depends: base, cabal-debian, Cabal >= 1.18, containers, filepath, hsemail, HUnit, lens, prettyclass, process, text
  if !flag(local-debian)
    Build-Depends: debian >= 3.87

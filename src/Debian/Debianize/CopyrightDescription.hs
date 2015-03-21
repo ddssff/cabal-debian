@@ -39,10 +39,11 @@ import Debian.Orphans ()
 import Debian.Policy (License(..), readLicense, fromCabalLicense)
 import Debian.Pretty (prettyText, ppText)
 import qualified Distribution.License as Cabal (License(UnknownLicense))
+import qualified Distribution.Package as Cabal (pkgName, unPackageName)
 #if MIN_VERSION_Cabal(1,20,0)
-import qualified Distribution.PackageDescription as Cabal (PackageDescription(licenseFiles, copyright, license))
+import qualified Distribution.PackageDescription as Cabal (PackageDescription(licenseFiles, copyright, license, package, maintainer))
 #else
-import qualified Distribution.PackageDescription as Cabal (PackageDescription(licenseFile, copyright, license))
+import qualified Distribution.PackageDescription as Cabal (PackageDescription(licenseFile, copyright, license, package, maintainer))
 #endif
 import Network.URI (URI, parseURI)
 import Prelude hiding (init, init, log, log, unlines, readFile)
@@ -216,6 +217,8 @@ defaultCopyrightDescription pkgDesc = do
   let (debianCopyrightPath, otherLicensePaths) = partition (== "debian/copyright") [Cabal.licenseFile pkgDesc]
 #endif
       license = fromCabalLicense $ Cabal.license pkgDesc
+      pkgname = Cabal.unPackageName . Cabal.pkgName . Cabal.package $ pkgDesc
+      maintainer = Cabal.maintainer $ pkgDesc
   -- This is an @Nothing@ unless debian/copyright is (for some
   -- reason) mentioned in the cabal file.
   debianCopyrightText <- mapM readFileMaybe debianCopyrightPath >>= return . listToMaybe . catMaybes
@@ -230,6 +233,9 @@ defaultCopyrightDescription pkgDesc = do
                   [ sourceDefaultFilesDescription copyrt license,
                     debianDefaultFilesDescription license ] ++
                   defaultLicenseDescriptions license licenseCommentPairs
+            , _upstreamName = Just . pack $ pkgname
+            , _upstreamSource = Just . pack $ "https://hackage.haskell.org/package/" ++ pkgname
+            , _upstreamContact = nothingIf Text.null (pack maintainer)
             }
 
 {-

@@ -170,6 +170,27 @@ toParagraph ld@LicenseDescription {} =
       [ Field ("License", " " <> prettyText (_license ld)) ] ++
       maybe [] (\ t -> [Field ("Comment", " " <> t)]) (_comment ld)
 
+
+sourceDefaultFilesDescription :: Maybe Text -> License -> FilesOrLicenseDescription
+sourceDefaultFilesDescription copyrt license =
+  FilesDescription {
+    _filesPattern = "*"
+  , _filesCopyright = fromMaybe "(No copyright field in cabal file)" copyrt
+  , _filesLicense = license
+  , _filesComment = mempty
+  }
+
+
+
+debianDefaultFilesDescription :: License -> FilesOrLicenseDescription
+debianDefaultFilesDescription license =
+  FilesDescription {
+    _filesPattern = "*/debian"
+  , _filesCopyright = "held by the contributors mentioned in debian/changelog"
+  , _filesLicense = license
+  , _filesComment = mempty
+  }
+
 -- | Infer a 'CopyrightDescription' from a Cabal package description.
 -- This will try to read any copyright files listed in the cabal
 -- configuration.  Inputs include the license field from the cabal
@@ -194,16 +215,8 @@ defaultCopyrightDescription pkgDesc = do
         -- All we have is the name of the license
         let copyrt = fmap dots $ nothingIf (Text.null . strip) (pack (Cabal.copyright pkgDesc)) in
         def { _filesAndLicenses =
-                  [ FilesDescription
-                    { _filesPattern = "*"
-                    , _filesCopyright = fromMaybe (pack "(No copyright field in cabal file)") copyrt
-                    , _filesLicense = license
-                    , _filesComment = mempty }
-                  , FilesDescription
-                    { _filesPattern = "*/debian"
-                    , _filesCopyright = "held by the contributors mentioned in debian/changelog"
-                    , _filesLicense = license
-                    , _filesComment = mempty } ] ++
+                  [ sourceDefaultFilesDescription copyrt license,
+                    debianDefaultFilesDescription license ] ++
                   case licenseCommentPairs of
                     [] -> []
                     [(_, comment)] ->

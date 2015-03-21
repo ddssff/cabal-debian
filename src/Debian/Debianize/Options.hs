@@ -184,7 +184,9 @@ options =
                       , "run by haskell-devscripts.  The build subdirectory is added to match the"
                       , "behavior of the --builddir option in the Setup script."]),
       Option "" ["no-test-suite"] (NoArg ((A.debInfo . D.noTestSuite) ~= True))
-             "Don't build or run the test suite.",
+             "Don't build the test suite.",
+      Option "" ["no-test-suite-run"] (NoArg ((A.debInfo . D.noTestSuiteRun) ~= True))
+             "Don't run the test suite during the build.",
       Option "" ["allow-debian-self-build-deps"] (NoArg ((A.debInfo . D.allowDebianSelfBuildDeps) ~= True))
              (unlines [ "Set this to allow self dependencies in the debian package build dependencies."
                       , "This may occasionally be necessary for a package that relies on an older"

@@ -1,3 +1,13 @@
+haskell-cabal-debian (4.24.4) unstable; urgency=low
+
+  * Patch from Dmitry Bogatov for filling in debian/copyright fields
+  * Patch from Dmitry Bogatov for debhelper and haskell-devscripts build deps
+  * Patch from Dmitry Bogatov for default changelog message
+  * Add a --no-run-tests flag to control the nocheck option
+  * Compatibility with different GHC versions
+
+ -- David Fox <dsf@seereason.com>  Sat, 21 Mar 2015 10:14:48 -0700
+
 haskell-cabal-debian (4.24.3) unstable; urgency=low
 
   * Always include the test suite build dependencies in debian/control,

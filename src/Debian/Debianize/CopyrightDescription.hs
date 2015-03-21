@@ -1,5 +1,5 @@
 -- | <https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/>
-{-# LANGUAGE CPP, DeriveDataTypeable, FlexibleInstances, OverloadedStrings, ScopedTypeVariables, TemplateHaskell, TupleSections #-}
+{-# LANGUAGE CPP, DeriveDataTypeable, FlexibleInstances, OverloadedStrings, ScopedTypeVariables, TemplateHaskell, TupleSections, LambdaCase #-}
 module Debian.Debianize.CopyrightDescription
     ( CopyrightDescription(..)
     , FilesOrLicenseDescription(..)
@@ -191,6 +191,18 @@ debianDefaultFilesDescription license =
   , _filesComment = mempty
   }
 
+defaultLicenseDescriptions :: License -> [(FilePath, Maybe Text)]
+                              -> [FilesOrLicenseDescription]
+defaultLicenseDescriptions license = \case
+  []             -> []
+  [(_, comment)] -> [LicenseDescription license comment]
+  pairs          -> map mkLicenseDescription pairs where
+    mkLicenseDescription (path, comment) =
+      LicenseDescription {
+          _license = fromCabalLicense (Cabal.UnknownLicense path)
+        , _comment = comment
+        }
+
 -- | Infer a 'CopyrightDescription' from a Cabal package description.
 -- This will try to read any copyright files listed in the cabal
 -- configuration.  Inputs include the license field from the cabal
@@ -217,15 +229,9 @@ defaultCopyrightDescription pkgDesc = do
         def { _filesAndLicenses =
                   [ sourceDefaultFilesDescription copyrt license,
                     debianDefaultFilesDescription license ] ++
-                  case licenseCommentPairs of
-                    [] -> []
-                    [(_, comment)] ->
-                        [ LicenseDescription
-                          { _license = license
-                          , _comment = comment } ]
-                    _ -> map (\ (path, comment) -> LicenseDescription
-                                                   { _license = fromCabalLicense (Cabal.UnknownLicense path)
-                                                   , _comment = comment }) licenseCommentPairs }
+                  defaultLicenseDescriptions license licenseCommentPairs
+            }
+
 {-
   -- We don't really have a way to associate licenses with
   -- file patterns, so we will just cover some simple cases,

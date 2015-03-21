@@ -1,4 +1,4 @@
-haskell-cabal-debian (4.24.4) unstable; urgency=low
+haskell-cabal-debian (4.24.5) unstable; urgency=low
 
   * Patch from Dmitry Bogatov for filling in debian/copyright fields
   * Patch from Dmitry Bogatov for debhelper and haskell-devscripts build deps

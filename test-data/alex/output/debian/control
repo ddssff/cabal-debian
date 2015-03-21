@@ -2,8 +2,8 @@ Source: haskell-alex
 Priority: extra
 Section: haskell
 Maintainer: Simon Marlow <marlowsd@gmail.com>
-Build-Depends: debhelper (>= 7.0),
-               haskell-devscripts (>= 0.8),
+Build-Depends: debhelper (>= 9),
+               haskell-devscripts (>= 0.9),
                cdbs,
                ghc,
                ghc-prof,
@@ -12,7 +12,7 @@ Build-Depends: debhelper (>= 7.0),
                libghc-quickcheck2-prof (>= 2),
 Build-Depends-Indep: ghc-doc
                      , libghc-quickcheck2-doc (>= 2) | libghc-quickcheck1-doc (<< 2)
-Standards-Version: 3.9.3
+Standards-Version: 3.9.6
 Homepage: http://www.haskell.org/alex/
 X-Description: Alex is a tool for generating lexical analysers in Haskell
 

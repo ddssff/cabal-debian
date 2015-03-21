@@ -2,8 +2,8 @@ Source: haskell-artvaluereport2
 Priority: extra
 Section: haskell
 Maintainer: Clifford Beshers <beshers@seereason.com>
-Build-Depends: debhelper (>= 7.0)
-               , haskell-devscripts (>= 0.8)
+Build-Depends: debhelper (>= 9)
+               , haskell-devscripts (>= 0.9)
                , cdbs
                , ghc
                , ghc-prof
@@ -194,7 +194,7 @@ Build-Depends-Indep: ghc-doc
                      , libghc-web-routes-happstack-doc
                      , libghc-web-routes-hsp-doc
                      , libghc-web-routes-th-doc
-Standards-Version: 3.9.1
+Standards-Version: 3.9.6
 Homepage: http://appraisalreportonline.com
 X-Description: Haskell modules for fine art appraisal applications
  Haskell modules for fine art appraisal applications

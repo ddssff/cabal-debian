@@ -147,8 +147,8 @@ test1 label =
                 (S.maintainer . D.control . debInfo) ~= Just (NameAddr (Just "David Fox") "dsf@seereason.com")
                 (S.standardsVersion . D.control . debInfo) ~= Just (StandardsVersion 3 9 3 (Just 1)) -- This will change as new versions of debian-policy are released
                 (S.buildDepends . D.control . debInfo) %=
-                                  (++ [[Rel (BinPkgName "debhelper") (Just (GRE (parseDebianVersion ("7.0" :: String)))) Nothing],
-                                       [Rel (BinPkgName "haskell-devscripts") (Just (GRE (parseDebianVersion ("0.8" :: String)))) Nothing],
+                                  (++ [[Rel (BinPkgName "debhelper") (Just (GRE (parseDebianVersion ("9" :: String)))) Nothing],
+                                       [Rel (BinPkgName "haskell-devscripts") (Just (GRE (parseDebianVersion ("0.9" :: String)))) Nothing],
                                        [Rel (BinPkgName "cdbs") Nothing Nothing],
                                        [Rel (BinPkgName "ghc") Nothing Nothing],
                                        [Rel (BinPkgName "ghc-prof") Nothing Nothing]])
@@ -283,7 +283,7 @@ test3 label =
                                                     "\trm -f $(manpages)",
                                                     "",
                                                     ""])
-                (debInfo . D.compat) ~= Just 7
+                (debInfo . D.compat) ~= Just 9
                 (debInfo . D.copyright) %= (Just . id . fromMaybe (readCopyrightDescription "This package was debianized by John Goerzen <jgoerzen@complete.org> on\nWed,  6 Oct 2004 09:46:14 -0500.\n\nCopyright information removed from this test data.\n"))
                 (debInfo . D.control . S.source) ~= Just (SrcPkgName {unSrcPkgName = "haskell-devscripts"})
                 (debInfo . D.control . S.maintainer) ~= Just (NameAddr {nameAddr_name = Just "Debian Haskell Group", nameAddr_addr = "pkg-haskell-maintainers@lists.alioth.debian.org"})
@@ -409,7 +409,7 @@ test4 label =
              (A.debInfo . D.missingDependencies) += (BinPkgName "libghc-clckwrks-theme-clckwrks-doc")
              (A.debInfo . D.sourceFormat) ~= Just Native3
              (A.debInfo . D.control . S.homepage) ~= Just "http://www.clckwrks.com/"
-             newDebianization' (Just 7) (Just (StandardsVersion 3 9 4 Nothing))
+             newDebianization' (Just 9) (Just (StandardsVersion 3 9 6 Nothing))
 {-
       customize log = modifyM (lift . customize' log)
       customize' :: Maybe ChangeLog -> CabalInfo -> IO CabalInfo
@@ -608,7 +608,7 @@ test8 label =
              (debInfo . D.control . S.homepage) ~= Just "http://artvaluereportonline.com"
              (debInfo . D.sourceFormat) ~= Just Native3
              (debInfo . D.changelog) ~= Just log
-             newDebianization' (Just 7) (Just (StandardsVersion 3 9 3 Nothing))
+             newDebianization' (Just 9) (Just (StandardsVersion 3 9 6 Nothing))
 
 test9 :: String -> Test
 test9 label =
@@ -622,7 +622,7 @@ test9 label =
                  assertEqual label [] diff)
     where
       customize =
-          do newDebianization' (Just 7) (Just (StandardsVersion 3 9 3 Nothing))
+          do newDebianization' (Just 9) (Just (StandardsVersion 3 9 6 Nothing))
              mapM_ (\ name -> (debInfo . D.atomSet) %= (Set.insert $ D.InstallData (BinPkgName "alex") name name))
                    [ "AlexTemplate"
                    , "AlexTemplate-debug"
@@ -662,7 +662,7 @@ test10 label =
       customize =
           do (A.debInfo . D.sourceFormat) ~= Just Native3
              (A.debInfo . D.sourcePackageName) ~= Just (SrcPkgName "seereason-darcs-backups")
-             (A.debInfo . D.compat) ~= Just 5
+             (A.debInfo . D.compat) ~= Just 9
              (A.debInfo . D.control . S.standardsVersion) ~= Just (StandardsVersion 3 8 1 Nothing)
              (A.debInfo . D.control . S.maintainer) ~= either (const Nothing) Just (parseMaintainer "David Fox <dsf@seereason.com>")
              (A.debInfo . D.binaryDebDescription (BinPkgName "seereason-darcs-backups") . B.relations . B.depends) %= (++ [[Rel (BinPkgName "anacron") Nothing Nothing]])

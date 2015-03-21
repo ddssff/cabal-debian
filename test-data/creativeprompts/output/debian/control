@@ -2,8 +2,8 @@ Source: haskell-creativeprompts
 Maintainer: Jeremy Shaw <jeremy@seereason.com>
 Priority: extra
 Section: haskell
-Build-Depends: debhelper (>= 7.0)
-	       , haskell-devscripts (>= 0.8)
+Build-Depends: debhelper (>= 9)
+	       , haskell-devscripts (>= 0.9)
 	       , cdbs
                , ghc
                , ghc-prof

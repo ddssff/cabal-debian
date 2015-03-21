@@ -1,4 +1,7 @@
 Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: cabal-debian
+Upstream-Contact: David Fox <dsf@seereason.com>
+Source: https://hackage.haskell.org/package/cabal-debian
 
 Files: *
 Copyright: Copyright (c) 2007-2014, David Fox, Jeremy Shaw

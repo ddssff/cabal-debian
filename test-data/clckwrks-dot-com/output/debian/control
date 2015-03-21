@@ -2,8 +2,8 @@ Source: haskell-clckwrks-dot-com
 Maintainer: Jeremy Shaw <jeremy@n-heptane.com>
 Priority: extra
 Section: haskell
-Build-Depends: debhelper (>= 7.0)
-               , haskell-devscripts (>= 0.8)
+Build-Depends: debhelper (>= 9)
+               , haskell-devscripts (>= 0.9)
                , cdbs
                , ghc
                , ghc-prof
@@ -52,7 +52,7 @@ Build-Depends-Indep: ghc-doc
                      , libghc-mtl-doc
                      , libghc-text-doc
                      , libghc-web-plugins-doc
-Standards-Version: 3.9.4
+Standards-Version: 3.9.6
 Homepage: http://www.clckwrks.com/
 X-Description: clckwrks.com
 

@@ -18,8 +18,10 @@ import Data.Maybe (fromMaybe)
 import Data.Monoid (mempty)
 import Data.Set as Set (singleton, insert)
 import Data.Text as Text (Text, pack)
+import Data.Version (Version(Version))
 import Debian.Changes (ChangeLog(ChangeLog))
 import Debian.Debianize
+import Distribution.Package (PackageName(PackageName))
 {-
 import Debian.Debianize (inputChangeLog, inputDebianization)
 import Debian.Debianize.Details (debianDefaultAtoms)
@@ -66,7 +68,9 @@ main =
     where
       customize :: Monad m => CabalT m ()
       customize =
-          do (debInfo . sourceFormat) ~= Just Native3
+          do mapCabal (PackageName "Cabal") (DebBase "cabal-122")
+             splitCabal (PackageName "Cabal") (DebBase "cabal") (Version [1,22] [])
+             (debInfo . sourceFormat) ~= Just Native3
              (debInfo . control . standardsVersion) ~= Just (StandardsVersion 3 9 3 Nothing)
              (debInfo . compat) ~= Just 9
              (debInfo . utilsPackageNameBase) ~= Just "cabal-debian"

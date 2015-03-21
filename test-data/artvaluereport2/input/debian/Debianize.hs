@@ -15,7 +15,7 @@ import Debian.Debianize -- (debianize, doBackups, doExecutable, doServer, doWebs
 -- import Debian.Debianize.SourceDebDescription (SourceDebDescription)
 -- import Debian.Debianize.Output (compareDebianization)
 -- import Debian.Debianize.Prelude ((~=), (%=), (+=), (++=), (+++=), (~?=), withCurrentDirectory)
-import Debian.Pretty (ppDisplay)
+import Debian.Pretty (ppShow)
 import Debian.Policy (databaseDirectory, PackageArchitectures(All), StandardsVersion(StandardsVersion))
 import Debian.Relation (BinPkgName(BinPkgName), Relation(Rel), SrcPkgName(..), VersionReq(SLT))
 import Debian.Version (parseDebianVersion)
@@ -64,9 +64,9 @@ main =
              (debInfo . binaryDebDescription (BinPkgName "artvaluereport2-development") . architecture) ~= Just All
              -- utilsPackageNames [BinPkgName "artvaluereport2-server"]
              (debInfo . sourcePackageName) ~= Just (SrcPkgName "haskell-artvaluereport2")
-             (debInfo . control . standardsVersion) ~= Just (StandardsVersion 3 9 1 Nothing)
+             (debInfo . control . standardsVersion) ~= Just (StandardsVersion 3 9 6 Nothing)
              (debInfo . control . homepage) ~= Just "http://appraisalreportonline.com"
-             (debInfo . compat) ~= Just 7
+             (debInfo . compat) ~= Just 9
 
       addServerDeps :: CabalT IO ()
       addServerDeps = mapM_ addDeps (map BinPkgName ["artvaluereport2-development", "artvaluereport2-staging", "artvaluereport2-production"])
@@ -101,7 +101,7 @@ main =
                                        BinPkgName "artvaluereport2-production" -> "http://" ++ hostname' ++ "/"
                                        _ -> "http://seereason.com:" ++ show (portNum deb) ++ "/"
                      , "--top", databaseDirectory deb
-                     , "--logs", "/var/log/" ++ ppDisplay deb
+                     , "--logs", "/var/log/" ++ ppShow deb
                      , "--log-mode", case deb of
                                        BinPkgName "artvaluereport2-production" -> "Production"
                                        _ -> "Development"
@@ -116,7 +116,7 @@ main =
                      , "--json2-path",json2Path ] -})
                  , installFile =
                      InstallFile { execName   = "artvaluereport2-server"
-                                 , destName   = ppDisplay deb
+                                 , destName   = ppShow deb
                                  , sourceDir  = Nothing
                                  , destDir    = Nothing }
                  }

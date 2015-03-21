@@ -15,7 +15,7 @@ module Debian.GHC
 import Control.DeepSeq (force)
 import Control.Exception (SomeException, try)
 import Control.Monad (when)
-import Data.Char (isSpace, toLower, toUpper)
+import Data.Char ({-isSpace, toLower,-} toUpper)
 import Data.Function.Memoize (deriveMemoizable, memoize2)
 import Data.Maybe (fromMaybe)
 import Data.Version (showVersion, Version(Version))

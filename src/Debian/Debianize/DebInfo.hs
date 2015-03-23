@@ -67,8 +67,8 @@ module Debian.Debianize.DebInfo
     , backups
     , extraDevDeps
     , official
-    , noTestSuite
-    , noTestSuiteRun
+    , enableTests
+    , runTests
     , allowDebianSelfBuildDeps
 
     , binaryDebDescription
@@ -252,9 +252,9 @@ data DebInfo
       -- reason to use this is because we don't yet know the name of the dev library package.
       , _official :: Bool
       -- ^ Whether this packaging is created by the Debian Haskell Group
-      , _noTestSuite :: Bool
-      -- ^ Force omission of the test suites from the debianization
-      , _noTestSuiteRun :: Bool
+      , _enableTests :: Bool
+      -- ^ Include the test suites in the debianization if they exists
+      , _runTests :: Bool
       -- ^ Prevent the test suite from being run during the package build
       , _allowDebianSelfBuildDeps :: Bool
       -- ^ Normally self dependencies are filtered out of the debian
@@ -368,8 +368,8 @@ makeDebInfo fs =
     , _backups = mempty
     , _extraDevDeps = mempty
     , _official = False
-    , _noTestSuite = False
-    , _noTestSuiteRun = False
+    , _enableTests = True
+    , _runTests = True
     , _allowDebianSelfBuildDeps = False
     }
 

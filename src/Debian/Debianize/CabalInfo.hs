@@ -30,7 +30,7 @@ import Data.Map as Map (Map)
 import Data.Monoid (Monoid(..))
 import Data.Text as Text (null, pack, strip)
 import Debian.Debianize.BasicInfo (Flags)
-import Debian.Debianize.DebInfo as D (control, copyright, DebInfo, makeDebInfo, noTestSuite, noTestSuiteRun, rulesSettings)
+import Debian.Debianize.DebInfo as D (control, copyright, DebInfo, makeDebInfo, enableTests, runTests, rulesSettings)
 import Debian.Debianize.BinaryDebDescription (Canonical(canonical))
 import Debian.Debianize.CopyrightDescription (defaultCopyrightDescription)
 import Debian.Debianize.InputCabal (inputCabalization)
@@ -95,13 +95,7 @@ newCabalInfo flags' = do
     (do (debInfo . copyright) ~= Just copyrt
         (debInfo . control . S.homepage) ~= case strip (pack (Cabal.homepage pkgDesc)) of
                                               x | Text.null x -> Nothing
-                                              x -> Just x
-        noTests <- access (debInfo . noTestSuite)
-        unless (List.null (Cabal.testSuites pkgDesc) || noTests)
-               (do (debInfo . rulesSettings) %= (++ ["DEB_ENABLE_TESTS = yes"])
-                   noRun <- access (debInfo . noTestSuiteRun)
-                   when noRun $ (debInfo . rulesSettings) %= (++ ["DEB_BUILD_OPTIONS += nocheck"])
-               ))
+                                              x -> Just x)
     (makeCabalInfo flags' pkgDesc)
 
 makeCabalInfo :: Flags -> PackageDescription -> CabalInfo

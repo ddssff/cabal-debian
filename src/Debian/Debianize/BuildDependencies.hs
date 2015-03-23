@@ -74,13 +74,14 @@ unboxDependency (ExtraLibs _) = Nothing -- Dependency (PackageName d) anyVersion
 
 -- |Debian packages don't have per binary package build dependencies,
 -- so we just gather them all up here.
-allBuildDepends :: Monad m => Bool -> PackageDescription -> CabalT m [Dependency_]
-allBuildDepends noTestSuite pkgDesc =
+allBuildDepends :: Monad m => PackageDescription -> CabalT m [Dependency_]
+allBuildDepends pkgDesc =
+    access (A.debInfo . D.enableTests) >>= \ testsEnabled ->
     allBuildDepends'
       (mergeCabalDependencies $
        Cabal.buildDepends pkgDesc ++
             concatMap (Cabal.targetBuildDepends . Cabal.buildInfo) (Cabal.executables pkgDesc) ++
-            (if noTestSuite then [] else concatMap (Cabal.targetBuildDepends . Cabal.testBuildInfo) $ {-filter Cabal.testEnabled-} (Cabal.testSuites pkgDesc)))
+            (if testsEnabled then concatMap (Cabal.targetBuildDepends . Cabal.testBuildInfo) $ {-filter Cabal.testEnabled-} (Cabal.testSuites pkgDesc) else []))
       (mergeCabalDependencies $ concatMap buildTools $ allBuildInfo pkgDesc)
       (mergeCabalDependencies $ concatMap pkgconfigDepends $ allBuildInfo pkgDesc)
       (concatMap extraLibs . allBuildInfo $ pkgDesc) >>=
@@ -115,8 +116,7 @@ debianBuildDeps pkgDesc =
        let hcTypePairs =
                fold union empty $
                   Set.map (\ hc' -> Set.map (hc',) $ hcPackageTypes hc') hcs
-       noTestSuite <- access (A.debInfo . D.noTestSuite)
-       cDeps <- allBuildDepends noTestSuite pkgDesc >>= mapM (buildDependencies hcTypePairs) >>= return . {-nub .-} concat
+       cDeps <- allBuildDepends pkgDesc >>= mapM (buildDependencies hcTypePairs) >>= return . {-nub .-} concat
        bDeps <- access (A.debInfo . D.control . S.buildDepends)
        prof <- not <$> access (A.debInfo . D.noProfilingLibrary)
        official <- access (A.debInfo . D.official)
@@ -147,9 +147,8 @@ debianBuildDepsIndep pkgDesc =
     do hc <- access (A.debInfo . D.flags . compilerFlavor)
        let hcs = singleton hc -- vestigial
        doc <- not <$> access (A.debInfo . D.noDocumentationLibrary)
-       noTestSuite <- access (A.debInfo . D.noTestSuite)
        bDeps <- access (A.debInfo . D.control . S.buildDependsIndep)
-       cDeps <- allBuildDepends noTestSuite pkgDesc >>= mapM docDependencies
+       cDeps <- allBuildDepends pkgDesc >>= mapM docDependencies
        let xs = nub $ if doc
                       then (if member GHC hcs then [anyrel' (compilerPackageName GHC B.Documentation)] else []) ++
 #if MIN_VERSION_Cabal(1,22,0)

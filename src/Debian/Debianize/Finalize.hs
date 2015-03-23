@@ -23,20 +23,20 @@ import Data.Monoid ((<>), mempty)
 import Data.Set as Set (difference, filter, fold, fromList, insert, map, null, Set, singleton, toList, union, unions)
 import Data.Set.Extra as Set (mapM_)
 import Data.Text as Text (intercalate, pack, Text, unlines, unpack)
-import Data.Version (showVersion)
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(..))
 import Debian.Debianize.BasicInfo (cabalFlagAssignments, compilerFlavor, verbosity)
+import qualified Debian.Debianize.BinaryDebDescription as B
 import Debian.Debianize.BuildDependencies (debianBuildDeps, debianBuildDepsIndep)
+import qualified Debian.Debianize.CabalInfo as A
 import Debian.Debianize.Changelog (dropFutureEntries)
 import qualified Debian.Debianize.DebInfo as D
 import Debian.Debianize.DebianName (debianName, debianNameBase)
+import Debian.Debianize.DebInfo (rulesSettings)
 import Debian.Debianize.Goodies (backupAtoms, describe, execAtoms, serverAtoms, siteAtoms, watchAtom)
 import Debian.Debianize.InputDebian (dataTop, dataDest, inputChangeLog)
-import Debian.Debianize.Monad as Monad (CabalT, liftCabal)
+import Debian.Debianize.Monad as Monad (CabalT, liftCabal, unlessM)
 import Debian.Debianize.Options (compileCommandlineArgs, compileEnvironmentArgs)
 import Debian.Debianize.Prelude ((%=), (+=), (~=), (~?=))
-import qualified Debian.Debianize.CabalInfo as A
-import qualified Debian.Debianize.BinaryDebDescription as B
 import qualified Debian.Debianize.SourceDebDescription as S
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
 import Debian.Orphans ()
@@ -52,10 +52,8 @@ import Distribution.Compiler (CompilerFlavor(GHC))
 import Distribution.Compiler (CompilerFlavor(GHCJS))
 #endif
 import Distribution.Package (Dependency(..), PackageIdentifier(..), PackageName(PackageName))
-import Distribution.PackageDescription (FlagName(FlagName), PackageDescription)
-import Distribution.PackageDescription as Cabal (allBuildInfo, author, BuildInfo(buildable, extraLibs), Executable(buildInfo, exeName), maintainer)
+import Distribution.PackageDescription as Cabal (allBuildInfo, author, BuildInfo(buildable, extraLibs), Executable(buildInfo, exeName), FlagName(FlagName), maintainer, PackageDescription(testSuites))
 import qualified Distribution.PackageDescription as Cabal (PackageDescription(dataFiles, executables, library, package))
-import Paths_cabal_debian (version)
 import Prelude hiding ((.), init, log, map, unlines, unlines, writeFile)
 import System.Environment (getProgName)
 import System.FilePath ((<.>), (</>), makeRelative, splitFileName, takeDirectory, takeFileName)
@@ -96,10 +94,17 @@ finalizeDebianization'  :: (MonadIO m, Functor m) => String -> Maybe Int -> Caba
 finalizeDebianization' date debhelperCompat =
     do -- In reality, hcs must be a singleton or many things won't work.  But some day...
        hc <- access (A.debInfo . D.flags . compilerFlavor)
+       pkgDesc <- access A.packageDescription
+
+       testsEnabled <- access (A.debInfo . D.enableTests)
+       let testsExist = not $ List.null $ Cabal.testSuites pkgDesc
+       when (testsExist && testsEnabled) $
+            do (A.debInfo . rulesSettings) %= (++ ["DEB_ENABLE_TESTS = yes"])
+               unlessM (access (A.debInfo . D.runTests)) $ (A.debInfo . D.rulesSettings) %= (++ ["DEB_BUILD_OPTIONS += nocheck"])
+
        finalizeSourceName B.HaskellSource
        checkOfficialSettings hc
        addExtraLibDependencies hc
-       pkgDesc <- access A.packageDescription
        (A.debInfo . D.watch) ~?= Just (watchAtom (pkgName $ Cabal.package $ pkgDesc))
        (A.debInfo . D.control . S.section) ~?= Just (MainSection "haskell")
        (A.debInfo . D.control . S.priority) ~?= Just Extra
@@ -280,7 +285,6 @@ finalizeChangelog date =
        -- pkgDesc <- access T.packageDescription >>= return . maybe Nothing (either Nothing Just . parseMaintainer . Cabal.maintainer)
        cmts <- access (A.debInfo . D.comments)
        (A.debInfo . D.changelog) %= fmap (dropFutureEntries ver)
-       prog <- liftIO getProgName
        let msg = "Initial release (Closes: #nnnn)"
        (A.debInfo . D.changelog) %= fixLog src ver cmts debianMaintainer msg
     where

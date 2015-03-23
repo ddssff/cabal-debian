@@ -1,3 +1,11 @@
+haskell-cabal-debian (4.24.6) unstable; urgency=low
+
+  * Use build dependency haskell-devscripts >= 0.8 for unofficial, >= 0.9
+    for official.
+  * Straighten out the test suite options: --no-tests, --no-run-tests
+
+ -- David Fox <dsf@seereason.com>  Mon, 23 Mar 2015 11:31:14 -0700
+
 haskell-cabal-debian (4.24.5) unstable; urgency=low
 
   * Patch from Dmitry Bogatov for filling in debian/copyright fields

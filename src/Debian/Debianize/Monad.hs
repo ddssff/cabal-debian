@@ -19,6 +19,10 @@ module Debian.Debianize.Monad
     , evalDebianT
     , execDebianT
     , liftCabal
+
+    , ifM
+    , whenM
+    , unlessM
     ) where
 
 import OldLens (focus)
@@ -60,3 +64,12 @@ execDebianT = execStateT
 
 liftCabal :: Monad m => StateT DebInfo m a -> StateT CabalInfo m a
 liftCabal = focus debInfo
+
+ifM :: Monad m => m Bool -> m a -> m a -> m a
+ifM m t f = m >>= \ b -> if b then t else f
+
+whenM :: Monad m => m Bool -> m () -> m ()
+whenM m r = m >>= \ b -> if b then r else return ()
+
+unlessM :: Monad m => m Bool -> m () -> m ()
+unlessM m r = m >>= \ b -> if b then return () else r

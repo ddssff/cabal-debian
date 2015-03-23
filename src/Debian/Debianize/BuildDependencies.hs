@@ -119,9 +119,10 @@ debianBuildDeps pkgDesc =
        cDeps <- allBuildDepends noTestSuite pkgDesc >>= mapM (buildDependencies hcTypePairs) >>= return . {-nub .-} concat
        bDeps <- access (A.debInfo . D.control . S.buildDepends)
        prof <- not <$> access (A.debInfo . D.noProfilingLibrary)
+       official <- access (A.debInfo . D.official)
        compat <- access (A.debInfo . D.compat)
        let xs = nub $ [maybe [] (\ n -> [D.Rel (D.BinPkgName "debhelper") (Just (D.GRE (parseDebianVersion (show n)))) Nothing]) compat,
-                       [D.Rel (D.BinPkgName "haskell-devscripts") (Just (D.GRE (parseDebianVersion ("0.9" :: String)))) Nothing],
+                       [D.Rel (D.BinPkgName "haskell-devscripts") (Just $ D.GRE $ parseDebianVersion $ if official then "0.9" else "0.8" :: String) Nothing],
                        anyrel "cdbs"] ++
                       (if member GHC hcs
                        then [anyrel' (compilerPackageName GHC B.Development)] ++ if prof then [anyrel' (compilerPackageName GHC B.Profiling)] else []

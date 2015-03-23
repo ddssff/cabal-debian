@@ -3,7 +3,7 @@ Priority: extra
 Section: haskell
 Maintainer: David Fox <dsf@seereason.com>
 Build-Depends: debhelper (>= 9)
-               , haskell-devscripts (>= 0.9)
+               , haskell-devscripts (>= 0.8)
                , cdbs
                , ghc
                , ghc-prof

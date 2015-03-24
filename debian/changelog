@@ -1,3 +1,9 @@
+haskell-cabal-debian (4.24.7) unstable; urgency=low
+
+  * Remove the Data.Algorithm.Diff modules, they have moved into Diff-0.3.1
+
+ -- David Fox <dsf@seereason.com>  Tue, 24 Mar 2015 16:51:29 -0700
+
 haskell-cabal-debian (4.24.6) unstable; urgency=low
 
   * Use build dependency haskell-devscripts >= 0.8 for unofficial, >= 0.9

@@ -158,7 +158,7 @@ Library
     containers,
     data-default,
     deepseq,
-    Diff,
+    Diff >= 0.3.1,
     directory,
     filepath,
     hsemail,
@@ -180,8 +180,6 @@ Library
     Unixutils,
     utf8-string
   Exposed-Modules:
-    Data.Algorithm.Diff.Context
-    Data.Algorithm.Diff.Pretty
     Debian.GHC
     Debian.Policy
     Distribution.Version.Invert
@@ -281,6 +279,6 @@ Executable cabal-debian-tests
  Hs-Source-Dirs: .
  Main-is: Tests.hs
  ghc-options: -threaded -Wall -O2
- Build-Depends: base, cabal-debian, Cabal >= 1.18, containers, filepath, hsemail, HUnit, lens, prettyclass, process, text
+ Build-Depends: base, cabal-debian, Cabal >= 1.18, containers, Diff >= 0.3.1, filepath, hsemail, HUnit, lens, prettyclass, process, text
  if !flag(local-debian)
    Build-Depends: debian >= 3.87

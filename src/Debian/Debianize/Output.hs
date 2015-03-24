@@ -20,8 +20,7 @@ import Control.Category ((.))
 import Control.Exception as E (throw)
 import Control.Monad.State (get)
 import Control.Monad.Trans (liftIO, MonadIO)
-import Data.Algorithm.Diff.Context (contextDiff)
-import Data.Algorithm.Diff.Pretty (prettyDiff)
+import Data.Algorithm.DiffContext (getContextDiff, prettyContextDiff)
 import Data.Map as Map (elems, toList)
 import Data.Maybe (fromMaybe)
 import Data.Text as Text (split, Text, unpack)
@@ -116,7 +115,7 @@ compareDebianization old new =
       doFile path (Just o) (Just n) =
           if o == n
           then Nothing -- Just (path ++ ": Unchanged\n")
-          else Just (show (prettyDiff (text ("old" </> path)) (text ("new" </> path)) (text . unpack) (contextDiff 2 (split (== '\n') o) (split (== '\n') n))))
+          else Just (show (prettyContextDiff (text ("old" </> path)) (text ("new" </> path)) (text . unpack) (getContextDiff 2 (split (== '\n') o) (split (== '\n') n))))
       doFile _path Nothing Nothing = error "Internal error in zipMaps"
 
 -- | Make sure the new debianization matches the existing

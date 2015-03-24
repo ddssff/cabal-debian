@@ -8,8 +8,7 @@ module Main
 import OldLens (getL, setL)
 
 import Control.Applicative ((<$>))
-import Data.Algorithm.Diff.Context (contextDiff)
-import Data.Algorithm.Diff.Pretty (prettyDiff)
+import Data.Algorithm.DiffContext (getContextDiff, prettyContextDiff)
 import Data.Function (on)
 import Data.List (sortBy)
 import Data.Map as Map (differenceWithKey, intersectionWithKey)
@@ -703,15 +702,15 @@ diffDebianizations old new =
       prettyChange (Deleted p _) = text "Deleted: " <> pPrint p <> text "\n"
       prettyChange (Created p b) =
           text "Created: " <> pPrint p <> text "\n" <>
-          prettyDiff (text ("old" </> p)) (text ("new" </> p)) (text . unpack)
+          prettyContextDiff (text ("old" </> p)) (text ("new" </> p)) (text . unpack)
                      -- We use split here instead of lines so we can
                      -- detect whether the file has a final newline
                      -- character.
-                     (contextDiff 2 mempty (split (== '\n') b))
+                     (getContextDiff 2 mempty (split (== '\n') b))
       prettyChange (Modified p a b) =
           text "Modified: " <> pPrint p <> text "\n" <>
-          prettyDiff (text ("old" </> p)) (text ("new" </> p)) (text . unpack)
-                     (contextDiff 2 (split (== '\n') a) (split (== '\n') b))
+          prettyContextDiff (text ("old" </> p)) (text ("new" </> p)) (text . unpack)
+                     (getContextDiff 2 (split (== '\n') a) (split (== '\n') b))
 
 sortBinaryDebs :: DebianT IO ()
 sortBinaryDebs = (D.control . S.binaryPackages) %= sortBy (compare `on` getL B.package)

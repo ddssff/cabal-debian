@@ -17,31 +17,27 @@ module Debian.Debianize.CabalInfo
     , newCabalInfo
     ) where
 
-import OldLens (access)
-
 import Control.Category ((.))
 import Control.Lens.TH (makeLenses)
-import Control.Monad (unless, when)
 import Control.Monad.State (execStateT)
 import Control.Monad.Trans (liftIO)
 import Data.Generics (Data, Typeable)
-import Data.List as List (null)
 import Data.Map as Map (Map)
 import Data.Monoid (Monoid(..))
 import Data.Text as Text (null, pack, strip)
 import Debian.Debianize.BasicInfo (Flags)
-import Debian.Debianize.DebInfo as D (control, copyright, DebInfo, makeDebInfo, enableTests, runTests, rulesSettings)
+import Debian.Debianize.DebInfo as D (control, copyright, DebInfo, makeDebInfo)
 import Debian.Debianize.BinaryDebDescription (Canonical(canonical))
 import Debian.Debianize.CopyrightDescription (defaultCopyrightDescription)
 import Debian.Debianize.InputCabal (inputCabalization)
-import Debian.Debianize.Prelude ((~=), (%=))
+import Debian.Debianize.Prelude ((~=))
 import Debian.Debianize.SourceDebDescription as S (homepage)
 import Debian.Debianize.VersionSplits (VersionSplits)
 import Debian.Orphans ()
 import Debian.Relation (BinPkgName)
 import Debian.Version (DebianVersion)
 import Distribution.Package (PackageName)
-import Distribution.PackageDescription as Cabal (PackageDescription(homepage, testSuites))
+import Distribution.PackageDescription as Cabal (PackageDescription(homepage))
 import Prelude hiding ((.), init, init, log, log, null)
 
 -- This enormous record is a mistake - instead it should be an Atom

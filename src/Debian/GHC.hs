@@ -10,6 +10,7 @@ module Debian.GHC
     -- , ghcNewestAvailableVersion
     -- , compilerIdFromDebianVersion
     , compilerPackageName
+    , getCompilerInfo
     ) where
 
 import Control.DeepSeq (force)
@@ -18,16 +19,18 @@ import Control.Monad (when)
 import Data.Char ({-isSpace, toLower,-} toUpper)
 import Data.Function.Memoize (deriveMemoizable, memoize2)
 import Data.Maybe (fromMaybe)
-import Data.Version (showVersion, Version(Version))
+import Data.Version (showVersion, Version(Version), parseVersion)
 import Debian.Debianize.BinaryDebDescription (PackageType(..))
 import Debian.Relation (BinPkgName(BinPkgName))
 import Debian.Version (DebianVersion, parseDebianVersion)
-import Distribution.Compiler (CompilerFlavor(..), CompilerId(CompilerId))
+import Distribution.Compiler (CompilerFlavor(..), CompilerId(CompilerId), CompilerInfo(..), unknownCompilerInfo, AbiTag(NoAbiTag))
 import System.Console.GetOpt (ArgDescr(ReqArg), OptDescr(..))
 import System.Directory (doesDirectoryExist)
+import System.Exit (ExitCode(ExitFailure))
 import System.IO.Unsafe (unsafePerformIO)
-import System.Process (readProcess)
-import System.Unix.Chroot (useEnv)
+import System.Process (readProcess, showCommandForUser, readProcessWithExitCode)
+import System.Unix.Chroot (useEnv, fchroot)
+import Text.ParserCombinators.ReadP (readP_to_S)
 import Text.Read (readMaybe)
 
 $(deriveMemoizable ''CompilerFlavor)
@@ -145,3 +148,38 @@ compilerPackageName GHCJS Development = BinPkgName "ghcjs"
 compilerPackageName GHCJS _ = BinPkgName "ghcjs" -- whatevs
 #endif
 compilerPackageName x _ = error $ "Unsupported compiler flavor: " ++ show x
+
+-- | IO based alternative to newestAvailableCompilerId - install the
+-- compiler into the chroot if necessary and ask it for its version
+-- number.  This has the benefit of working for ghcjs, which doesn't
+-- make the base ghc version available in the version number.
+--
+-- Assumes the compiler executable is already installed in the root
+-- environment.
+getCompilerInfo :: FilePath -> CompilerFlavor -> IO CompilerInfo
+getCompilerInfo "/" flavor = do
+{-
+    (code, _, _) <- readProcessWithExitCode "apt-get" ["install", compilerDebName] ""
+    case code of
+      ExitFailure n -> error $ "Failure " ++ show n ++ " installing compiler flavor " ++ show flavor
+      _ -> return ()
+-}
+    compilerId <- runVersionCommand >>= toCompilerId flavor
+    compilerCompat <- case flavor of
+                        GHCJS -> readProcessWithExitCode "ghcjs" ["--numeric-ghc-version"] "" >>= toCompilerId GHC >>= return . Just . (: [])
+                        _ -> return Nothing
+    return $ (unknownCompilerInfo compilerId NoAbiTag) {compilerInfoCompat = compilerCompat}
+    where
+      runVersionCommand :: IO (ExitCode, String, String)
+      runVersionCommand = readProcessWithExitCode versionCommand ["--numeric-version"] ""
+      versionCommand = case flavor of GHC -> "ghc"; GHCJS -> "ghcjs"; _ -> error $ "Flavor " ++ show flavor
+
+      toCompilerId :: CompilerFlavor -> (ExitCode, String, String) -> IO CompilerId
+      toCompilerId _ (ExitFailure n, _, err) =
+          error $ showCommandForUser versionCommand ["--numeric-version"] ++ " -> " ++ show n ++ ", stderr: " ++ show err
+      toCompilerId flavor' (_, out, _) =
+          case filter ((== "\n") . snd) (readP_to_S parseVersion out) of
+            [(v, _)] -> return $ CompilerId flavor' v
+            _ -> error $ "Parse failure for version string: " ++ show out
+
+getCompilerInfo root flavor = fchroot root $ getCompilerInfo "/" flavor

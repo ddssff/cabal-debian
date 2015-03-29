@@ -12,7 +12,11 @@ import Control.Monad (when)
 import Data.Set as Set (Set, toList)
 import Debian.Debianize.BasicInfo (Flags, buildEnv, dependOS, verbosity, compilerFlavor, cabalFlagAssignments)
 import Debian.Debianize.Prelude (intToVerbosity')
+#if MIN_VERSION_Cabal(1,22,0)
+import Debian.GHC (getCompilerInfo)
+#else
 import Debian.GHC (newestAvailableCompilerId)
+#endif
 import Debian.Orphans ()
 #if MIN_VERSION_Cabal(1,22,0)
 import Distribution.Compiler (AbiTag(NoAbiTag), unknownCompilerInfo)
@@ -39,30 +43,26 @@ import System.Process (system)
 inputCabalization :: Flags -> IO PackageDescription
 inputCabalization flags =
     do let root = dependOS $ getL buildEnv flags
-       let cid = newestAvailableCompilerId root (getL compilerFlavor flags)
-       ePkgDesc <- inputCabalization' (intToVerbosity' $ getL verbosity flags) (getL cabalFlagAssignments flags) cid
+       let vb = intToVerbosity' $ getL verbosity flags
+           fs = getL cabalFlagAssignments flags
+       --  Load a GenericPackageDescription from the current directory and
+       -- from that create a finalized PackageDescription for the given
+       -- CompilerId.
+       genPkgDesc <- defaultPackageDesc vb >>= readPackageDescription vb
+#if MIN_VERSION_Cabal(1,22,0)
+       cinfo <- getCompilerInfo root (getL compilerFlavor flags)
+#else
+       let cinfo = newestAvailableCompilerId root (getL compilerFlavor flags)
+#endif
+       let finalized = finalizePackageDescription (toList fs) (const True) (Platform buildArch Cabal.buildOS) cinfo [] genPkgDesc
+       ePkgDesc <- either (return . Left)
+                          (\ (pkgDesc, _) -> do bracket (setFileCreationMask 0o022) setFileCreationMask $ \ _ -> autoreconf vb pkgDesc
+                                                return (Right pkgDesc))
+                          finalized
        either (\ deps -> getCurrentDirectory >>= \ here ->
                          error $ "Missing dependencies in cabal package at " ++ here ++ ": " ++ show deps)
               return
               ePkgDesc
-
--- | Load a GenericPackageDescription from the current directory and
--- from that create a finalized PackageDescription for the given
--- CompilerId.
-inputCabalization' :: Verbosity -> Set (FlagName, Bool) -> CompilerId -> IO (Either [Dependency] PackageDescription)
-inputCabalization' vb flags cid = do
-  genPkgDesc <- defaultPackageDesc vb >>= readPackageDescription vb
-  let cid' =
-#if MIN_VERSION_Cabal(1,22,0)
-             unknownCompilerInfo cid NoAbiTag
-#else
-             cid
-#endif
-  let finalized = finalizePackageDescription (toList flags) (const True) (Platform buildArch Cabal.buildOS) cid' [] genPkgDesc
-  either (return . Left)
-         (\ (pkgDesc, _) -> do bracket (setFileCreationMask 0o022) setFileCreationMask $ \ _ -> autoreconf vb pkgDesc
-                               return (Right pkgDesc))
-         finalized
 
 -- | Run the package's configuration script.
 autoreconf :: Verbosity -> Cabal.PackageDescription -> IO ()

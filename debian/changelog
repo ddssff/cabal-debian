@@ -1,3 +1,11 @@
+haskell-cabal-debian (4.24.8) unstable; urgency=low
+
+  * use ghcjs --numeric-ghc-version to set the compilerInfoCompat field
+    of CompilerInfo.  This makes cabal file directives like impl(ghc >= 7.9)
+    work for ghcjs packages.
+
+ -- David Fox <dsf@seereason.com>  Sun, 29 Mar 2015 12:38:33 -0700
+
 haskell-cabal-debian (4.24.7) unstable; urgency=low
 
   * Remove the Data.Algorithm.Diff modules, they have moved into Diff-0.3.1

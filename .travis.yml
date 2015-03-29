@@ -22,7 +22,7 @@ before_install:
 
 install:
  - travis_retry cabal update
- - cabal install --only-dependencies --enable-tests --constraint="Cabal==$CABALVER.*"
+ - cabal install --only-dependencies --enable-tests --constraint="Cabal==$CABALVER.*" --constraint="primitive<0.6"
 
 script:
  - cabal configure --enable-tests

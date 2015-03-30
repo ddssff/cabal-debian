@@ -1,7 +1,7 @@
 -- | Determine whether a specific version of a Haskell package is
 -- bundled with into this particular version of the given compiler.
 
-{-# LANGUAGE CPP, ScopedTypeVariables, StandaloneDeriving, TemplateHaskell #-}
+{-# LANGUAGE FlexibleContexts, ScopedTypeVariables, StandaloneDeriving, TemplateHaskell #-}
 module Debian.Debianize.Bundled
     ( builtIn
     -- * Utilities

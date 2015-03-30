@@ -1,5 +1,5 @@
 -- | Read an existing Debianization from a directory file.
-{-# LANGUAGE CPP, DeriveDataTypeable, FlexibleInstances, OverloadedStrings, ScopedTypeVariables, TypeSynonymInstances #-}
+{-# LANGUAGE CPP, DeriveDataTypeable, FlexibleInstances, ScopedTypeVariables, TypeSynonymInstances #-}
 {-# OPTIONS_GHC -Wall -fno-warn-orphans #-}
 module Debian.Debianize.InputDebian
     ( inputDebianization
@@ -203,7 +203,7 @@ inputCabalInfo :: MonadIO m => FilePath -> FilePath -> DebianT m ()
 inputCabalInfo _ path | elem path ["control"] = return ()
 inputCabalInfo debian name@"source/format" = liftIO (readFile (debian </> name)) >>= \ text -> either (warning +=) ((sourceFormat ~=) . Just) (readSourceFormat text)
 inputCabalInfo debian name@"watch" = liftIO (readFile (debian </> name)) >>= \ text -> watch ~= Just text
-inputCabalInfo debian name@"rules" = liftIO (readFile (debian </> name)) >>= \ text -> rulesHead ~= (Just $ strip text <> "\n")
+inputCabalInfo debian name@"rules" = liftIO (readFile (debian </> name)) >>= \ text -> rulesHead ~= (Just $ strip text <> pack "\n")
 inputCabalInfo debian name@"compat" = liftIO (readFile (debian </> name)) >>= \ text -> compat ~= Just (read' (\ s -> error $ "compat: " ++ show s) (unpack text))
 inputCabalInfo debian name@"copyright" = liftIO (readFile (debian </> name)) >>= \ text -> copyright ~= Just (readCopyrightDescription text)
 inputCabalInfo debian name@"changelog" =

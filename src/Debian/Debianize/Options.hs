@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, RankNTypes #-}
+{-# LANGUAGE FlexibleContexts, RankNTypes #-}
 module Debian.Debianize.Options
     ( options
     , compileArgs

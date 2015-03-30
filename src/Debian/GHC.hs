@@ -10,7 +10,9 @@ module Debian.GHC
     -- , ghcNewestAvailableVersion
     -- , compilerIdFromDebianVersion
     , compilerPackageName
+#if MIN_VERSION_Cabal(1,22,0)
     , getCompilerInfo
+#endif
     ) where
 
 import Control.DeepSeq (force)
@@ -23,7 +25,10 @@ import Data.Version (showVersion, Version(Version), parseVersion)
 import Debian.Debianize.BinaryDebDescription (PackageType(..))
 import Debian.Relation (BinPkgName(BinPkgName))
 import Debian.Version (DebianVersion, parseDebianVersion)
-import Distribution.Compiler (CompilerFlavor(..), CompilerId(CompilerId), CompilerInfo(..), unknownCompilerInfo, AbiTag(NoAbiTag))
+import Distribution.Compiler (CompilerFlavor(..), CompilerId(CompilerId))
+#if MIN_VERSION_Cabal(1,22,0)
+import Distribution.Compiler (CompilerInfo(..), unknownCompilerInfo, AbiTag(NoAbiTag))
+#endif
 import System.Console.GetOpt (ArgDescr(ReqArg), OptDescr(..))
 import System.Directory (doesDirectoryExist)
 import System.Exit (ExitCode(ExitFailure))
@@ -149,6 +154,7 @@ compilerPackageName GHCJS _ = BinPkgName "ghcjs" -- whatevs
 #endif
 compilerPackageName x _ = error $ "Unsupported compiler flavor: " ++ show x
 
+#if MIN_VERSION_Cabal(1,22,0)
 -- | IO based alternative to newestAvailableCompilerId - install the
 -- compiler into the chroot if necessary and ask it for its version
 -- number.  This has the benefit of working for ghcjs, which doesn't
@@ -183,3 +189,4 @@ getCompilerInfo "/" flavor = do
             _ -> error $ "Parse failure for version string: " ++ show out
 
 getCompilerInfo root flavor = fchroot root $ getCompilerInfo "/" flavor
+#endif

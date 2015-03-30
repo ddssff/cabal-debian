@@ -80,7 +80,7 @@ data EnvSet = EnvSet
     , buildOS :: FilePath  -- ^ An environment where we have built a package
     } deriving (Eq, Ord, Show, Data, Typeable)
 
-data DebAction = Usage | Debianize | SubstVar DebType deriving (Read, Show, Eq, Ord, Data, Typeable)
+data DebAction = Usage | Debianize deriving (Read, Show, Eq, Ord, Data, Typeable)
 
 -- | A redundant data type, too lazy to expunge.
 data DebType = Dev | Prof | Doc deriving (Eq, Ord, Read, Show, Data, Typeable)
@@ -124,12 +124,6 @@ flagOptions =
                       , "Distribution.PackageDescription.Configuration when loading the cabal file."]),
       Option "" ["debianize"] (NoArg (debAction ~= Debianize))
              "Deprecated - formerly used to get what is now the normal benavior.",
-      Option "" ["substvar"] (ReqArg (\ name -> debAction ~= (SubstVar (read' (\ s -> error $ "substvar: " ++ show s) name))) "Doc, Prof, or Dev")
-             (unlines [ "With this option no debianization is generated.  Instead, the list"
-                      , "of dependencies required for the dev, prof or doc package (depending"
-                      , "on the argument) is printed to standard output.  These can be added"
-                      , "to the appropriate substvars file.  (This is an option whose use case"
-                      , "is lost in the mists of time.)"]),
       Option "" ["buildenvdir"] (ReqArg (\ s -> buildEnv ~= EnvSet {cleanOS = s </> "clean", dependOS = s </> "depend", buildOS = s </> "build"}) "PATH")
              "Directory containing the three build environments, clean, depend, and build.",
       Option "f" ["cabal-flags"] (ReqArg (\ s -> cabalFlagAssignments %= (Set.union (fromList (flagList s)))) "FLAG FLAG ...")

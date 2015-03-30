@@ -11,7 +11,7 @@ import Control.Lens (view)
 import Control.Monad.State (get)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Data.List as List (unlines)
-import Debian.Debianize.BasicInfo (DebAction(Debianize, SubstVar, Usage), debAction, newFlags)
+import Debian.Debianize.BasicInfo (DebAction(Debianize, Usage), debAction, newFlags)
 import Debian.Debianize.CabalInfo (newCabalInfo, debInfo)
 import Debian.Debianize.DebInfo (flags)
 import Debian.Debianize.Details (debianDefaults)
@@ -19,7 +19,6 @@ import Debian.Debianize.Finalize (debianize)
 import Debian.Debianize.Monad (CabalT, evalCabalT, liftCabal)
 import Debian.Debianize.Options (options)
 import Debian.Debianize.Output (doDebianizeAction)
-import Debian.Debianize.SubstVars (substvars)
 import Prelude hiding (unlines, writeFile, init, (.))
 import System.Console.GetOpt (OptDescr, usageInfo)
 import System.Environment (getProgName)
@@ -38,7 +37,6 @@ cabalDebianMain init =
                       finish action) atoms
     where
       finish :: forall m. (MonadIO m, Functor m) => DebAction -> CabalT m ()
-      finish (SubstVar debType) = substvars debType
       finish Debianize = liftCabal doDebianizeAction
       finish Usage = do
           progName <- liftIO getProgName

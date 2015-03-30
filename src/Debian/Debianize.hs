@@ -186,7 +186,7 @@ import Debian.Debianize.InputDebian (inputChangeLog, inputDebianization, inputDe
 import Debian.Debianize.InputCabal (inputCabalization)
 import Debian.Debianize.Monad (CabalM, CabalT, evalCabalM, evalCabalT, execCabalM, execCabalT, runCabalM, runCabalT, DebianT, execDebianT, evalDebianT, liftCabal)
 import Debian.Debianize.Options (compileArgs)
-import Debian.Debianize.Output (compareDebianization, describeDebianization, doDebianizeAction, runDebianizeScript, validateDebianization, writeDebianization)
+import Debian.Debianize.Output (compareDebianization, describeDebianization, finishDebianization, runDebianizeScript, validateDebianization, writeDebianization)
 import Debian.Debianize.Prelude ((%=), (+++=), (++=), (+=), buildDebVersionMap, debOfFile, dpkgFileMap, withCurrentDirectory, (~=), (~?=))
 import Debian.Debianize.SourceDebDescription
 import Debian.Debianize.VersionSplits (DebBase(DebBase))

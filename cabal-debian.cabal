@@ -145,6 +145,10 @@ flag local-debian
   Default: False
   Manual: True
 
+flag pretty-112
+  Description: prettyclass was merged into pretty-1.1.2
+  Default: True
+
 Source-Repository head
   type: git
   location: https://github.com/ddssff/cabal-debian
@@ -168,8 +172,6 @@ Library
     mtl,
     network-uri,
     parsec >= 3,
-    pretty,
-    prettyclass,
     process,
     pureMD5,
     regex-tdfa,
@@ -211,6 +213,10 @@ Library
     Paths_cabal_debian
   Other-Modules:
     Debian.Orphans
+  if flag(pretty-112)
+    Build-Depends: pretty >= 1.1.2
+  else
+    Build-Depends: pretty < 1.1.2, prettyclass
   if flag(local-debian)
     Hs-Source-Dirs: debian-haskell
     Build-Depends:
@@ -268,17 +274,25 @@ Library
     Build-depends: debian >= 3.87
 
 Executable cabal-debian
- Hs-Source-Dirs: .
- Main-is: CabalDebian.hs
- ghc-options: -threaded -Wall -O2
- Build-Depends: base, cabal-debian, Cabal >= 1.18, lens, mtl, pretty
- if !flag(local-debian)
-   Build-Depends: debian >= 3.87
+  Hs-Source-Dirs: .
+  Main-is: CabalDebian.hs
+  ghc-options: -threaded -Wall -O2
+  Build-Depends: base, cabal-debian, Cabal >= 1.18, lens, mtl, pretty
+  if flag(pretty-112)
+    Build-Depends: pretty >= 1.1.2
+  else
+    Build-Depends: pretty < 1.1.2, prettyclass
+  if !flag(local-debian)
+    Build-Depends: debian >= 3.87
 
 Executable cabal-debian-tests
- Hs-Source-Dirs: .
- Main-is: Tests.hs
- ghc-options: -threaded -Wall -O2
- Build-Depends: base, cabal-debian, Cabal >= 1.18, containers, Diff >= 0.3.1, filepath, hsemail, HUnit, lens, prettyclass, process, text
- if !flag(local-debian)
-   Build-Depends: debian >= 3.87
+  Hs-Source-Dirs: .
+  Main-is: Tests.hs
+  ghc-options: -threaded -Wall -O2
+  Build-Depends: base, cabal-debian, Cabal >= 1.18, containers, Diff >= 0.3.1, filepath, hsemail, HUnit, lens, process, text
+  if flag(pretty-112)
+    Build-Depends: pretty >= 1.1.2
+  else
+    Build-Depends: pretty < 1.1.2, prettyclass
+  if !flag(local-debian)
+    Build-Depends: debian >= 3.87

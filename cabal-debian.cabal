@@ -168,7 +168,7 @@ Library
     hsemail,
     HUnit,
     lens,
-    memoize,
+    memoize >= 0.7,
     mtl,
     network-uri,
     parsec >= 3,

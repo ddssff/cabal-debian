@@ -22,6 +22,8 @@ before_install:
 
 install:
  - travis_retry cabal update
+ - travis_retry git clone https://github.com/ddssff/memoize
+ - cabal install ./memoize
  - cabal install --only-dependencies --enable-tests --constraint="Cabal==$CABALVER.*" --constraint="primitive<0.6"
 
 script:

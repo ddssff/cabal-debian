@@ -1,3 +1,13 @@
+haskell-cabal-debian (4.24.9) unstable; urgency=low
+
+  * Make debian/Debianize.hs a standard debianization script
+  * Make the test executable into a cabal test suite
+  * Make ghc-7.10 support official
+  * Simplify main in CabalDebian.hs
+  * Get rid of old --substvars option
+
+ -- David Fox <dsf@seereason.com>  Wed, 01 Apr 2015 10:00:45 -0700
+
 haskell-cabal-debian (4.24.8) unstable; urgency=low
 
   * use ghcjs --numeric-ghc-version to set the compilerInfoCompat field

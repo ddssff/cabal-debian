@@ -284,7 +284,8 @@ Executable cabal-debian
   if !flag(local-debian)
     Build-Depends: debian >= 3.87
 
-Executable cabal-debian-tests
+Test-Suite cabal-debian-tests
+  Type: exitcode-stdio-1.0
   Hs-Source-Dirs: .
   Main-is: Tests.hs
   ghc-options: -threaded -Wall -O2

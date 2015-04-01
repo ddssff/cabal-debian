@@ -93,21 +93,6 @@ Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
  .
  ${haskell:Blurb}
 
-Package: cabal-debian-tests
-Architecture: any
-Section: misc
-Depends: ${haskell:Depends},
- ${misc:Depends},
- ${shlibs:Depends},
-Recommends: ${haskell:Recommends},
-Suggests: ${haskell:Suggests},
-Conflicts: ${haskell:Conflicts},
-Provides: ${haskell:Provides},
-Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
- ${haskell:LongDescription}
- .
- ${haskell:Blurb}
-
 Package: libghc-cabal-debian-dev
 Architecture: any
 Depends: ${haskell:Depends},

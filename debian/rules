@@ -1,5 +1,6 @@
 #!/usr/bin/make -f
 
+DEB_ENABLE_TESTS = yes
 DEB_CABAL_PACKAGE = cabal-debian
 DEB_DEFAULT_COMPILER = ghc
 
@@ -7,5 +8,3 @@ include /usr/share/cdbs/1/rules/debhelper.mk
 include /usr/share/cdbs/1/class/hlibrary.mk
 
 build/cabal-debian:: build-ghc-stamp
-
-build/cabal-debian-tests:: build-ghc-stamp

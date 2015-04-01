@@ -33,7 +33,6 @@ main = newFlags >>= newCabalInfo >>= evalStateT cabalDebian
              (debInfo . utilsPackageNameBase) ~= Just "cabal-debian"
              (debInfo . binaryDebDescription (BinPkgName "cabal-debian") . relations . depends) %= (++ (rels "apt-file, debian-policy, debhelper, haskell-devscripts (>= 0.8.19)"))
              (debInfo . binaryDebDescription (BinPkgName "libghc-cabal-debian-dev") . relations . depends) %= (++ (rels "debian-policy"))
-             (debInfo . executable) %= (Map.insert (BinPkgName "cabal-debian-tests") (InstallFile "cabal-debian-tests" Nothing Nothing "cabal-debian-tests"))
              (debInfo . atomSet) %= (Set.insert $ InstallCabalExec (BinPkgName "cabal-debian") "cabal-debian" "usr/bin")
              (debInfo . utilsPackageNameBase) ~= Just "cabal-debian"
              (debInfo . control . homepage) ~= Just (pack "https://github.com/ddssff/cabal-debian")

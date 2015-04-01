@@ -580,13 +580,13 @@ test5 label =
 test6 :: String -> Test
 test6 label =
     TestLabel label $
-    TestCase (do result <- readProcessWithExitCode "runhaskell" ["-isrc", "-DMIN_VERSION_Cabal(a,b,c)=1", "test-data/artvaluereport2/input/debian/Debianize.hs"] ""
+    TestCase (do result <- readProcessWithExitCode "runhaskell" ["--ghc-arg=-package-db=dist/package.conf.inplace", "test-data/artvaluereport2/input/debian/Debianize.hs", "--dry-run"] ""
                  assertEqual label (ExitSuccess, "", "") result)
 
 test7 :: String -> Test
 test7 label =
     TestLabel label $
-    TestCase (do new <- readProcessWithExitCode "runhaskell" ["-isrc", "-DMIN_VERSION_Cabal(a,b,c)=1", "debian/Debianize.hs", "--executable=cabal-debian", "--executable=cabal-debian-tests", "--standards-version=3.9.3", "--native"] ""
+    TestCase (do new <- readProcessWithExitCode "runhaskell" ["--ghc-arg=-package-db=dist/package.conf.inplace", "debian/Debianize.hs", "--dry-run", "--native"] ""
                  assertEqual label (ExitSuccess, "", "Ignored: debian/cabal-debian.1\nIgnored: debian/cabal-debian.manpages\n") new)
 
 test8 :: String -> Test

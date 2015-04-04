@@ -9,6 +9,7 @@ import OldLens (getL)
 import Control.Category ((.))
 import Control.Exception (bracket)
 import Control.Monad (when)
+import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Set as Set (Set, toList)
 import Debian.Debianize.BasicInfo (Flags, buildEnv, dependOS, verbosity, compilerFlavor, cabalFlagAssignments)
 import Debian.Debianize.Prelude (intToVerbosity')
@@ -35,12 +36,13 @@ import System.Directory (doesFileExist, getCurrentDirectory)
 import System.Exit (ExitCode(..))
 import System.Posix.Files (setFileCreationMask)
 import System.Process (system)
+import System.Unix.Mount (WithProcAndSys)
 
 -- | Load a PackageDescription using the information in the Flags record -
 -- in particular, using the dependency environment in the EnvSet, find
 -- the newest available compiler of the requested compiler flavor and
 -- use that information load the configured PackageDescription.
-inputCabalization :: Flags -> IO PackageDescription
+inputCabalization :: MonadIO m => Flags -> WithProcAndSys m PackageDescription
 inputCabalization flags =
     do let root = dependOS $ getL buildEnv flags
        let vb = intToVerbosity' $ getL verbosity flags
@@ -48,7 +50,7 @@ inputCabalization flags =
        --  Load a GenericPackageDescription from the current directory and
        -- from that create a finalized PackageDescription for the given
        -- CompilerId.
-       genPkgDesc <- defaultPackageDesc vb >>= readPackageDescription vb
+       genPkgDesc <- liftIO $ defaultPackageDesc vb >>= readPackageDescription vb
 #if MIN_VERSION_Cabal(1,22,0)
        cinfo <- getCompilerInfo root (getL compilerFlavor flags)
 #else
@@ -56,10 +58,10 @@ inputCabalization flags =
 #endif
        let finalized = finalizePackageDescription (toList fs) (const True) (Platform buildArch Cabal.buildOS) cinfo [] genPkgDesc
        ePkgDesc <- either (return . Left)
-                          (\ (pkgDesc, _) -> do bracket (setFileCreationMask 0o022) setFileCreationMask $ \ _ -> autoreconf vb pkgDesc
+                          (\ (pkgDesc, _) -> do liftIO $ bracket (setFileCreationMask 0o022) setFileCreationMask $ \ _ -> autoreconf vb pkgDesc
                                                 return (Right pkgDesc))
                           finalized
-       either (\ deps -> getCurrentDirectory >>= \ here ->
+       either (\ deps -> liftIO getCurrentDirectory >>= \ here ->
                          error $ "Missing dependencies in cabal package at " ++ here ++ ": " ++ show deps)
               return
               ePkgDesc

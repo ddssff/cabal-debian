@@ -18,6 +18,7 @@ module Debian.GHC
 import Control.DeepSeq (force)
 import Control.Exception (SomeException, try)
 import Control.Monad (when)
+import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Char ({-isSpace, toLower,-} toUpper)
 import Data.Function.Memoize (deriveMemoizable, memoize2)
 import Data.Maybe (fromMaybe)
@@ -35,6 +36,7 @@ import System.Exit (ExitCode(ExitFailure))
 import System.IO.Unsafe (unsafePerformIO)
 import System.Process (readProcess, showCommandForUser, readProcessWithExitCode)
 import System.Unix.Chroot (useEnv, fchroot)
+import System.Unix.Mount (WithProcAndSys)
 import Text.ParserCombinators.ReadP (readP_to_S)
 import Text.Read (readMaybe)
 
@@ -162,14 +164,12 @@ compilerPackageName x _ = error $ "Unsupported compiler flavor: " ++ show x
 --
 -- Assumes the compiler executable is already installed in the root
 -- environment.
-getCompilerInfo :: FilePath -> CompilerFlavor -> IO CompilerInfo
-getCompilerInfo "/" flavor = do
-{-
-    (code, _, _) <- readProcessWithExitCode "apt-get" ["install", compilerDebName] ""
-    case code of
-      ExitFailure n -> error $ "Failure " ++ show n ++ " installing compiler flavor " ++ show flavor
-      _ -> return ()
--}
+getCompilerInfo :: MonadIO m => FilePath -> CompilerFlavor -> WithProcAndSys m CompilerInfo
+getCompilerInfo "/" flavor = liftIO $ getCompilerInfo' flavor
+getCompilerInfo root flavor = liftIO $ fchroot root $ getCompilerInfo' flavor
+
+getCompilerInfo' :: CompilerFlavor -> IO CompilerInfo
+getCompilerInfo' flavor = do
     compilerId <- runVersionCommand >>= toCompilerId flavor
     compilerCompat <- case flavor of
                         GHCJS -> readProcessWithExitCode "ghcjs" ["--numeric-ghc-version"] "" >>= toCompilerId GHC >>= return . Just . (: [])
@@ -187,6 +187,4 @@ getCompilerInfo "/" flavor = do
           case filter ((== "\n") . snd) (readP_to_S parseVersion out) of
             [(v, _)] -> return $ CompilerId flavor' v
             _ -> error $ "Parse failure for version string: " ++ show out
-
-getCompilerInfo root flavor = fchroot root $ getCompilerInfo "/" flavor
 #endif

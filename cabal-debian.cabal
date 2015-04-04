@@ -179,7 +179,7 @@ Library
     syb,
     text,
     unix,
-    Unixutils,
+    Unixutils >= 1.53,
     utf8-string
   Exposed-Modules:
     Data.Maybe.Extended
@@ -277,7 +277,7 @@ Executable cabal-debian
   Hs-Source-Dirs: .
   Main-is: CabalDebian.hs
   ghc-options: -threaded -Wall -O2
-  Build-Depends: base, cabal-debian, Cabal >= 1.18, lens, mtl, pretty
+  Build-Depends: base, cabal-debian, Cabal >= 1.18, lens, mtl, pretty, Unixutils >= 1.53
   if flag(pretty-112)
     Build-Depends: pretty >= 1.1.2
   else

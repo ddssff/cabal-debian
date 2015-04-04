@@ -1,3 +1,6 @@
+-- | Temporary wrappers for conversion from data-lens package to lens.
+-- Uses of these should eventually be inlined and this module moved
+-- elsewhere.
 {-# LANGUAGE Rank2Types, GADTs #-}
 module OldLens
     ( Lens

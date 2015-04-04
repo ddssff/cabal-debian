@@ -30,7 +30,7 @@ import Data.Default (Default(def))
 import Data.Generics (Data, Typeable)
 import Control.Lens.TH (makeLenses)
 import Data.List as List (dropWhileEnd, partition)
-import Data.Maybe (isJust, catMaybes, fromJust, fromMaybe, listToMaybe)
+import Data.Maybe.Extended (isJust, catMaybes, fromJust, fromMaybe, listToMaybe, nothingIf)
 import Data.Monoid ((<>), mempty)
 import Data.Text as Text (Text, pack, strip, unpack, null, lines, unlines, dropWhileEnd)
 import Debian.Control (Field'(Field), lookupP, Paragraph'(Paragraph), Control'(Control, unControl), parseControl)
@@ -260,9 +260,6 @@ defaultCopyrightDescription pkgDesc = do
                                     , _filesLicense = fromCabalLicense license
                                     , _filesComment = comment }) licenseComments }
 -}
-
-nothingIf :: (a -> Bool) -> a -> Maybe a
-nothingIf p x = if p x then Nothing else Just x
 
 -- | Replace empty lines with single dots
 dots :: Text -> Text

@@ -182,6 +182,7 @@ Library
     Unixutils,
     utf8-string
   Exposed-Modules:
+    Data.Maybe.Extended
     Debian.GHC
     Debian.Policy
     Distribution.Version.Invert

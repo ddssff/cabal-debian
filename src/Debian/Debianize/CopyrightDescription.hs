@@ -27,17 +27,19 @@ module Debian.Debianize.CopyrightDescription
 
 import Data.Char (isSpace)
 import Data.Default (Default(def))
+import Data.Either (isRight, lefts, rights)
 import Data.Generics (Data, Typeable)
 import Control.Lens.TH (makeLenses)
 import Data.List as List (dropWhileEnd, partition)
 import Data.Maybe.Extended (isJust, catMaybes, fromJust, fromMaybe, listToMaybe, nothingIf)
 import Data.Monoid ((<>), mempty)
 import Data.Text as Text (Text, pack, strip, unpack, null, lines, unlines, dropWhileEnd)
-import Debian.Control (Field'(Field), lookupP, Paragraph'(Paragraph), Control'(Control, unControl), parseControl)
+import Debian.Control (Field'(Field), fieldValue, Paragraph'(Paragraph), Control'(Control, unControl), parseControl)
 import Debian.Debianize.Prelude (readFileMaybe)
 import Debian.Orphans ()
 import Debian.Policy (License(..), readLicense, fromCabalLicense)
 import Debian.Pretty (prettyText, ppText)
+import Debug.Trace
 import qualified Distribution.License as Cabal (License(UnknownLicense))
 import qualified Distribution.Package as Cabal
 #if MIN_VERSION_Cabal(1,20,0)
@@ -111,41 +113,41 @@ readCopyrightDescription t =
 -- | Try to parse a structured copyright file
 parseCopyrightDescription :: [Paragraph' Text] -> Maybe CopyrightDescription
 parseCopyrightDescription (hd : tl) =
-    let (muri :: Maybe URI) = maybe Nothing (\ (Field (_, t)) -> parseURI . unpack $ t) (lookupP "Format" hd) in
+    let (muri :: Either (Paragraph' Text) URI) = maybe (Left hd) Right (maybe Nothing (parseURI . unpack) (fieldValue "Format" hd)) in
     case (muri, map parseFilesOrLicense tl) of
-      (Just uri, fnls) | all isJust fnls ->
+      (Right uri, fnls) | all isRight fnls ->
           Just $ CopyrightDescription
                    { _format = uri
-                   , _upstreamName = fmap (\ (Field (_, x)) -> x) $ lookupP "Upstream-Name" hd
-                   , _upstreamContact = fmap (\ (Field (_, x)) -> x) $ lookupP "Upstream-Contact" hd
-                   , _upstreamSource = fmap (\ (Field (_, x)) -> x) $ lookupP "Source" hd
-                   , _disclaimer = fmap (\ (Field (_, x)) -> x) $ lookupP "Disclaimer" hd
-                   , _summaryComment = fmap (\ (Field (_, x)) -> x) $ lookupP "Comment" hd
-                   , _summaryLicense = fmap (\ (Field (_, x)) -> readLicense x) $ lookupP "License" hd
-                   , _summaryCopyright = Nothing -- fmap (\ (Field (_, x)) -> x) $ lookupP "Copyright" hd
-                   , _filesAndLicenses = catMaybes fnls
+                   , _upstreamName = fieldValue "Upstream-Name" hd
+                   , _upstreamContact = fieldValue "Upstream-Contact" hd
+                   , _upstreamSource = fieldValue "Source" hd
+                   , _disclaimer = fieldValue "Disclaimer" hd
+                   , _summaryComment = fieldValue "Comment" hd
+                   , _summaryLicense = fmap readLicense (fieldValue "License" hd)
+                   , _summaryCopyright = Nothing -- fieldValue "Copyright" hd
+                   , _filesAndLicenses = rights fnls
                    }
-      _ -> Nothing
+      (_, fnls) -> trace ("Not a parsable copyright file: " ++ show (lefts [muri] ++ lefts fnls))  Nothing
 parseCopyrightDescription [] = Nothing
 
-parseFilesOrLicense :: Paragraph' Text -> Maybe (FilesOrLicenseDescription)
+parseFilesOrLicense :: Paragraph' Text -> Either (Paragraph' Text) (FilesOrLicenseDescription)
 parseFilesOrLicense p =
-    case (lookupP "Files" p, lookupP "Copyright" p, lookupP "License" p) of
-      (Just (Field (_, files)),
-       Just (Field (_, copyright)),
-       Just (Field (_, license))) ->
-          Just $ FilesDescription
-                 { _filesPattern = unpack files
-                 , _filesCopyright = copyright
-                 , _filesLicense = readLicense license
-                 , _filesComment = maybe Nothing (\ (Field (_, comment)) -> Just comment) (lookupP "Comment" p) }
+    case (fieldValue "Files" p, fieldValue "Copyright" p, fieldValue "License" p) of
+      (Just files,
+       Just copyright,
+       Just license) ->
+          Right $ FilesDescription
+                    { _filesPattern = unpack files
+                    , _filesCopyright = copyright
+                    , _filesLicense = readLicense license
+                    , _filesComment = fieldValue "Comment" p }
       (Nothing,
        Nothing,
-       Just (Field (_, license))) ->
-          Just $ LicenseDescription
-                 { _license = readLicense license
-                 , _comment = maybe Nothing (\ (Field (_, comment)) -> Just comment) (lookupP "Comment" p) }
-      _ -> Nothing
+       Just license) ->
+          Right $ LicenseDescription
+                    { _license = readLicense license
+                    , _comment = fieldValue "Comment" p }
+      _ -> Left p
 
 toControlFile :: CopyrightDescription -> Control' Text
 toControlFile d =

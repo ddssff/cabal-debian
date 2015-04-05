@@ -1,3 +1,11 @@
+haskell-cabal-debian (4.25) unstable; urgency=low
+
+  * Make sure /proc is mounted when we run ghc to determine its version
+    number.  This is only a concern when running in a build root.
+  * Fix whitespace handling bugs in copyright file parser and renderer.
+
+ -- David Fox <dsf@seereason.com>  Sun, 05 Apr 2015 08:14:09 -0700
+
 haskell-cabal-debian (4.24.9) unstable; urgency=low
 
   * Make debian/Debianize.hs a standard debianization script

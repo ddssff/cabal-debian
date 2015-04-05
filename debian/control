@@ -83,21 +83,14 @@ Section: misc
 Depends: ${haskell:Depends},
  ${misc:Depends},
  ${shlibs:Depends},
- ${haskell:Depends},
- ${misc:Depends},
- ${shlibs:Depends},
  apt-file,
  debian-policy,
  debhelper,
  haskell-devscripts (>= 0.8.19),
-Recommends: ${haskell:Recommends},
- ${haskell:Recommends},
-Suggests: ${haskell:Suggests},
- ${haskell:Suggests},
-Conflicts: ${haskell:Conflicts},
- ${haskell:Conflicts},
-Provides: ${haskell:Provides},
- ${haskell:Provides},
+Recommends: ${haskell:Recommends}
+Suggests: ${haskell:Suggests}
+Conflicts: ${haskell:Conflicts}
+Provides: ${haskell:Provides}
 Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
  ${haskell:LongDescription}
  .
@@ -109,21 +102,6 @@ Depends: ${haskell:Depends},
  ${misc:Depends},
  ${shlibs:Depends},
  debian-policy,
-Recommends: ${haskell:Recommends},
-Suggests: ${haskell:Suggests},
-Conflicts: ${haskell:Conflicts},
-Provides: ${haskell:Provides},
-Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
- ${haskell:LongDescription}
- .
- ${haskell:Blurb}
-
-Package: cabal-debian-tests
-Architecture: any
-Section: misc
-Depends: ${haskell:Depends},
- ${misc:Depends},
- ${shlibs:Depends},
 Recommends: ${haskell:Recommends},
 Suggests: ${haskell:Suggests},
 Conflicts: ${haskell:Conflicts},

@@ -89,7 +89,7 @@ finishDebianization = zoom debInfo $
                do inputDebianization
                   old <- get
                   diff <- liftIO $ compareDebianization old new
-                  liftIO $ putStr ("Debianization (dry run):\n" ++ diff)
+                  liftIO $ putStrLn ("Debianization (dry run):\n" ++ if null diff then "  No changes\n" else diff)
          _ -> writeDebianization
     where
       usageHeader progName =

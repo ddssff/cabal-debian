@@ -127,7 +127,7 @@ parseCopyrightDescription (hd : tl) =
                    , _summaryCopyright = Nothing -- fieldValue "Copyright" hd
                    , _filesAndLicenses = rights fnls
                    }
-      (_, fnls) -> trace ("Not a parsable copyright file: " ++ show (lefts [muri] ++ lefts fnls))  Nothing
+      (_, fnls) -> trace ("Not a parsable copyright file: " ++ show (lefts [muri] ++ lefts fnls)) Nothing
 parseCopyrightDescription [] = Nothing
 
 parseFilesOrLicense :: Paragraph' Text -> Either (Paragraph' Text) (FilesOrLicenseDescription)

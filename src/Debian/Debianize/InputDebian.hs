@@ -226,7 +226,7 @@ inputCabalInfo debian name =
       (_, ".substvars") -> return () -- Unsupported
       (_, "") ->           return () -- File with no extension
       (_, x) | last x == '~' -> return () -- backup file
-      _ -> trace ("Ignored: " ++ debian </> name) (return ())
+      _ -> liftIO (putStrLn $ "Ignored debianization file: " ++ debian </> name)
 
 -- | Read a line from a debian .links file
 readLink :: Monad m => BinPkgName -> Text -> DebianT m ()

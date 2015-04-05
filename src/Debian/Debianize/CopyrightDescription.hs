@@ -27,7 +27,7 @@ module Debian.Debianize.CopyrightDescription
 
 import Data.Char (isSpace)
 import Data.Default (Default(def))
-import Data.Either (isRight, lefts, rights)
+import Data.Either (lefts, rights)
 import Data.Generics (Data, Typeable)
 import Control.Lens.TH (makeLenses)
 import Data.List as List (dropWhileEnd, partition)
@@ -115,7 +115,7 @@ parseCopyrightDescription :: [Paragraph' Text] -> Maybe CopyrightDescription
 parseCopyrightDescription (hd : tl) =
     let (muri :: Either (Paragraph' Text) URI) = maybe (Left hd) Right (maybe Nothing (parseURI . unpack) (fieldValue "Format" hd)) in
     case (muri, map parseFilesOrLicense tl) of
-      (Right uri, fnls) | all isRight fnls ->
+      (Right uri, fnls) | all (either (const False) (const True)) fnls ->
           Just $ CopyrightDescription
                    { _format = uri
                    , _upstreamName = fieldValue "Upstream-Name" hd

@@ -4,10 +4,9 @@ import Debian.Debianize.CabalInfo (newCabalInfo)
 import Debian.Debianize.Details (debianDefaults)
 import Debian.Debianize.Finalize (debianize)
 import Debian.Debianize.Output (finishDebianization)
-import System.Unix.Mount (withProcAndSys)
 
 main :: IO ()
-main = newFlags >>= withProcAndSys "/" . newCabalInfo >>= evalStateT cabalDebian
+main = newFlags >>= newCabalInfo >>= evalStateT cabalDebian
     where
       cabalDebian = do
         -- Read and inspect the cabal info to compute the debianization

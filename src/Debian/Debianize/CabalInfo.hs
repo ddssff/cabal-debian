@@ -19,6 +19,7 @@ module Debian.Debianize.CabalInfo
 
 import Control.Category ((.))
 import Control.Lens.TH (makeLenses)
+import Control.Monad.Catch (MonadMask)
 import Control.Monad.State (execStateT)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Generics (Data, Typeable)
@@ -39,7 +40,7 @@ import Debian.Version (DebianVersion)
 import Distribution.Package (PackageName)
 import Distribution.PackageDescription as Cabal (PackageDescription(homepage))
 import Prelude hiding ((.), init, init, log, log, null)
-import System.Unix.Mount (WithProcAndSys)
+import System.Unix.Mount (withProcAndSys)
 
 -- This enormous record is a mistake - instead it should be an Atom
 -- type with lots of constructors, and the Atoms type is a set of
@@ -84,8 +85,8 @@ instance Canonical CabalInfo where
 
 -- | Given the 'Flags' value read the cabalization and build a new
 -- 'CabalInfo' record.
-newCabalInfo :: MonadIO m => Flags -> WithProcAndSys m CabalInfo
-newCabalInfo flags' = do
+newCabalInfo :: (MonadIO m, MonadMask m) => Flags -> m CabalInfo
+newCabalInfo flags' = withProcAndSys "/" $ do
   pkgDesc <- inputCabalization flags'
   copyrt <- liftIO $ defaultCopyrightDescription pkgDesc
   execStateT

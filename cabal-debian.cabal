@@ -164,6 +164,7 @@ Library
     deepseq,
     Diff >= 0.3.1,
     directory,
+    exceptions,
     filepath,
     hsemail,
     HUnit,

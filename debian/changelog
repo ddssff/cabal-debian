@@ -1,3 +1,10 @@
+haskell-cabal-debian (4.26) unstable; urgency=low
+
+  * Revamp the way the final debian version number is computed in
+    Debian.Debianize.Finalize.debianVersion.
+
+ -- David Fox <dsf@seereason.com>  Sun, 05 Apr 2015 10:49:33 -0700
+
 haskell-cabal-debian (4.25) unstable; urgency=low
 
   * Make sure /proc is mounted when we run ghc to determine its version

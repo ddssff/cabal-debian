@@ -16,9 +16,10 @@ import Control.Monad.Trans (liftIO, MonadIO)
 import Data.ByteString.Lazy.UTF8 (fromString)
 import Data.Char (toLower)
 import Data.Digest.Pure.MD5 (md5)
-import Data.List as List (filter, intercalate, map, nub, null, unlines)
+import Data.Function (on)
+import Data.List as List (filter, intercalate, map, nub, null, unlines, maximumBy)
 import Data.Map as Map (delete, elems, insertWith, lookup, Map, toList)
-import Data.Maybe (fromMaybe, isJust, isNothing)
+import Data.Maybe (fromMaybe, isJust, isNothing, fromJust)
 import Data.Monoid ((<>), mempty)
 import Data.Set as Set (difference, filter, fold, fromList, insert, map, null, Set, singleton, toList, union, unions)
 import Data.Set.Extra as Set (mapM_)
@@ -46,7 +47,7 @@ import Debian.Relation (BinPkgName, BinPkgName(BinPkgName), Relation(Rel), Relat
 import qualified Debian.Relation as D (BinPkgName(BinPkgName), Relation(..))
 import Debian.Release (parseReleaseName)
 import Debian.Time (getCurrentLocalRFC822Time)
-import Debian.Version (buildDebianVersion, DebianVersion, parseDebianVersion)
+import qualified Debian.Version as V (buildDebianVersion, DebianVersion, parseDebianVersion, epoch, version, revision)
 import Distribution.Compiler (CompilerFlavor(GHC))
 #if MIN_VERSION_Cabal(1,22,0)
 import Distribution.Compiler (CompilerFlavor(GHCJS))
@@ -55,7 +56,6 @@ import Distribution.Package (Dependency(..), PackageIdentifier(..), PackageName(
 import Distribution.PackageDescription as Cabal (allBuildInfo, author, BuildInfo(buildable, extraLibs), Executable(buildInfo, exeName), FlagName(FlagName), maintainer, PackageDescription(testSuites))
 import qualified Distribution.PackageDescription as Cabal (PackageDescription(dataFiles, executables, library, package))
 import Prelude hiding ((.), init, log, map, unlines, unlines, writeFile)
-import System.Environment (getProgName)
 import System.FilePath ((<.>), (</>), makeRelative, splitFileName, takeDirectory, takeFileName)
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr(..))
 import Text.PrettyPrint.HughesPJClass (Pretty(pPrint))
@@ -147,42 +147,55 @@ finalizeDescription bdd =
        T.debianDescription ~?= Just cabDesc
 -}
 
--- | Combine various bits of information to produce the debian version
--- which will be used for the debian package.  If the override
--- parameter is provided this exact version will be used, but an error
--- will be thrown if that version is unusably old - i.e. older than
--- the cabal version of the package.  Otherwise, the cabal version is
--- combined with the given epoch number and revision string to create
--- a version.
-debianVersion :: Monad m => CabalT m DebianVersion
+-- | Construct the final Debian version number.
+--  Inputs:
+--
+--    1. --deb-version argument
+--    2. --revision argument
+--    3. cabal version number
+--    4. latest version in debian/changelog
+--
+-- The --deb-version argument overrides everything.
+debianVersion :: (Monad m, Functor m) => CabalT m V.DebianVersion
 debianVersion =
-    do pkgDesc <- access A.packageDescription
-       let pkgId = Cabal.package pkgDesc
-       epoch <- debianEpoch (pkgName pkgId)
-       debVer <- access (A.debInfo . D.debVersion)
-       case debVer of
-         Just override
-             | override < parseDebianVersion (ppShow (pkgVersion pkgId)) ->
-                 error ("Version from --deb-version (" ++ ppShow override ++
-                        ") is older than hackage version (" ++ ppShow (pkgVersion pkgId) ++
-                        "), maybe you need to unpin this package?")
-         Just override -> return override
-         Nothing ->
-             do let ver = ppShow (pkgVersion pkgId)
-                rev <- access (A.debInfo . D.revision)
-                let rev'  = case rev of Nothing -> Nothing
-                                        Just "" -> Nothing
-                                        Just "-" -> Nothing
-                                        Just ('-':r) -> Just r
-                                        Just _ -> error "The Debian revision needs to start with a dash"
-                fmt <- access (A.debInfo . D.sourceFormat)
-                -- If no revision number has been set and the format
-                -- is not Native3 we need to set it (see
-                -- https://github.com/ddssff/cabal-debian/issues/16)
-                let rev'' = maybe (case fmt of
-                                     Just Native3 -> Nothing
-                                     _ -> Just "1") Just rev'
-                return $ buildDebianVersion epoch ver rev''
+    do cabalName <- (pkgName . Cabal.package) <$> access A.packageDescription
+       (cabalVersion :: V.DebianVersion) <- (V.parseDebianVersion . ppShow . pkgVersion . Cabal.package) <$> access A.packageDescription
+       cabalEpoch <- debianEpoch cabalName
+       fmt <- access (A.debInfo . D.sourceFormat)
+       cabalRevision <-
+           do x <- access (A.debInfo . D.revision) -- from the --revision option
+              let y = case x of
+                        Nothing -> Nothing
+                        Just "" -> Nothing
+                        Just "-" -> Nothing
+                        Just ('-':r) -> Just r
+                        Just _ -> error "The --revision argument must start with a dash"
+              return $ case fmt of
+                         Just Native3 -> y
+                         _ -> maybe (Just "1") (Just . max "1") y
+       versionArg <- access (A.debInfo . D.debVersion) -- from the --deb-version option
+       (debianVersion :: Maybe V.DebianVersion) <- access (A.debInfo . D.changelog) >>= return . maybe Nothing changelogVersion
+
+       case () of
+         _ | maybe False (\ v -> v < V.buildDebianVersion cabalEpoch (ppShow cabalVersion) Nothing) versionArg ->
+               error ("Version from --deb-version (" ++ ppShow versionArg ++
+                      ") is older than cabal version (" ++ ppShow cabalVersion ++
+                      "), maybe you need to unpin this package?")
+         _ | isJust versionArg -> return $ fromJust versionArg
+         _ | isJust debianVersion ->
+               case (V.epoch (fromJust debianVersion),
+                     V.parseDebianVersion (V.version (fromJust debianVersion)),
+                     V.revision (fromJust debianVersion)) of
+                 (debianEpoch, debianVersion', (debianRevision :: Maybe String)) ->
+                     let finalEpoch = max debianEpoch cabalEpoch
+                         finalVersion = max debianVersion' cabalVersion
+                         (finalRevision :: Maybe String) = maximumBy (compare `on` fmap V.parseDebianVersion) [debianRevision, cabalRevision] in
+                     return $ V.buildDebianVersion finalEpoch (ppShow finalVersion) finalRevision
+         _ -> return $ V.buildDebianVersion cabalEpoch (ppShow cabalVersion) cabalRevision
+
+changelogVersion :: ChangeLog -> Maybe V.DebianVersion
+changelogVersion (ChangeLog (Entry {logVersion = x} : _)) = Just x
+changelogVersion _ = Nothing
 
 -- | Return the Debian epoch number assigned to the given cabal
 -- package - the 1 in version numbers like 1:3.5-2.
@@ -288,7 +301,7 @@ finalizeChangelog date =
        let msg = "Initial release (Closes: #nnnn)"
        (A.debInfo . D.changelog) %= fixLog src ver cmts debianMaintainer msg
     where
-      fixLog :: Maybe SrcPkgName -> DebianVersion -> Maybe [[Text]] -> NameAddr -> Text -> Maybe ChangeLog -> Maybe ChangeLog
+      fixLog :: Maybe SrcPkgName -> V.DebianVersion -> Maybe [[Text]] -> NameAddr -> Text -> Maybe ChangeLog -> Maybe ChangeLog
       -- Ensure that the package name is correct in the first log entry.
       fixLog src ver cmts _maint _ (Just (ChangeLog (entry : older)))
           | logVersion entry == ver =

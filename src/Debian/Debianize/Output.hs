@@ -16,7 +16,6 @@ module Debian.Debianize.Output
 
 
 import Control.Lens.Extended
-import Control.Category ((.))
 import Control.Exception as E (throw)
 import Control.Monad.State (get, StateT)
 import Control.Monad.Trans (liftIO, MonadIO)
@@ -37,7 +36,7 @@ import Debian.Debianize.Prelude (indent, replaceFile, zipMaps)
 import Debian.Debianize.BinaryDebDescription as B (canonical, package)
 import qualified Debian.Debianize.SourceDebDescription as S
 import Debian.Pretty (ppShow, ppPrint)
-import Prelude hiding ((.), unlines, writeFile)
+import Prelude hiding (unlines, writeFile)
 import System.Console.GetOpt (OptDescr, usageInfo)
 import System.Directory (createDirectoryIfMissing, doesFileExist, getPermissions, Permissions(executable), setPermissions)
 import System.Environment (getProgName)

@@ -9,7 +9,6 @@ module Debian.Debianize.Files
 
 import Control.Lens.Extended
 import Control.Applicative ((<$>))
-import Control.Category ((.))
 import Control.Monad.Trans (lift)
 import Control.Monad.Writer (execWriterT, tell, WriterT)
 import Data.Char (isSpace)
@@ -30,7 +29,7 @@ import qualified Debian.Debianize.SourceDebDescription as S (binaryPackages, bui
 import Debian.Pretty (PP(..), ppShow, prettyText, ppText, ppPrint)
 import Debian.Relation (BinPkgName(BinPkgName), Relations)
 import Distribution.PackageDescription (PackageDescription)
-import Prelude hiding ((.), dropWhile, init, log, unlines, writeFile)
+import Prelude hiding (dropWhile, init, log, unlines, writeFile)
 import System.FilePath ((</>))
 import Text.PrettyPrint.HughesPJClass (empty, Pretty(pPrint), text)
 

@@ -27,10 +27,10 @@ getL :: Lens' a b -> a -> b
 getL lns x = x ^. lns -- view lns x
 
 setL :: Lens' a b -> b -> a -> a
-setL lns y x = set lns y x
+setL lns y x = lns .~ y $ x -- set lens y x
 
 modL :: Lens' a b -> (b -> b) -> a -> a
-modL lns f x = set lns (f (view lns x)) x
+modL lns f x = lns %~ f $ x -- over lns f x
 
 access :: (Monad m) => Lens' a b -> StateT a m b
 access lns = get >>= return . getL lns

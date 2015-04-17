@@ -8,7 +8,6 @@ module Debian.Debianize.BuildDependencies
 
 import Control.Lens.Extended
 import Control.Applicative ((<$>))
-import Control.Category ((.))
 import Control.Monad.State (MonadState(get))
 import Control.Monad.Trans (MonadIO)
 import Data.Char (isSpace, toLower)
@@ -39,7 +38,7 @@ import Distribution.PackageDescription as Cabal (allBuildInfo, BuildInfo(..), Bu
 import qualified Distribution.PackageDescription as Cabal (PackageDescription(buildDepends, executables, testSuites))
 import Distribution.Version (anyVersion, asVersionIntervals, earlierVersion, foldVersionRange', fromVersionIntervals, intersectVersionRanges, isNoVersion, laterVersion, orEarlierVersion, orLaterVersion, toVersionIntervals, unionVersionRanges, VersionRange, withinVersion)
 import Distribution.Version.Invert (invertVersionRange)
-import Prelude hiding ((.), init, log, map, unlines, unlines, writeFile)
+import Prelude hiding (init, log, map, unlines, unlines, writeFile)
 import System.Directory (findExecutable)
 import System.Exit (ExitCode(ExitSuccess))
 import System.IO.Unsafe (unsafePerformIO)

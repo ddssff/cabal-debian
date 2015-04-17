@@ -6,7 +6,6 @@ module Debian.Debianize.InputCabal
 
 
 import Control.Lens.Extended
-import Control.Category ((.))
 import Control.Exception (bracket)
 import Control.Monad (when)
 import Control.Monad.Trans (MonadIO, liftIO)
@@ -27,7 +26,7 @@ import Distribution.Simple.Utils (defaultPackageDesc, die, setupMessage)
 import Distribution.System as Cabal (buildArch, Platform(..))
 import qualified Distribution.System as Cabal (buildOS)
 import Distribution.Verbosity (Verbosity)
-import Prelude hiding ((.), break, lines, log, null, readFile, sum)
+import Prelude hiding (break, lines, log, null, readFile, sum)
 import System.Directory (doesFileExist, getCurrentDirectory)
 import System.Exit (ExitCode(..))
 import System.Posix.Files (setFileCreationMask)

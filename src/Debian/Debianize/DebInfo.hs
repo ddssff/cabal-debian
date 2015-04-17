@@ -87,7 +87,6 @@ module Debian.Debianize.DebInfo
     , makeDebInfo
     ) where
 
-import Control.Category ((.))
 import Control.Monad.State (StateT)
 --import Data.Default (def)
 import Data.Generics (Data, Typeable)
@@ -106,7 +105,7 @@ import Debian.Orphans ()
 import Debian.Policy (PackageArchitectures, PackagePriority, Section, SourceFormat)
 import Debian.Relation (BinPkgName, Relations, SrcPkgName)
 import Debian.Version (DebianVersion)
-import Prelude hiding ((.), init, init, log, log)
+import Prelude hiding (init, init, log, log)
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr)
 import Control.Lens.Extended
 

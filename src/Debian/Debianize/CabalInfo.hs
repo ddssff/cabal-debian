@@ -17,7 +17,6 @@ module Debian.Debianize.CabalInfo
     , newCabalInfo
     ) where
 
-import Control.Category ((.))
 import Control.Lens.TH (makeLenses)
 import Control.Monad.Catch (MonadMask)
 import Control.Monad.State (execStateT)
@@ -39,7 +38,7 @@ import Debian.Relation (BinPkgName)
 import Debian.Version (DebianVersion)
 import Distribution.Package (PackageName)
 import Distribution.PackageDescription as Cabal (PackageDescription(homepage))
-import Prelude hiding ((.), init, init, log, log, null)
+import Prelude hiding (init, init, log, log, null)
 import System.Unix.Mount (withProcAndSys)
 
 -- This enormous record is a mistake - instead it should be an Atom

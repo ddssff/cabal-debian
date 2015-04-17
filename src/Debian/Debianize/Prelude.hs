@@ -40,10 +40,9 @@ module Debian.Debianize.Prelude
     ) where
 
 
-import Control.Lens.Extended
 import Control.Applicative ((<$>))
-import Control.Category ((.))
 import Control.Exception as E (bracket, catch, throw, try)
+import Control.Lens.Extended
 import Control.Monad (when)
 import Control.Monad.Reader (ask, ReaderT)
 import Control.Monad.State (get, MonadState, put)
@@ -66,7 +65,7 @@ import Debian.Version.String (parseDebianVersion)
 import Distribution.Package (PackageIdentifier(..), PackageName(..))
 import Distribution.Verbosity (intToVerbosity, Verbosity)
 import GHC.IO.Exception (ExitCode(ExitFailure, ExitSuccess), IOErrorType(InappropriateType, NoSuchThing), IOException(IOError, ioe_description, ioe_type))
-import Prelude hiding ((.), lookup, map)
+import Prelude hiding (lookup, map)
 import System.Directory (doesDirectoryExist, doesFileExist, getCurrentDirectory, getDirectoryContents, removeDirectory, removeFile, renameFile, setCurrentDirectory)
 import System.FilePath ((</>), dropExtension)
 import System.IO (hSetBinaryMode, IOMode(ReadMode), openFile, withFile)
@@ -309,10 +308,10 @@ listElemLens p =
 
 maybeLens :: a -> Lens' a b -> Lens' (Maybe a) b
 maybeLens def l =
-    lens (getL l . fromMaybe def)
+    lens (\ x -> (fromMaybe def x) ^. l)
          (\ b a -> case (a, b) of
-                     (_, Nothing) -> Just (setL l a def)
-                     (_, Just b') -> Just (setL l a b'))
+                     (_, Nothing) -> Just (l .~ a $ def)
+                     (_, Just b') -> Just (l .~ a $ b'))
 
 fromEmpty :: Set a -> Set a -> Set a
 fromEmpty d s | Set.null s = d

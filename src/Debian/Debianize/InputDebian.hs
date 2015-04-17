@@ -11,7 +11,6 @@ module Debian.Debianize.InputDebian
 
 
 import Control.Lens.Extended
-import Control.Category ((.))
 import Control.Monad (filterM)
 import Control.Monad.State (put)
 import Control.Monad.Trans (liftIO, MonadIO)
@@ -38,7 +37,7 @@ import Debian.Relation (BinPkgName(..), parseRelations, Relations, SrcPkgName(..
 import Debug.Trace (trace)
 import Distribution.Package (PackageIdentifier(..), PackageName(..))
 import qualified Distribution.PackageDescription as Cabal (dataDir, PackageDescription(package))
-import Prelude hiding ((.), break, lines, log, null, readFile, sum, words)
+import Prelude hiding (break, lines, log, null, readFile, sum, words)
 import System.Directory (doesFileExist)
 import System.FilePath ((</>), dropExtension, takeExtension)
 import System.IO.Error (catchIOError, tryIOError)

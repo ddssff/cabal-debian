@@ -20,7 +20,6 @@ module Debian.Debianize.BasicInfo
     ) where
 
 import Control.Applicative ((<$>))
-import Control.Category ((.))
 import Control.Monad.State (StateT, execStateT)
 import Control.Monad.Trans (MonadIO)
 import Data.Char (toLower, toUpper)
@@ -33,7 +32,7 @@ import Debian.Debianize.Prelude ((%=), read', (~=))
 import Debian.Orphans ()
 import Distribution.Compiler (CompilerFlavor(..))
 import Distribution.PackageDescription as Cabal (FlagName(FlagName))
-import Prelude hiding ((.), break, lines, log, null, readFile, sum)
+import Prelude hiding (break, lines, log, null, readFile, sum)
 import System.Console.GetOpt (ArgDescr(ReqArg, NoArg), ArgOrder(Permute), getOpt, OptDescr(Option))
 import System.Environment (getArgs)
 import System.FilePath ((</>))

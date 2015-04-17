@@ -19,7 +19,6 @@ module Debian.Debianize.Goodies
     ) where
 
 import Control.Lens.Extended
-import Control.Category ((.))
 import Data.Char (isSpace)
 import Data.List as List (dropWhileEnd, intercalate, intersperse, map)
 import Data.Map as Map (insertWith)
@@ -38,7 +37,7 @@ import Debian.Pretty (ppShow, ppText)
 import Debian.Relation (BinPkgName(BinPkgName), Relation(Rel))
 import Distribution.Package (PackageName(PackageName))
 import Distribution.PackageDescription as Cabal (PackageDescription(package, synopsis, description))
-import Prelude hiding ((.), init, log, map, unlines, writeFile)
+import Prelude hiding (init, log, map, unlines, writeFile)
 import System.FilePath ((</>))
 
 showCommand :: String -> [String] -> String

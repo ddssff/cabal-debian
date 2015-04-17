@@ -14,7 +14,6 @@ module Debian.Debianize.DebianName
 
 import Control.Lens.Extended
 import Control.Applicative ((<$>))
-import Control.Category ((.))
 import Data.Char (toLower)
 import Data.Map as Map (alter, lookup)
 import Data.Version (showVersion, Version)
@@ -30,7 +29,7 @@ import Debian.Version (parseDebianVersion)
 import Distribution.Compiler (CompilerFlavor(..))
 import Distribution.Package (Dependency(..), PackageIdentifier(..), PackageName(PackageName))
 import qualified Distribution.PackageDescription as Cabal (PackageDescription(package))
-import Prelude hiding (unlines, (.))
+import Prelude hiding (unlines)
 
 data Dependency_
   = BuildDepends Dependency

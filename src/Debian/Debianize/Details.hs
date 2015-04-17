@@ -6,7 +6,6 @@ module Debian.Debianize.Details
     ( debianDefaults
     ) where
 
-import Control.Category ((.))
 import Data.Version (Version(Version))
 import Debian.Debianize.DebianName (mapCabal, splitCabal)
 import Debian.Debianize.Monad (CabalT)
@@ -16,7 +15,6 @@ import Debian.Debianize.DebInfo as D (execMap)
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
 import Debian.Relation (BinPkgName(BinPkgName), Relation(Rel))
 import Distribution.Package (PackageName(PackageName))
-import Prelude hiding ((.))
 
 -- | Update the CabalInfo value in the CabalT state with some details about
 -- the debian repository - special cases for how some cabal packages

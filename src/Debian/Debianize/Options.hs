@@ -8,8 +8,8 @@ module Debian.Debianize.Options
     , withEnvironmentArgs
     ) where
 
-import OldLens (focus, Lens)
 
+import Control.Lens.Extended
 import Control.Category ((.))
 import Control.Monad.State (StateT)
 import Control.Monad.Trans (liftIO, MonadIO)
@@ -19,7 +19,7 @@ import Debian.Debianize.DebInfo (DebInfo, flags, binaryDebDescription)
 import qualified  Debian.Debianize.DebInfo as D
 import Debian.Debianize.Goodies (doExecutable)
 import Debian.Debianize.Monad (CabalT)
-import Debian.Debianize.Prelude ((%=), (+++=), (++=), (+=), maybeRead, (~=))
+import Debian.Debianize.Prelude (maybeRead)
 import qualified Debian.Debianize.CabalInfo as A
 import qualified Debian.Debianize.BinaryDebDescription as B
 import qualified Debian.Debianize.SourceDebDescription as S
@@ -43,9 +43,9 @@ compileArgs :: MonadIO m => [String] -> CabalT m ()
 compileArgs args =
     case getOpt' RequireOrder options args of
       (os, [], [], []) -> sequence_ os
-      (_, non, unk, errs) -> error ("Errors: " ++ show errs ++
+      (_, nonopt, unk, errs) -> error ("Errors: " ++ show errs ++
                                     ", Unrecognized: " ++ show unk ++
-                                    ", Non-Options: " ++ show non)
+                                    ", Non-Options: " ++ show nonopt)
 
 -- | Get a list of arguments from the CABALDEBIAN environment variable
 -- and apply them to the monadic state.
@@ -82,7 +82,7 @@ options =
              (unlines [ "Don't generate API documentation packages, usually named"
                       , "libghc-packagename-doc.  Use this if your build is crashing due to a"
                       , "haddock bug."]),
-      Option "" ["missing-dependency"] (ReqArg (\ name -> (A.debInfo . D.missingDependencies) += (BinPkgName name)) "DEB")
+      Option "" ["missing-dependency"] (ReqArg (\ name -> (A.debInfo . D.missingDependencies) -<= (BinPkgName name)) "DEB")
              (unlines [ "This is the counterpart to --disable-haddock.  It prevents a package"
                       , "from being added to the build dependencies.  This is necessary, for example,"
                       , "when a dependency package was built with the --disable-haddock option, because"
@@ -200,9 +200,9 @@ liftOpt :: Monad m => OptDescr (StateT Flags m ()) -> OptDescr (CabalT m ())
 liftOpt (Option chrs strs desc doc) = Option chrs strs (liftDesc desc) doc
 
 liftDesc :: Monad m => ArgDescr (StateT Flags m ()) -> ArgDescr (CabalT m ())
-liftDesc (NoArg x) = NoArg (focus (A.debInfo . flags) x)
-liftDesc (ReqArg f s) = ReqArg (\ p -> focus (A.debInfo . flags) (f p)) s
-liftDesc (OptArg f s) = OptArg (\ mp -> focus (A.debInfo . flags) (f mp)) s
+liftDesc (NoArg x) = NoArg (zoom (A.debInfo . flags) x)
+liftDesc (ReqArg f s) = ReqArg (\ p -> zoom (A.debInfo . flags) (f p)) s
+liftDesc (OptArg f s) = OptArg (\ mp -> zoom (A.debInfo . flags) (f mp)) s
 
 anyrel :: BinPkgName -> Relation
 anyrel x = Rel x Nothing Nothing
@@ -222,7 +222,7 @@ executableOption arg f =
 -- addDep' :: Monad m => (BinPkgName -> Lens DebInfo Relations) -> String -> DebianT m ()
 -- addDep' lns arg = mapM_ (\ (b, rel) -> lns b %= (++ [[rel]])) (parseDeps arg)
 
-addDep :: Monad m => (BinPkgName -> Lens DebInfo Relations) -> String -> CabalT m ()
+addDep :: Monad m => (BinPkgName -> Lens' DebInfo Relations) -> String -> CabalT m ()
 addDep lns arg = mapM_ (\ (b, rel) -> (A.debInfo . lns b) %= (++ [[rel]])) (parseDeps arg)
 
 parseDeps :: String -> [(BinPkgName, Relation)]

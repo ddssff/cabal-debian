@@ -6,8 +6,8 @@ module Debian.Debianize.Files
     ( debianizationFileMap
     ) where
 
-import OldLens (access, getL)
 
+import Control.Lens.Extended
 import Control.Applicative ((<$>))
 import Control.Category ((.))
 import Control.Monad.Trans (lift)

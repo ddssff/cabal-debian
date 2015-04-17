@@ -11,15 +11,14 @@ module Debian.Debianize.DebianName
     , remapCabal
     ) where
 
-import OldLens (access)
 
+import Control.Lens.Extended
 import Control.Applicative ((<$>))
 import Control.Category ((.))
 import Data.Char (toLower)
 import Data.Map as Map (alter, lookup)
 import Data.Version (showVersion, Version)
 import Debian.Debianize.Monad (CabalT)
-import Debian.Debianize.Prelude ((%=))
 import Debian.Debianize.CabalInfo as A (debianNameMap, packageDescription, debInfo)
 import Debian.Debianize.BinaryDebDescription as Debian (PackageType(..))
 import Debian.Debianize.DebInfo as D (overrideDebianNameBase, utilsPackageNameBase)

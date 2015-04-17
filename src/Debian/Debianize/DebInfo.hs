@@ -87,13 +87,10 @@ module Debian.Debianize.DebInfo
     , makeDebInfo
     ) where
 
-import OldLens (Lens, iso, getL, (%=))
-
 import Control.Category ((.))
 import Control.Monad.State (StateT)
 --import Data.Default (def)
 import Data.Generics (Data, Typeable)
-import Control.Lens.TH (makeLenses)
 import Data.Map as Map (Map)
 import Data.Monoid (Monoid(..))
 import Data.Set as Set (insert, Set)
@@ -111,6 +108,7 @@ import Debian.Relation (BinPkgName, Relations, SrcPkgName)
 import Debian.Version (DebianVersion)
 import Prelude hiding ((.), init, init, log, log)
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr)
+import Control.Lens.Extended
 
 -- | Information required to represent a non-cabal debianization.
 data DebInfo
@@ -380,13 +378,13 @@ $(makeLenses ''DebInfo)
 
 -- We need (%=_)
 link :: Monad m => BinPkgName -> FilePath -> FilePath -> StateT DebInfo m ()
-link b from dest = atomSet %= (Set.insert $ Link b from dest) >> return ()
+link b src dest = atomSet %= (Set.insert $ Link b src dest) >> return ()
 install :: Monad m => BinPkgName -> FilePath -> FilePath -> StateT DebInfo m ()
-install b from dest = atomSet %= (Set.insert $ Install b from dest) >> return ()
+install b src dest = atomSet %= (Set.insert $ Install b src dest) >> return ()
 installTo :: Monad m => BinPkgName -> FilePath -> FilePath -> StateT DebInfo m ()
-installTo b from dest = atomSet %= (Set.insert $ InstallTo b from dest) >> return ()
+installTo b src dest = atomSet %= (Set.insert $ InstallTo b src dest) >> return ()
 installData :: Monad m => BinPkgName -> FilePath -> FilePath -> StateT DebInfo m ()
-installData b from dest = atomSet %= (Set.insert $ InstallData b from dest) >> return ()
+installData b src dest = atomSet %= (Set.insert $ InstallData b src dest) >> return ()
 file :: Monad m => BinPkgName -> FilePath -> Text -> StateT DebInfo m ()
 file b dest content = atomSet %= (Set.insert $ File b dest content) >> return ()
 installCabalExec :: Monad m => BinPkgName -> String -> FilePath -> StateT DebInfo m ()
@@ -398,6 +396,6 @@ installDir b dir = atomSet %= (Set.insert $ InstallDir b dir) >> return ()
 
 -- | Lens to look up the binary deb description by name and create it if absent.
 -- <http://www.debian.org/doc/debian-policy/ch-controlfields.html#s-f-Package>
-binaryDebDescription :: BinPkgName -> Lens DebInfo BinaryDebDescription
+binaryDebDescription :: BinPkgName -> Lens' DebInfo BinaryDebDescription
 binaryDebDescription b =
     control . S.binaryPackages . listElemLens ((== b) . getL package) . maybeLens (newBinaryDebDescription b) (iso id id)

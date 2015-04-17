@@ -14,11 +14,10 @@ module Debian.Debianize.Output
     , validateDebianization
     ) where
 
-import OldLens (getL)
 
+import Control.Lens.Extended
 import Control.Category ((.))
 import Control.Exception as E (throw)
-import Control.Lens (zoom)
 import Control.Monad.State (get, StateT)
 import Control.Monad.Trans (liftIO, MonadIO)
 import Data.Algorithm.DiffContext (getContextDiff, prettyContextDiff)

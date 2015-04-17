@@ -358,19 +358,19 @@ instance Pretty License where
 fromCabalLicense :: Cabal.License -> License
 fromCabalLicense x =
     case x of
-      Cabal.GPL mver -> GPL -- FIXME - what about the version number?  same below
-      Cabal.AGPL mver -> OtherLicense (show x)
-      Cabal.LGPL mver -> LGPL
+      Cabal.GPL _ -> GPL -- FIXME - what about the version number?  same below
+      Cabal.AGPL _ -> OtherLicense (show x)
+      Cabal.LGPL _ -> LGPL
       Cabal.BSD3 -> BSD_3_Clause
       Cabal.BSD4 -> BSD_4_Clause
       Cabal.MIT -> OtherLicense (show x)
-      Cabal.Apache mver -> Apache
+      Cabal.Apache _ -> Apache
       Cabal.PublicDomain -> Public_Domain
       Cabal.AllRightsReserved -> OtherLicense "AllRightsReserved"
       Cabal.OtherLicense -> OtherLicense (show x)
-      Cabal.UnknownLicense s -> OtherLicense (show x)
+      Cabal.UnknownLicense _ -> OtherLicense (show x)
 #if MIN_VERSION_Cabal(1,20,0)
-      Cabal.MPL ver -> MPL
+      Cabal.MPL _ -> MPL
 #if MIN_VERSION_Cabal(1,22,0)
       Cabal.BSD2 -> BSD_2_Clause
       Cabal.ISC -> OtherLicense (show x)

@@ -5,8 +5,7 @@ module Main
     , main
     ) where
 
-import OldLens (getL, setL)
-
+import Control.Lens.Extended
 import Control.Applicative ((<$>))
 import Data.Algorithm.DiffContext (getContextDiff, prettyContextDiff)
 import Data.Function (on)
@@ -30,7 +29,7 @@ import Debian.Debianize.Finalize (debianize {-, finalizeDebianization-})
 import Debian.Debianize.Goodies (doBackups, doExecutable, doServer, doWebsite, tightDependencyFixup)
 import Debian.Debianize.InputDebian (inputDebianization)
 import Debian.Debianize.Monad (CabalT, evalCabalT, execCabalM, execCabalT, liftCabal, execDebianT, DebianT, evalDebianT)
-import Debian.Debianize.Prelude ((%=), (++=), (+=), (~=), withCurrentDirectory)
+import Debian.Debianize.Prelude (withCurrentDirectory)
 import qualified Debian.Debianize.SourceDebDescription as S
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
 import Debian.Pretty (ppShow)
@@ -405,7 +404,7 @@ test4 label =
              doBackups (BinPkgName "clckwrks-dot-com-backups") "clckwrks-dot-com-backups"
              doWebsite (BinPkgName "clckwrks-dot-com-production") (theSite (BinPkgName "clckwrks-dot-com-production"))
              (A.debInfo . D.revision) ~= Nothing
-             (A.debInfo . D.missingDependencies) += (BinPkgName "libghc-clckwrks-theme-clckwrks-doc")
+             (A.debInfo . D.missingDependencies) -<= (BinPkgName "libghc-clckwrks-theme-clckwrks-doc")
              (A.debInfo . D.sourceFormat) ~= Just Native3
              (A.debInfo . D.control . S.homepage) ~= Just "http://www.clckwrks.com/"
              newDebianization' (Just 9) (Just (StandardsVersion 3 9 6 Nothing))

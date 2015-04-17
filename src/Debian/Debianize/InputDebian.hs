@@ -9,8 +9,8 @@ module Debian.Debianize.InputDebian
     , dataTop
     ) where
 
-import OldLens (access, modL, setL)
 
+import Control.Lens.Extended
 import Control.Category ((.))
 import Control.Monad (filterM)
 import Control.Monad.State (put)
@@ -26,7 +26,7 @@ import Debian.Control (Control'(unControl), ControlFunctions, Field, Field'(..),
 import Debian.Debianize.DebInfo (changelog, compat, control, copyright, install, installDir, installInit, intermediateFiles, link, logrotateStanza, postInst, postRm, preInst, preRm, rulesHead, sourceFormat, warning, watch)
 import qualified Debian.Debianize.DebInfo as T (flags, makeDebInfo)
 import Debian.Debianize.Monad (CabalT, DebianT)
-import Debian.Debianize.Prelude ((+++=), (++=), (+=), getDirectoryContents', read', readFileMaybe, (~=), (~?=))
+import Debian.Debianize.Prelude (getDirectoryContents', read', readFileMaybe)
 import Debian.Debianize.CabalInfo (packageDescription)
 import Debian.Debianize.BinaryDebDescription (BinaryDebDescription, newBinaryDebDescription)
 import qualified Debian.Debianize.BinaryDebDescription as B (architecture, binaryPriority, binarySection, breaks, builtUsing, conflicts, depends, description, essential, package, preDepends, provides, recommends, relations, replaces, suggests)
@@ -61,7 +61,7 @@ inputDebianization =
 inputDebianizationFile :: MonadIO m => FilePath -> DebianT m ()
 inputDebianizationFile path =
     do inputCabalInfoFromDirectory
-       liftIO (readFileMaybe path) >>= maybe (return ()) (\ text -> intermediateFiles += (path, text))
+       liftIO (readFileMaybe path) >>= maybe (return ()) (\ text -> intermediateFiles -<= (path, text))
 
 inputSourceDebDescription :: MonadIO m => DebianT m (S.SourceDebDescription, [Field])
 inputSourceDebDescription =
@@ -192,7 +192,7 @@ inputCabalInfoFromDirectory =
           do sums <- liftIO $ getDirectoryContents' tmp `catchIOError` (\ _ -> return [])
              paths <- liftIO $ mapM (\ sum -> getDirectoryContents' (tmp </> sum) >>= return . map (sum </>)) sums >>= return . filter ((/= '~') . last) . concat
              files <- liftIO $ mapM (readFile . (tmp </>)) paths
-             mapM_ (intermediateFiles +=) (zip (map ("debian/cabalInstall" </>) paths) files)
+             mapM_ (intermediateFiles -<=) (zip (map ("debian/cabalInstall" </>) paths) files)
 
 -- | Construct a file path from the debian directory and a relative
 -- path, read its contents and add the result to the debianization.
@@ -201,7 +201,7 @@ inputCabalInfoFromDirectory =
 -- here, though I don't recall why at the moment.
 inputCabalInfo :: MonadIO m => FilePath -> FilePath -> DebianT m ()
 inputCabalInfo _ path | elem path ["control"] = return ()
-inputCabalInfo debian name@"source/format" = liftIO (readFile (debian </> name)) >>= \ text -> either (warning +=) ((sourceFormat ~=) . Just) (readSourceFormat text)
+inputCabalInfo debian name@"source/format" = liftIO (readFile (debian </> name)) >>= \ text -> either (warning -<=) ((sourceFormat ~=) . Just) (readSourceFormat text)
 inputCabalInfo debian name@"watch" = liftIO (readFile (debian </> name)) >>= \ text -> watch ~= Just text
 inputCabalInfo debian name@"rules" = liftIO (readFile (debian </> name)) >>= \ text -> rulesHead ~= (Just $ strip text <> pack "\n")
 inputCabalInfo debian name@"compat" = liftIO (readFile (debian </> name)) >>= \ text -> compat ~= Just (read' (\ s -> error $ "compat: " ++ show s) (unpack text))

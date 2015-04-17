@@ -4,13 +4,13 @@ module Debian.Debianize.InputCabal
     ( inputCabalization
     ) where
 
-import OldLens (getL)
 
+import Control.Lens.Extended
 import Control.Category ((.))
 import Control.Exception (bracket)
 import Control.Monad (when)
 import Control.Monad.Trans (MonadIO, liftIO)
-import Data.Set as Set (Set, toList)
+import Data.Set as Set (toList)
 import Debian.Debianize.BasicInfo (Flags, buildEnv, dependOS, verbosity, compilerFlavor, cabalFlagAssignments)
 import Debian.Debianize.Prelude (intToVerbosity')
 #if MIN_VERSION_Cabal(1,22,0)
@@ -19,12 +19,8 @@ import Debian.GHC (getCompilerInfo)
 import Debian.GHC (newestAvailableCompilerId)
 #endif
 import Debian.Orphans ()
-#if MIN_VERSION_Cabal(1,22,0)
-import Distribution.Compiler (AbiTag(NoAbiTag), unknownCompilerInfo)
-#endif
-import Distribution.Compiler (CompilerId)
-import Distribution.Package (Dependency, Package(packageId))
-import Distribution.PackageDescription as Cabal (FlagName, PackageDescription)
+import Distribution.Package (Package(packageId))
+import Distribution.PackageDescription as Cabal (PackageDescription)
 import Distribution.PackageDescription.Configuration (finalizePackageDescription)
 import Distribution.PackageDescription.Parse (readPackageDescription)
 import Distribution.Simple.Utils (defaultPackageDesc, die, setupMessage)

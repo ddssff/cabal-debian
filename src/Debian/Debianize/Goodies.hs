@@ -18,8 +18,7 @@ module Debian.Debianize.Goodies
     , execAtoms
     ) where
 
-import OldLens (access, modL)
-
+import Control.Lens.Extended
 import Control.Category ((.))
 import Data.Char (isSpace)
 import Data.List as List (dropWhileEnd, intercalate, intersperse, map)
@@ -30,7 +29,7 @@ import Data.Set as Set (insert, singleton, union)
 import Data.Text as Text (pack, Text, unlines)
 import qualified Debian.Debianize.DebInfo as D
 import Debian.Debianize.Monad (CabalInfo, CabalT, DebianT, execCabalM)
-import Debian.Debianize.Prelude ((%=), (+++=), (++=), (+=), stripWith)
+import Debian.Debianize.Prelude (stripWith)
 import qualified Debian.Debianize.CabalInfo as A
 import qualified Debian.Debianize.BinaryDebDescription as B
 import Debian.Orphans ()
@@ -60,7 +59,7 @@ translate str =
 tightDependencyFixup :: Monad m => [(BinPkgName, BinPkgName)] -> BinPkgName -> DebianT m ()
 tightDependencyFixup [] _ = return ()
 tightDependencyFixup pairs p =
-    D.rulesFragments +=
+    D.rulesFragments -<=
           (Text.unlines $
                ([ "binary-fixup/" <> name <> "::"
                 , "\techo -n 'haskell:Depends=' >> debian/" <> name <> ".substvars" ] ++

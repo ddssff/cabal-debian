@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP, OverloadedStrings #-}
 
-import OldLens hiding ((~=), (%=))
 
+import Control.Lens.Extended
 import Data.Maybe (fromMaybe)
 import Data.Monoid (mempty)
 import Data.Set as Set (singleton, insert)

@@ -5,8 +5,8 @@ module Debian.Debianize.Finalize
     -- , finalizeDebianization -- external use deprecated - used in test script
     ) where
 
-import OldLens (access, getL)
 
+import Control.Lens.Extended hiding ((<.>))
 import Control.Applicative ((<$>))
 import Control.Category ((.))
 import Control.Monad (unless, when)
@@ -37,7 +37,6 @@ import Debian.Debianize.Goodies (backupAtoms, describe, execAtoms, serverAtoms, 
 import Debian.Debianize.InputDebian (dataTop, dataDest, inputChangeLog)
 import Debian.Debianize.Monad as Monad (CabalT, liftCabal, unlessM)
 import Debian.Debianize.Options (compileCommandlineArgs, compileEnvironmentArgs)
-import Debian.Debianize.Prelude ((%=), (+=), (~=), (~?=))
 import qualified Debian.Debianize.SourceDebDescription as S
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
 import Debian.Orphans ()
@@ -452,9 +451,9 @@ makeUtilsPackage pkgDesc hc =
        -- Files that are already assigned to any binary deb
        installedDataMap <- Set.fold (\ x r ->
                                          case x of
-                                           D.Install b from _ -> Map.insertWith Set.union b (singleton from) r
-                                           D.InstallTo b from _ -> Map.insertWith Set.union b (singleton from) r
-                                           D.InstallData b from _ -> Map.insertWith Set.union b (singleton from) r
+                                           D.Install b src _ -> Map.insertWith Set.union b (singleton src) r
+                                           D.InstallTo b src _ -> Map.insertWith Set.union b (singleton src) r
+                                           D.InstallData b src  _ -> Map.insertWith Set.union b (singleton src) r
                                            _ -> r) mempty <$> access (A.debInfo . D.atomSet) :: CabalT m (Map BinPkgName (Set FilePath))
        installedExecMap <- Set.fold (\ x r ->
                                          case x of
@@ -494,7 +493,7 @@ makeUtilsPackage pkgDesc hc =
        when (not (Set.null utilsData && Set.null utilsExec)) $ do
          (A.debInfo . D.binaryDebDescription b . B.description) ~?= Just desc
          -- This is really for all binary debs except the libraries - I'm not sure why
-         (A.debInfo . D.rulesFragments)+= (pack ("build" </> ppShow b ++ ":: build-ghc-stamp\n"))
+         (A.debInfo . D.rulesFragments) -<= (pack ("build" </> ppShow b ++ ":: build-ghc-stamp\n"))
          (A.debInfo . D.binaryDebDescription b . B.architecture) ~?= Just (if Set.null utilsExec then All else Any)
          (A.debInfo . D.binaryDebDescription b . B.binarySection) ~?= Just (MainSection "misc")
          binaryPackageRelations b B.Utilities
@@ -515,6 +514,7 @@ expandAtoms =
 #if MIN_VERSION_Cabal(1,22,0)
          GHCJS -> (A.debInfo . D.flags . cabalFlagAssignments) %= (Set.union (Set.fromList (flagList "--ghcjs")))
 #endif
+         x -> error $ "Sorry, compiler not supported: " ++ show x
        builddir <- access (A.debInfo . D.buildDir) >>= return . fromMaybe (case hc of
                                                                GHC -> "dist-ghc/build"
 #if MIN_VERSION_Cabal(1,22,0)
@@ -555,7 +555,7 @@ expandAtoms =
             -- A GHCJS executable is a directory with files, copy them
             -- all into place.
             doAtom GHCJS (D.InstallCabalExec b name dest) =
-                (A.debInfo . D.rulesFragments) +=
+                (A.debInfo . D.rulesFragments) -<=
                      (Text.unlines
                         [ pack ("binary-fixup" </> ppShow b) <> "::"
                         , pack ("\t(cd " <> builddir </> name <> " && find " <> name <.> "jsexe" <> " -type f) |\\\n" <>
@@ -571,7 +571,7 @@ expandAtoms =
           where
             doAtom :: Monad m => CompilerFlavor -> D.Atom -> CabalT m ()
             doAtom GHC (D.InstallCabalExecTo b name dest) =
-                (A.debInfo . D.rulesFragments) +=
+                (A.debInfo . D.rulesFragments) -<=
                                      (Text.unlines
                                        [ pack ("binary-fixup" </> ppShow b) <> "::"
                                        , "\tinstall -Dps " <> pack (builddir </> name </> name) <> " "
@@ -585,10 +585,10 @@ expandAtoms =
           access (A.debInfo . D.atomSet) >>= List.mapM_ doAtom . Set.toList
           where
             doAtom :: Monad m => D.Atom -> CabalT m ()
-            doAtom (D.InstallData b from dest) =
-                if takeFileName from == takeFileName dest
-                then (A.debInfo . D.atomSet) %= (Set.insert $ D.Install b from (dDest </> makeRelative "/" (takeDirectory dest)))
-                else (A.debInfo . D.atomSet) %= (Set.insert $ D.InstallTo b from (dDest </> makeRelative "/" dest))
+            doAtom (D.InstallData b src dest) =
+                if takeFileName src == takeFileName dest
+                then (A.debInfo . D.atomSet) %= (Set.insert $ D.Install b src (dDest </> makeRelative "/" (takeDirectory dest)))
+                else (A.debInfo . D.atomSet) %= (Set.insert $ D.InstallTo b src (dDest </> makeRelative "/" dest))
             doAtom _ = return ()
 
       -- Turn A.InstallTo into a make rule
@@ -597,10 +597,10 @@ expandAtoms =
           access (A.debInfo . D.atomSet) >>= List.mapM_ doAtom . Set.toList
           where
             doAtom :: Monad m => D.Atom -> CabalT m ()
-            doAtom (D.InstallTo b from dest) =
-                (A.debInfo . D.rulesFragments) +=
+            doAtom (D.InstallTo b src dest) =
+                (A.debInfo . D.rulesFragments) -<=
                                     (Text.unlines [ pack ("binary-fixup" </> ppShow b) <> "::"
-                                                  , "\tinstall -Dp " <> pack from <> " " <> pack ("debian" </> ppShow b </> makeRelative "/" dest) ])
+                                                  , "\tinstall -Dp " <> pack src <> " " <> pack ("debian" </> ppShow b </> makeRelative "/" dest) ])
             doAtom _ = return ()
 
       -- Turn A.File into an intermediateFile and an A.Install
@@ -613,7 +613,7 @@ expandAtoms =
                 do let (destDir', destName') = splitFileName path
                        tmpDir = "debian/cabalInstall" </> show (md5 (fromString (unpack text)))
                        tmpPath = tmpDir </> destName'
-                   (A.debInfo . D.intermediateFiles) += (tmpPath, text)
+                   (A.debInfo . D.intermediateFiles) -<= (tmpPath, text)
                    (A.debInfo . D.atomSet) %= (Set.insert $ D.Install b tmpPath destDir')
             doAtom _ = return ()
 

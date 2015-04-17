@@ -25,12 +25,11 @@ module Debian.Debianize.Monad
     , unlessM
     ) where
 
-import OldLens (focus)
-
 import Control.Monad.State (evalState, evalStateT, execState, execStateT, runState, State, StateT(runStateT))
 import Debian.Debianize.DebInfo (DebInfo)
 import Debian.Debianize.CabalInfo (CabalInfo, debInfo)
 import Debian.Orphans ()
+import Control.Lens.Extended
 import Prelude hiding (init, log, unlines)
 
 type CabalT m = StateT CabalInfo m -- Better name - CabalT?
@@ -63,7 +62,7 @@ execDebianT :: Monad m => DebianT m () -> DebInfo -> m DebInfo
 execDebianT = execStateT
 
 liftCabal :: Monad m => StateT DebInfo m a -> StateT CabalInfo m a
-liftCabal = focus debInfo
+liftCabal = zoom debInfo
 
 ifM :: Monad m => m Bool -> m a -> m a -> m a
 ifM m t f = m >>= \ b -> if b then t else f

@@ -32,34 +32,28 @@ module Debian.Debianize.Prelude
     , read'
     , modifyM
     , intToVerbosity'
-    , (~=)
-    , (~?=)
-    , (%=)
-    , (+=)
-    , (++=)
-    , (+++=)
     , listElemLens
     , maybeLens
     , fromEmpty
     , fromSingleton
+    , module Control.Lens.Extended
     ) where
 
-import OldLens (getL, lens, Lens, modL, setL)
-import qualified OldLens as Lens ((%=), (~=))
 
+import Control.Lens.Extended
 import Control.Applicative ((<$>))
 import Control.Category ((.))
 import Control.Exception as E (bracket, catch, throw, try)
 import Control.Monad (when)
 import Control.Monad.Reader (ask, ReaderT)
-import Control.Monad.State (get, MonadState, put, StateT)
+import Control.Monad.State (get, MonadState, put)
 import Data.Char (isSpace)
 import Data.List as List (dropWhileEnd, intersperse, isSuffixOf, lines, map)
-import Data.Map as Map (empty, findWithDefault, foldWithKey, fromList, insert, insertWith, lookup, map, Map)
+import Data.Map as Map (empty, findWithDefault, foldWithKey, fromList, insert, lookup, map, Map)
 import Data.Maybe (catMaybes, fromJust, fromMaybe, listToMaybe, mapMaybe)
-import Data.Monoid ((<>), mappend, mconcat, Monoid)
+import Data.Monoid ((<>), mconcat)
 import Data.Set as Set (Set, toList)
-import qualified Data.Set as Set (findMin, fromList, insert, null, size)
+import qualified Data.Set as Set (findMin, fromList, null, size)
 import Data.Text as Text (lines, Text, unpack)
 import Data.Text.IO (hGetContents)
 import Debian.Control (Field'(Field), lookupP, parseControl, stripWS, unControl)
@@ -269,7 +263,7 @@ foldEmpty r _ [] = r
 foldEmpty _ f l = f l
 
 -- | If the current value of getL x is Nothing, replace it with f.
-maybeL :: Lens a (Maybe b) -> Maybe b -> a -> a
+maybeL :: Lens' a (Maybe b) -> Maybe b -> a -> a
 maybeL l mb x = modL l (maybe mb Just) x
 
 indent :: [Char] -> String -> String
@@ -296,34 +290,7 @@ modifyM f = get >>= f >>= put
 intToVerbosity' :: Int -> Verbosity
 intToVerbosity' n = fromJust (intToVerbosity (max 0 (min 3 n)))
 
--- | Set a lens value.  (This is a version of Data.Lens.Lazy.~= that returns () instead of b.)
-(~=) :: Monad m => Lens a b -> b -> StateT a m ()
-l ~= x = l Lens.~= x >> return ()
-
--- | Set @b@ if it currently isNothing and the argument isJust, that is
---  1. Nothing happens if the argument isNothing
---  2. Nothing happens if the current value isJust
-(~?=) :: Monad m => Lens a (Maybe b) -> Maybe b -> StateT a m ()
-l ~?= (Just x) = l Lens.%= maybe (Just x) Just >> return ()
-_ ~?= _ = return ()
-
--- | Modify a value.  (This is a version of Data.Lens.Lazy.%= that returns () instead of a.)
-(%=) :: Monad m => Lens a b -> (b -> b) -> StateT a m ()
-l %= f = l Lens.%= f >> return ()
-
--- | Insert an element into a @(Set b)@
-(+=) :: (Monad m, Ord b) => Lens a (Set b) -> b -> StateT a m ()
-l += x = l %= Set.insert x
-
--- | Insert an element into a @(Map b c)@
-(++=) :: (Monad m, Ord b) => Lens a (Map b c) -> (b, c) -> StateT a m ()
-l ++= (k, a) = l %= Map.insert k a
-
--- | Insert an element into a @(Map b (Set c))@
-(+++=) :: (Monad m, Ord b, Monoid c) => Lens a (Map b c) -> (b, c) -> StateT a m ()
-l +++= (k, a) = l %= Map.insertWith mappend k a
-
-listElemLens :: (a -> Bool) -> Lens [a] (Maybe a)
+listElemLens :: (a -> Bool) -> Lens' [a] (Maybe a)
 listElemLens p =
     lens lensGet lensPut
     where
@@ -331,19 +298,19 @@ listElemLens p =
           case span (not . p) xs of
             (_, x : _) -> Just x
             _ -> Nothing
-      lensPut Nothing xs =
+      lensPut xs Nothing  =
           case span (not . p) xs of
-            (pre, _ : post) -> pre ++ post
+            (before, _ : after) -> before ++ after
             _ -> xs
-      lensPut (Just x) xs =
+      lensPut xs (Just x) =
           case span (not . p) xs of
-            (pre, _ : post) -> pre ++ (x : post)
+            (before, _ : after) -> before ++ (x : after)
             _ -> xs ++ [x]
 
-maybeLens :: a -> Lens a b -> Lens (Maybe a) b
+maybeLens :: a -> Lens' a b -> Lens' (Maybe a) b
 maybeLens def l =
     lens (getL l . fromMaybe def)
-         (\ a b -> case (a, b) of
+         (\ b a -> case (a, b) of
                      (_, Nothing) -> Just (setL l a def)
                      (_, Just b') -> Just (setL l a b'))
 

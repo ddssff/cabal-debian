@@ -5,8 +5,8 @@ module Debian.Debianize.BuildDependencies
     , debianBuildDepsIndep
     ) where
 
-import OldLens (access, getL)
 
+import Control.Lens.Extended
 import Control.Applicative ((<$>))
 import Control.Category ((.))
 import Control.Monad.State (MonadState(get))

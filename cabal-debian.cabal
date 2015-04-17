@@ -210,7 +210,7 @@ Library
     Debian.Debianize.Prelude
     Debian.Debianize.SourceDebDescription
     Debian.Debianize.VersionSplits
-    OldLens
+    Control.Lens.Extended
     Paths_cabal_debian
   Other-Modules:
     Debian.Orphans

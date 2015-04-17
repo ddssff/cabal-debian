@@ -1,3 +1,10 @@
+haskell-cabal-debian (4.27) unstable; urgency=low
+
+  * Remove all vestiges of the old data-lens package.  Thanks to
+    Dmitry Bogatov for help with this.
+
+ -- David Fox <dsf@seereason.com>  Fri, 17 Apr 2015 15:01:27 -0700
+
 haskell-cabal-debian (4.26) unstable; urgency=low
 
   * Revamp the way the final debian version number is computed in

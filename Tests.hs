@@ -586,7 +586,7 @@ test7 :: String -> Test
 test7 label =
     TestLabel label $
     TestCase (do new <- readProcessWithExitCode "runhaskell" ["--ghc-arg=-package-db=dist/package.conf.inplace", "debian/Debianize.hs", "--dry-run", "--native"] ""
-                 assertEqual label (ExitSuccess, "Ignored debianization file: debian/cabal-debian.1\nIgnored debianization file: debian/cabal-debian.manpages\nDebianization (dry run):\ndebian/cabal-debian-tests.install: Deleted\n\n", "") new)
+                 assertEqual label (ExitSuccess, "Ignored debianization file: debian/cabal-debian.1\nIgnored debianization file: debian/cabal-debian.manpages\nDebianization (dry run):\n  No changes\n\n", "") new)
 
 test8 :: String -> Test
 test8 label =

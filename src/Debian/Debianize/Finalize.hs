@@ -1,5 +1,5 @@
 -- | Compute the debianization of a cabal package.
-{-# LANGUAGE CPP, FlexibleInstances, OverloadedStrings, ScopedTypeVariables #-}
+{-# LANGUAGE CPP, FlexibleContexts, FlexibleInstances, OverloadedStrings, ScopedTypeVariables #-}
 module Debian.Debianize.Finalize
     ( debianize
     -- , finalizeDebianization -- external use deprecated - used in test script

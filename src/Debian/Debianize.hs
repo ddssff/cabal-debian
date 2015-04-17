@@ -76,30 +76,6 @@
 -- entire pipeline when it finds from a script found in a
 -- debian/Debianize.hs file.
 
-{-
-   Types.hs
-   Monad.hs
-   Lenses.hs
-
-   Input.hs
-
- * Files.hs
-
-   Output.hs
-
-   Bundled.hs
-   Changelog.hs
-   DebianName.hs
-   Details.hs
-   Finalize.hs
-   Goodies.hs
-   Interspersed.hs
-   Options.hs
-   SubstVars.hs
-   Tests.hs
-   Utility.hs
-   VersionSplits.hs
--}
 module Debian.Debianize
     ( -- * Collect information about desired debianization
       module Debian.Debianize.BasicInfo
@@ -128,49 +104,7 @@ module Debian.Debianize
     , module Debian.Debianize.Prelude
     , module Debian.Debianize.VersionSplits
     , module Debian.Policy
-{-
-    , Debian.Debianize.Finalize.debianize
-    , Debian.Debianize.Finalize.finalizeDebianization
 
-    , Debian.Debianize.Output.doDebianizeAction
-    , Debian.Debianize.Output.runDebianizeScript
-    , Debian.Debianize.Output.writeDebianization
-    , Debian.Debianize.Output.describeDebianization
-    , Debian.Debianize.Output.compareDebianization
-    , Debian.Debianize.Output.validateDebianization
-
-    , Debian.Debianize.Details.debianDefaultAtoms
-
-    , Debian.Debianize.Goodies.tightDependencyFixup
-    , Debian.Debianize.Goodies.doExecutable
-    , Debian.Debianize.Goodies.doServer
-    , Debian.Debianize.Goodies.doWebsite
-    , Debian.Debianize.Goodies.doBackups
-
-    , Debian.Debianize.InputDebian.inputDebianization
-    , Debian.Debianize.InputDebian.inputDebianizationFile
-    , Debian.Debianize.InputDebian.inputChangeLog
-
-    , Debian.Debianize.DebianName.mapCabal
-    , Debian.Debianize.DebianName.splitCabal
-    , Debian.Debianize.Options.compileArgs
-    , Debian.Debianize.SubstVars.substvars
-
-    -- * Utility functions
-
-    , Debian.Debianize.Prelude.withCurrentDirectory
-    , Debian.Debianize.Prelude.buildDebVersionMap
-    , Debian.Debianize.Prelude.dpkgFileMap
-    , Debian.Debianize.Prelude.debOfFile
-    -- * Lens operators
-    , (~=)
-    , (~?=)
-    , (%=)
-    , (+=)
-    , (++=)
-    , (+++=)
-
--}
     ) where
 
 import Debian.Debianize.CabalInfo -- (debianNameMap, debInfo, epochMap, newAtoms, packageDescription, PackageInfo, packageInfo, showAtoms)
@@ -187,7 +121,7 @@ import Debian.Debianize.InputCabal (inputCabalization)
 import Debian.Debianize.Monad (CabalM, CabalT, evalCabalM, evalCabalT, execCabalM, execCabalT, runCabalM, runCabalT, DebianT, execDebianT, evalDebianT, liftCabal)
 import Debian.Debianize.Options (compileArgs)
 import Debian.Debianize.Output (compareDebianization, describeDebianization, finishDebianization, runDebianizeScript, validateDebianization, writeDebianization)
-import Debian.Debianize.Prelude ((%=), (+++=), (++=), (+=), buildDebVersionMap, debOfFile, dpkgFileMap, withCurrentDirectory, (~=), (~?=))
+import Debian.Debianize.Prelude (buildDebVersionMap, debOfFile, dpkgFileMap, withCurrentDirectory, (.?=))
 import Debian.Debianize.SourceDebDescription
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
 import Debian.Policy (accessLogBaseName, apacheAccessLog, apacheErrorLog, apacheLogDirectory, appLogBaseName, Area(..), databaseDirectory, debianPackageVersion, errorLogBaseName, fromCabalLicense, getCurrentDebianUser, getDebhelperCompatLevel, getDebianStandardsVersion, haskellMaintainer, License(..), PackageArchitectures(..), PackagePriority(..), parseMaintainer, parsePackageArchitectures, parseStandardsVersion, parseUploaders, readLicense, readPriority, readSection, readSourceFormat, Section(..), serverAccessLog, serverAppLog, serverLogDirectory, SourceFormat(..), StandardsVersion(..), toCabalLicense)

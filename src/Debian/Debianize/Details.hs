@@ -6,10 +6,11 @@ module Debian.Debianize.Details
     ( debianDefaults
     ) where
 
+import Control.Lens
+import Data.Map as Map (insert)
 import Data.Version (Version(Version))
 import Debian.Debianize.DebianName (mapCabal, splitCabal)
 import Debian.Debianize.Monad (CabalT)
-import Debian.Debianize.Prelude ((++=))
 import Debian.Debianize.CabalInfo as A (epochMap, debInfo)
 import Debian.Debianize.DebInfo as D (execMap)
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
@@ -22,10 +23,10 @@ import Distribution.Package (PackageName(PackageName))
 debianDefaults :: Monad m => CabalT m ()
 debianDefaults =
     do -- These are the two epoch names I know about in the debian repo
-       A.epochMap ++= (PackageName "HaXml", 1)
-       A.epochMap ++= (PackageName "HTTP", 1)
+       A.epochMap %= Map.insert (PackageName "HaXml") 1
+       A.epochMap %= Map.insert (PackageName "HTTP") 1
        -- The hsx2hs build tool is in an an eponymous deb
-       (A.debInfo . D.execMap) ++= ("hsx2hs", [[Rel (BinPkgName "hsx2hs") Nothing Nothing]])
+       (A.debInfo . D.execMap) %= Map.insert "hsx2hs" [[Rel (BinPkgName "hsx2hs") Nothing Nothing]]
        -- The parsec debs are suffixed with either "2" or "3"
        mapCabal (PackageName "parsec") (DebBase "parsec3")
        splitCabal (PackageName "parsec") (DebBase "parsec2") (Version [3] [])

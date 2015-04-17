@@ -87,8 +87,8 @@ module Debian.Debianize.DebInfo
     , makeDebInfo
     ) where
 
+import Control.Lens
 import Control.Monad.State (StateT)
---import Data.Default (def)
 import Data.Generics (Data, Typeable)
 import Data.Map as Map (Map)
 import Data.Monoid (Monoid(..))
@@ -107,7 +107,6 @@ import Debian.Relation (BinPkgName, Relations, SrcPkgName)
 import Debian.Version (DebianVersion)
 import Prelude hiding (init, init, log, log)
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr)
-import Control.Lens.Extended
 
 -- | Information required to represent a non-cabal debianization.
 data DebInfo
@@ -397,4 +396,4 @@ installDir b dir = atomSet %= (Set.insert $ InstallDir b dir) >> return ()
 -- <http://www.debian.org/doc/debian-policy/ch-controlfields.html#s-f-Package>
 binaryDebDescription :: BinPkgName -> Lens' DebInfo BinaryDebDescription
 binaryDebDescription b =
-    control . S.binaryPackages . listElemLens ((== b) . getL package) . maybeLens (newBinaryDebDescription b) (iso id id)
+    control . S.binaryPackages . listElemLens ((== b) . view package) . maybeLens (newBinaryDebDescription b) (iso id id)

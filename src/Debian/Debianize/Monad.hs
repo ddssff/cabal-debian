@@ -25,11 +25,11 @@ module Debian.Debianize.Monad
     , unlessM
     ) where
 
+import Control.Lens
 import Control.Monad.State (evalState, evalStateT, execState, execStateT, runState, State, StateT(runStateT))
 import Debian.Debianize.DebInfo (DebInfo)
 import Debian.Debianize.CabalInfo (CabalInfo, debInfo)
 import Debian.Orphans ()
-import Control.Lens.Extended
 import Prelude hiding (init, log, unlines)
 
 type CabalT m = StateT CabalInfo m -- Better name - CabalT?

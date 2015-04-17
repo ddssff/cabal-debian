@@ -20,15 +20,15 @@ module Debian.Debianize.BasicInfo
     ) where
 
 import Control.Applicative ((<$>))
+import Control.Lens
 import Control.Monad.State (StateT, execStateT)
 import Control.Monad.Trans (MonadIO)
 import Data.Char (toLower, toUpper)
 import Data.Default (Default(def))
 import Data.Generics (Data, Typeable)
-import Control.Lens.TH (makeLenses)
 import Data.Monoid (Monoid(..))
 import Data.Set as Set (fromList, Set, union)
-import Debian.Debianize.Prelude ((%=), read', (~=))
+import Debian.Debianize.Prelude (read')
 import Debian.Orphans ()
 import Distribution.Compiler (CompilerFlavor(..))
 import Distribution.PackageDescription as Cabal (FlagName(FlagName))
@@ -102,28 +102,28 @@ $(makeLenses ''Flags)
 -- state monad value of type 'Flags'
 flagOptions :: MonadIO m => [OptDescr (StateT Flags m ())]
 flagOptions =
-    [ Option "v" ["verbose"] (ReqArg (\ s -> verbosity ~= (read' (\ s' -> error $ "verbose: " ++ show s') s :: Int)) "number")
+    [ Option "v" ["verbose"] (ReqArg (\ s -> verbosity .= (read' (\ s' -> error $ "verbose: " ++ show s') s :: Int)) "number")
              "Change the amount of progress messages generated",
-      Option "n" ["dry-run", "compare"] (NoArg (dryRun ~= True))
+      Option "n" ["dry-run", "compare"] (NoArg (dryRun .= True))
              "Just compare the existing debianization to the one we would generate.",
-      Option "h?" ["help"] (NoArg (debAction ~= Usage))
+      Option "h?" ["help"] (NoArg (debAction .= Usage))
              "Show this help text",
-      Option "" ["ghc"] (NoArg (compilerFlavor ~= GHC)) "Generate packages for GHC - same as --with-compiler GHC",
+      Option "" ["ghc"] (NoArg (compilerFlavor .= GHC)) "Generate packages for GHC - same as --with-compiler GHC",
 #if MIN_VERSION_Cabal(1,22,0)
-      Option "" ["ghcjs"] (NoArg (compilerFlavor ~= GHCJS)) "Generate packages for GHCJS - same as --with-compiler GHCJS",
+      Option "" ["ghcjs"] (NoArg (compilerFlavor .= GHCJS)) "Generate packages for GHCJS - same as --with-compiler GHCJS",
 #endif
-      Option "" ["hugs"] (NoArg (compilerFlavor ~= Hugs)) "Generate packages for Hugs - same as --with-compiler GHC",
+      Option "" ["hugs"] (NoArg (compilerFlavor .= Hugs)) "Generate packages for Hugs - same as --with-compiler GHC",
       Option "" ["with-compiler"] (ReqArg (\ s -> maybe (error $ "Invalid compiler id: " ++ show s)
-                                                        (\ hc -> compilerFlavor ~= hc)
+                                                        (\ hc -> compilerFlavor .= hc)
                                                         (readMaybe (map toUpper s) :: Maybe CompilerFlavor)) "COMPILER")
              (unlines [ "Generate packages for this CompilerFlavor" ]),
       Option "f" ["flags"] (ReqArg (\ fs -> cabalFlagAssignments %= (Set.union (Set.fromList (flagList fs)))) "FLAGS")
       -- Option "f" ["flags"] (ReqArg (\ fs p -> foldl (\ p' x -> p' {cabalFlagAssignments_ = Set.insert x (cabalFlagAssignments_ p')}) p (flagList fs)) "FLAGS")
              (unlines [ "Flags to pass to the finalizePackageDescription function in"
                       , "Distribution.PackageDescription.Configuration when loading the cabal file."]),
-      Option "" ["debianize"] (NoArg (debAction ~= Debianize))
+      Option "" ["debianize"] (NoArg (debAction .= Debianize))
              "Deprecated - formerly used to get what is now the normal benavior.",
-      Option "" ["buildenvdir"] (ReqArg (\ s -> buildEnv ~= EnvSet {cleanOS = s </> "clean", dependOS = s </> "depend", buildOS = s </> "build"}) "PATH")
+      Option "" ["buildenvdir"] (ReqArg (\ s -> buildEnv .= EnvSet {cleanOS = s </> "clean", dependOS = s </> "depend", buildOS = s </> "build"}) "PATH")
              "Directory containing the three build environments, clean, depend, and build.",
       Option "f" ["cabal-flags"] (ReqArg (\ s -> cabalFlagAssignments %= (Set.union (fromList (flagList s)))) "FLAG FLAG ...")
              "Flags to pass to cabal configure with the --flags= option "

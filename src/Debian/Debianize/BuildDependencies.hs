@@ -6,8 +6,8 @@ module Debian.Debianize.BuildDependencies
     ) where
 
 
-import Control.Lens.Extended
 import Control.Applicative ((<$>))
+import Control.Lens
 import Control.Monad.State (MonadState(get))
 import Control.Monad.Trans (MonadIO)
 import Data.Char (isSpace, toLower)
@@ -75,7 +75,7 @@ unboxDependency (ExtraLibs _) = Nothing -- Dependency (PackageName d) anyVersion
 -- so we just gather them all up here.
 allBuildDepends :: Monad m => PackageDescription -> CabalT m [Dependency_]
 allBuildDepends pkgDesc =
-    access (A.debInfo . D.enableTests) >>= \ testsEnabled ->
+    use (A.debInfo . D.enableTests) >>= \ testsEnabled ->
     allBuildDepends'
       (mergeCabalDependencies $
        Cabal.buildDepends pkgDesc ++
@@ -97,7 +97,7 @@ allBuildDepends pkgDesc =
       fixDeps :: CabalInfo -> [String] -> Relations
       fixDeps atoms xs =
           concatMap (\ cab -> fromMaybe [[D.Rel (D.BinPkgName ("lib" ++ List.map toLower cab ++ "-dev")) Nothing Nothing]]
-                                        (Map.lookup cab (getL (A.debInfo . D.extraLibMap) atoms))) xs
+                                        (Map.lookup cab (view (A.debInfo . D.extraLibMap) atoms))) xs
 
 -- | Take the intersection of all the dependencies on a given package name
 mergeCabalDependencies :: [Dependency] -> [Dependency]
@@ -110,16 +110,16 @@ mergeCabalDependencies =
 -- the rules for building haskell packages.
 debianBuildDeps :: (MonadIO m, Functor m) => PackageDescription -> CabalT m D.Relations
 debianBuildDeps pkgDesc =
-    do hc <- access (A.debInfo . D.flags . compilerFlavor)
+    do hc <- use (A.debInfo . D.flags . compilerFlavor)
        let hcs = singleton hc -- vestigial
        let hcTypePairs =
                fold union empty $
                   Set.map (\ hc' -> Set.map (hc',) $ hcPackageTypes hc') hcs
        cDeps <- allBuildDepends pkgDesc >>= mapM (buildDependencies hcTypePairs) >>= return . {-nub .-} concat
-       bDeps <- access (A.debInfo . D.control . S.buildDepends)
-       prof <- not <$> access (A.debInfo . D.noProfilingLibrary)
-       official <- access (A.debInfo . D.official)
-       compat <- access (A.debInfo . D.compat)
+       bDeps <- use (A.debInfo . D.control . S.buildDepends)
+       prof <- not <$> use (A.debInfo . D.noProfilingLibrary)
+       official <- use (A.debInfo . D.official)
+       compat <- use (A.debInfo . D.compat)
        let xs = nub $ [maybe [] (\ n -> [D.Rel (D.BinPkgName "debhelper") (Just (D.GRE (parseDebianVersion (show n)))) Nothing]) compat,
                        [D.Rel (D.BinPkgName "haskell-devscripts") (Just $ D.GRE $ parseDebianVersion $ if official then "0.9" else "0.8" :: String) Nothing],
                        anyrel "cdbs"] ++
@@ -143,10 +143,10 @@ debianBuildDeps pkgDesc =
 
 debianBuildDepsIndep :: (MonadIO m, Functor m) => PackageDescription -> CabalT m D.Relations
 debianBuildDepsIndep pkgDesc =
-    do hc <- access (A.debInfo . D.flags . compilerFlavor)
+    do hc <- use (A.debInfo . D.flags . compilerFlavor)
        let hcs = singleton hc -- vestigial
-       doc <- not <$> access (A.debInfo . D.noDocumentationLibrary)
-       bDeps <- access (A.debInfo . D.control . S.buildDependsIndep)
+       doc <- not <$> use (A.debInfo . D.noDocumentationLibrary)
+       bDeps <- use (A.debInfo . D.control . S.buildDependsIndep)
        cDeps <- allBuildDepends pkgDesc >>= mapM docDependencies
        let xs = nub $ if doc
                       then (if member GHC hcs then [anyrel' (compilerPackageName GHC B.Documentation)] else []) ++
@@ -159,12 +159,12 @@ debianBuildDepsIndep pkgDesc =
 
 -- | The documentation dependencies for a package include the
 -- documentation package for any libraries which are build
--- dependencies, so we have access to all the cross references.
+-- dependencies, so we have use to all the cross references.
 docDependencies :: (MonadIO m, Functor m) => Dependency_ -> CabalT m D.Relations
 docDependencies (BuildDepends (Dependency name ranges)) =
-    do hc <- access (A.debInfo . D.flags . compilerFlavor)
+    do hc <- use (A.debInfo . D.flags . compilerFlavor)
        let hcs = singleton hc -- vestigial
-       omitProfDeps <- access (A.debInfo . D.omitProfVersionDeps)
+       omitProfDeps <- use (A.debInfo . D.omitProfVersionDeps)
        concat <$> mapM (\ hc' -> dependencies hc' B.Documentation name ranges omitProfDeps) (toList hcs)
 docDependencies _ = return []
 
@@ -173,15 +173,15 @@ docDependencies _ = return []
 -- references.  Also the packages associated with extra libraries.
 buildDependencies :: (MonadIO m, Functor m) => Set (CompilerFlavor, B.PackageType) -> Dependency_ -> CabalT m D.Relations
 buildDependencies hcTypePairs (BuildDepends (Dependency name ranges)) =
-    access (A.debInfo . D.omitProfVersionDeps) >>= \ omitProfDeps ->
+    use (A.debInfo . D.omitProfVersionDeps) >>= \ omitProfDeps ->
     concat <$> mapM (\ (hc, typ) -> dependencies hc typ name ranges omitProfDeps) (toList hcTypePairs)
 buildDependencies _ dep@(ExtraLibs _) =
-    do mp <- access (A.debInfo . D.execMap)
+    do mp <- use (A.debInfo . D.execMap)
        return $ concat $ adapt mp dep
 buildDependencies _ dep =
     case unboxDependency dep of
       Just (Dependency _name _ranges) ->
-          do mp <- get >>= return . getL (A.debInfo . D.execMap)
+          do mp <- get >>= return . view (A.debInfo . D.execMap)
              return $ concat $ adapt mp dep
       Nothing ->
           return []
@@ -228,7 +228,7 @@ anyrel' x = [D.Rel x Nothing Nothing]
 -- so we will return just an OrRelation.
 dependencies :: MonadIO m => CompilerFlavor -> B.PackageType -> PackageName -> VersionRange -> Bool -> CabalT m Relations
 dependencies hc typ name cabalRange omitProfVersionDeps =
-    do nameMap <- access A.debianNameMap
+    do nameMap <- use A.debianNameMap
        -- Compute a list of alternative debian dependencies for
        -- satisfying a cabal dependency.  The only caveat is that
        -- we may need to distribute any "and" dependencies implied
@@ -307,9 +307,9 @@ doBundled typ name hc rels =
       comp = D.Rel (compilerPackageName hc typ) Nothing Nothing
       doRel :: MonadIO m => D.Relation -> CabalT m [D.Relation]
       doRel rel@(D.Rel dname req _) = do
-        -- gver <- access ghcVersion
-        splits <- access A.debianNameMap
-        root <- access (A.debInfo . D.flags . buildEnv) >>= return . dependOS
+        -- gver <- use ghcVersion
+        splits <- use A.debianNameMap
+        root <- use (A.debInfo . D.flags . buildEnv) >>= return . dependOS
         -- Look at what version of the package is provided by the compiler.
         atoms <- get
         -- What version of this package (if any) does the compiler provide?
@@ -356,17 +356,17 @@ doBundled hc typ name rels =
     where
       doRel :: MonadIO m => D.Relation -> CabalT m [D.Relation]
       doRel rel@(D.Rel dname req _) = do
-        hc <- access
+        hc <- use
 -}
 
 -- Convert a cabal version to a debian version, adding an epoch number if requested
 debianVersion' :: Monad m => PackageName -> Version -> CabalT m DebianVersion
 debianVersion' name v =
     do atoms <- get
-       return $ parseDebianVersion (maybe "" (\ n -> show n ++ ":") (Map.lookup name (getL A.epochMap atoms)) ++ showVersion v)
+       return $ parseDebianVersion (maybe "" (\ n -> show n ++ ":") (Map.lookup name (view A.epochMap atoms)) ++ showVersion v)
 
 debianVersion'' :: CabalInfo -> PackageName -> Version -> DebianVersion
-debianVersion'' atoms name v = parseDebianVersion (maybe "" (\ n -> show n ++ ":") (Map.lookup name (getL A.epochMap atoms)) ++ showVersion v)
+debianVersion'' atoms name v = parseDebianVersion (maybe "" (\ n -> show n ++ ":") (Map.lookup name (view A.epochMap atoms)) ++ showVersion v)
 
 data Rels a = And {unAnd :: [Rels a]} | Or {unOr :: [Rels a]} | Rel' {unRel :: a} deriving Show
 
@@ -382,4 +382,4 @@ canonical (Or rels) = And . List.map Or $ sequence $ List.map (concat . List.map
 filterMissing :: Monad m => [[Relation]] -> CabalT m [[Relation]]
 filterMissing rels =
     get >>= \ atoms -> return $
-    List.filter (/= []) (List.map (List.filter (\ (Rel name _ _) -> not (Set.member name (getL (A.debInfo . D.missingDependencies) atoms)))) rels)
+    List.filter (/= []) (List.map (List.filter (\ (Rel name _ _) -> not (Set.member name (view (A.debInfo . D.missingDependencies) atoms)))) rels)

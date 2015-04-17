@@ -51,6 +51,7 @@ import Network.URI (URI, parseURI)
 import Prelude hiding (init, init, log, log, unlines, readFile)
 import Text.PrettyPrint.HughesPJClass (Pretty(pPrint), text)
 
+unPackageName :: Cabal.PackageName -> String
 unPackageName (Cabal.PackageName x) = x
 
 -- | Description of the machine readable debian/copyright file.  A

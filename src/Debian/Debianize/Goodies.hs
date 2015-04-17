@@ -18,12 +18,12 @@ module Debian.Debianize.Goodies
     , execAtoms
     ) where
 
-import Control.Lens.Extended
+import Control.Lens
 import Data.Char (isSpace)
 import Data.List as List (dropWhileEnd, intercalate, intersperse, map)
-import Data.Map as Map (insertWith)
+import Data.Map as Map (insert, insertWith)
 import Data.Maybe (fromMaybe)
-import Data.Monoid ((<>))
+import Data.Monoid ((<>), mappend)
 import Data.Set as Set (insert, singleton, union)
 import Data.Text as Text (pack, Text, unlines)
 import qualified Debian.Debianize.DebInfo as D
@@ -58,7 +58,7 @@ translate str =
 tightDependencyFixup :: Monad m => [(BinPkgName, BinPkgName)] -> BinPkgName -> DebianT m ()
 tightDependencyFixup [] _ = return ()
 tightDependencyFixup pairs p =
-    D.rulesFragments -<=
+    D.rulesFragments %= Set.insert
           (Text.unlines $
                ([ "binary-fixup/" <> name <> "::"
                 , "\techo -n 'haskell:Depends=' >> debian/" <> name <> ".substvars" ] ++
@@ -75,26 +75,26 @@ tightDependencyFixup pairs p =
 
 -- | Add a debian binary package to the debianization containing a cabal executable file.
 doExecutable :: Monad m => BinPkgName -> D.InstallFile -> CabalT m ()
-doExecutable p f = (A.debInfo . D.executable) ++= (p, f)
+doExecutable p f = (A.debInfo . D.executable) %= Map.insert p f
 
 -- | Add a debian binary package to the debianization containing a cabal executable file set up to be a server.
 doServer :: Monad m => BinPkgName -> D.Server -> CabalT m ()
-doServer p s = (A.debInfo . D.serverInfo) ++= (p, s)
+doServer p s = (A.debInfo . D.serverInfo) %= Map.insert p s
 
 -- | Add a debian binary package to the debianization containing a cabal executable file set up to be a web site.
 doWebsite :: Monad m => BinPkgName -> D.Site -> CabalT m ()
-doWebsite p w = (A.debInfo . D.website) ++= (p, w)
+doWebsite p w = (A.debInfo . D.website) %= Map.insert p w
 
 -- | Add a debian binary package to the debianization containing a cabal executable file set up to be a backup script.
 doBackups :: Monad m => BinPkgName -> String -> CabalT m ()
 doBackups bin s =
-    do (A.debInfo . D.backups) ++= (bin, s)
+    do (A.debInfo . D.backups) %= Map.insert bin s
        (A.debInfo . D.binaryDebDescription bin . B.relations . B.depends) %= (++ [[Rel (BinPkgName "anacron") Nothing Nothing]])
        -- depends +++= (bin, Rel (BinPkgName "anacron") Nothing Nothing)
 
 describe :: Monad m => CabalT m Text
 describe =
-    do p <- access A.packageDescription
+    do p <- use A.packageDescription
        return $
           debianDescriptionBase p {- <> "\n" <>
           case typ of
@@ -174,8 +174,8 @@ siteAtoms b site =
           (A.debInfo . D.atomSet) %= (Set.insert $ D.Link b ("/etc/apache2/sites-available/" ++ D.domain site) ("/etc/apache2/sites-enabled/" ++ D.domain site))
           (A.debInfo . D.atomSet) %= (Set.insert $ D.File b ("/etc/apache2/sites-available" </> D.domain site) apacheConfig)
           (A.debInfo . D.atomSet) %= (Set.insert $ D.InstallDir b (apacheLogDirectory b))
-          (A.debInfo . D.logrotateStanza) +++=
-                              (b, singleton
+          (A.debInfo . D.logrotateStanza) %= Map.insertWith mappend b
+                              (singleton
                                    (Text.unlines $ [ pack (apacheAccessLog b) <> " {"
                                                    , "  copytruncate" -- hslogger doesn't notice when the log is rotated, maybe this will help
                                                    , "  weekly"
@@ -183,8 +183,8 @@ siteAtoms b site =
                                                    , "  compress"
                                                    , "  missingok"
                                                    , "}"]))
-          (A.debInfo . D.logrotateStanza) +++=
-                              (b, singleton
+          (A.debInfo . D.logrotateStanza) %= Map.insertWith mappend b
+                              (singleton
                                    (Text.unlines $ [ pack (apacheErrorLog b) <> " {"
                                                    , "  copytruncate"
                                                    , "  weekly"
@@ -234,8 +234,8 @@ siteAtoms b site =
 
 serverAtoms :: BinPkgName -> D.Server -> Bool -> CabalInfo -> CabalInfo
 serverAtoms b server' isSite =
-    modL (A.debInfo . D.postInst) (insertWith (\ old new -> if old /= new then error ("serverAtoms: " ++ show old ++ " -> " ++ show new) else old) b debianPostinst) .
-    modL (A.debInfo . D.installInit) (Map.insertWith (\ old new -> if old /= new then error ("serverAtoms: " ++ show old ++ " -> " ++ show new) else old) b debianInit) .
+    over (A.debInfo . D.postInst) (insertWith (\ old new -> if old /= new then error ("serverAtoms: " ++ show old ++ " -> " ++ show new) else old) b debianPostinst) .
+    over (A.debInfo . D.installInit) (Map.insertWith (\ old new -> if old /= new then error ("serverAtoms: " ++ show old ++ " -> " ++ show new) else old) b debianInit) .
     serverLogrotate' b .
     execAtoms b exec
     where
@@ -299,13 +299,13 @@ serverAtoms b server' isSite =
 -- in debianFiles.
 serverLogrotate' :: BinPkgName -> CabalInfo -> CabalInfo
 serverLogrotate' b =
-    modL (A.debInfo . D.logrotateStanza) (insertWith Set.union b (singleton (Text.unlines $ [ pack (serverAccessLog b) <> " {"
+    over (A.debInfo . D.logrotateStanza) (insertWith Set.union b (singleton (Text.unlines $ [ pack (serverAccessLog b) <> " {"
                                  , "  weekly"
                                  , "  rotate 5"
                                  , "  compress"
                                  , "  missingok"
                                  , "}" ]))) .
-    modL (A.debInfo . D.logrotateStanza) (insertWith Set.union b (singleton (Text.unlines $ [ pack (serverAppLog b) <> " {"
+    over (A.debInfo . D.logrotateStanza) (insertWith Set.union b (singleton (Text.unlines $ [ pack (serverAppLog b) <> " {"
                                  , "  weekly"
                                  , "  rotate 5"
                                  , "  compress"
@@ -314,7 +314,7 @@ serverLogrotate' b =
 
 backupAtoms :: BinPkgName -> String -> CabalInfo -> CabalInfo
 backupAtoms b name =
-    modL (A.debInfo . D.postInst) (insertWith (\ old new -> if old /= new then error $ "backupAtoms: " ++ show old ++ " -> " ++ show new else old) b
+    over (A.debInfo . D.postInst) (insertWith (\ old new -> if old /= new then error $ "backupAtoms: " ++ show old ++ " -> " ++ show new else old) b
                  (Text.unlines $
                   [ "#!/bin/sh"
                   , ""
@@ -330,7 +330,7 @@ backupAtoms b name =
 
 execAtoms :: BinPkgName -> D.InstallFile -> CabalInfo -> CabalInfo
 execAtoms b ifile r =
-    modL (A.debInfo . D.rulesFragments) (Set.insert (pack ("build" </> ppShow b ++ ":: build-ghc-stamp\n"))) .
+    over (A.debInfo . D.rulesFragments) (Set.insert (pack ("build" </> ppShow b ++ ":: build-ghc-stamp\n"))) .
     fileAtoms b ifile $
     r
 

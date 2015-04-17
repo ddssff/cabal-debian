@@ -5,8 +5,8 @@ module Debian.Debianize.InputCabal
     ) where
 
 
-import Control.Lens.Extended
 import Control.Exception (bracket)
+import Control.Lens
 import Control.Monad (when)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Set as Set (toList)
@@ -39,17 +39,17 @@ import System.Unix.Mount (WithProcAndSys)
 -- use that information load the configured PackageDescription.
 inputCabalization :: MonadIO m => Flags -> WithProcAndSys m PackageDescription
 inputCabalization flags =
-    do let root = dependOS $ getL buildEnv flags
-       let vb = intToVerbosity' $ getL verbosity flags
-           fs = getL cabalFlagAssignments flags
+    do let root = dependOS $ view buildEnv flags
+       let vb = intToVerbosity' $ view verbosity flags
+           fs = view cabalFlagAssignments flags
        --  Load a GenericPackageDescription from the current directory and
        -- from that create a finalized PackageDescription for the given
        -- CompilerId.
        genPkgDesc <- liftIO $ defaultPackageDesc vb >>= readPackageDescription vb
 #if MIN_VERSION_Cabal(1,22,0)
-       cinfo <- getCompilerInfo root (getL compilerFlavor flags)
+       cinfo <- getCompilerInfo root (view compilerFlavor flags)
 #else
-       let cinfo = newestAvailableCompilerId root (getL compilerFlavor flags)
+       let cinfo = newestAvailableCompilerId root (view compilerFlavor flags)
 #endif
        let finalized = finalizePackageDescription (toList fs) (const True) (Platform buildArch Cabal.buildOS) cinfo [] genPkgDesc
        ePkgDesc <- either (return . Left)

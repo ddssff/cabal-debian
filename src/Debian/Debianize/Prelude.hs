@@ -36,16 +36,16 @@ module Debian.Debianize.Prelude
     , maybeLens
     , fromEmpty
     , fromSingleton
-    , module Control.Lens.Extended
+    , (.?=)
     ) where
 
 
 import Control.Applicative ((<$>))
 import Control.Exception as E (bracket, catch, throw, try)
-import Control.Lens.Extended
+import Control.Lens
 import Control.Monad (when)
 import Control.Monad.Reader (ask, ReaderT)
-import Control.Monad.State (get, MonadState, put)
+import Control.Monad.State (get, MonadState, StateT, put)
 import Data.Char (isSpace)
 import Data.List as List (dropWhileEnd, intersperse, isSuffixOf, lines, map)
 import Data.Map as Map (empty, findWithDefault, foldWithKey, fromList, insert, lookup, map, Map)
@@ -261,9 +261,9 @@ foldEmpty :: r -> ([a] -> r) -> [a] -> r
 foldEmpty r _ [] = r
 foldEmpty _ f l = f l
 
--- | If the current value of getL x is Nothing, replace it with f.
+-- | If the current value of view x is Nothing, replace it with f.
 maybeL :: Lens' a (Maybe b) -> Maybe b -> a -> a
-maybeL l mb x = modL l (maybe mb Just) x
+maybeL l mb x = over l (maybe mb Just) x
 
 indent :: [Char] -> String -> String
 indent prefix s = unlines (List.map (prefix ++) (List.lines s))
@@ -329,3 +329,9 @@ instance Pretty (PP PackageIdentifier) where
 
 instance Pretty (PP PackageName) where
     pPrint (PP (PackageName s)) = text s
+
+-- | Set @b@ if it currently isNothing and the argument isJust, that is
+--  1. Nothing happens if the argument isNothing
+--  2. Nothing happens if the current value isJust
+(.?=) :: Monad m => Lens' a (Maybe b) -> Maybe b -> StateT a m ()
+l .?= mx = use l >>= assign l . maybe mx Just

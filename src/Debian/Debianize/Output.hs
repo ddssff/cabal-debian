@@ -15,8 +15,8 @@ module Debian.Debianize.Output
     ) where
 
 
-import Control.Lens.Extended
 import Control.Exception as E (throw)
+import Control.Lens
 import Control.Monad.State (get, StateT)
 import Control.Monad.Trans (liftIO, MonadIO)
 import Data.Algorithm.DiffContext (getContextDiff, prettyContextDiff)
@@ -76,14 +76,14 @@ finishDebianization :: forall m. (MonadIO m, Functor m) => StateT CabalInfo m ()
 finishDebianization = zoom debInfo $
     do new <- get
        case () of
-         _ | getL (D.flags . debAction) new == Usage ->
+         _ | view (D.flags . debAction) new == Usage ->
                do progName <- liftIO getProgName
                   liftIO $ putStrLn (usageInfo (usageHeader progName) (options :: [OptDescr (StateT CabalInfo m ())]))
-         _ | getL (D.flags . validate) new ->
+         _ | view (D.flags . validate) new ->
                do inputDebianization
                   old <- get
                   return $ validateDebianization old new
-         _ | getL (D.flags . dryRun) new ->
+         _ | view (D.flags . dryRun) new ->
                do inputDebianization
                   old <- get
                   diff <- liftIO $ compareDebianization old new
@@ -150,11 +150,11 @@ validateDebianization old new =
         | oldPackages /= newPackages -> throw (userError ("Package mismatch, expected " ++ show (map ppPrint oldPackages) ++ ", found " ++ show (map ppPrint newPackages)))
         | True -> ()
     where
-      oldVersion = logVersion (head (unChangeLog (fromMaybe (error "Missing changelog") (getL D.changelog old))))
-      newVersion = logVersion (head (unChangeLog (fromMaybe (error "Missing changelog") (getL D.changelog new))))
-      oldSource = getL (D.control . S.source) old
-      newSource = getL (D.control . S.source) new
-      oldPackages = map (getL B.package) $ getL (D.control . S.binaryPackages) old
-      newPackages = map (getL B.package) $ getL (D.control . S.binaryPackages) new
+      oldVersion = logVersion (head (unChangeLog (fromMaybe (error "Missing changelog") (view D.changelog old))))
+      newVersion = logVersion (head (unChangeLog (fromMaybe (error "Missing changelog") (view D.changelog new))))
+      oldSource = view (D.control . S.source) old
+      newSource = view (D.control . S.source) new
+      oldPackages = map (view B.package) $ view (D.control . S.binaryPackages) old
+      newPackages = map (view B.package) $ view (D.control . S.binaryPackages) new
       unChangeLog :: ChangeLog -> [ChangeLogEntry]
       unChangeLog (ChangeLog x) = x

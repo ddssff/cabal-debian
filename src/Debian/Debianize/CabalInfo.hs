@@ -17,7 +17,7 @@ module Debian.Debianize.CabalInfo
     , newCabalInfo
     ) where
 
-import Control.Lens.TH (makeLenses)
+import Control.Lens
 import Control.Monad.Catch (MonadMask)
 import Control.Monad.State (execStateT)
 import Control.Monad.Trans (MonadIO, liftIO)
@@ -30,7 +30,6 @@ import Debian.Debianize.DebInfo as D (control, copyright, DebInfo, makeDebInfo)
 import Debian.Debianize.BinaryDebDescription (Canonical(canonical))
 import Debian.Debianize.CopyrightDescription (defaultCopyrightDescription)
 import Debian.Debianize.InputCabal (inputCabalization)
-import Debian.Debianize.Prelude ((~=))
 import Debian.Debianize.SourceDebDescription as S (homepage)
 import Debian.Debianize.VersionSplits (VersionSplits)
 import Debian.Orphans ()
@@ -89,8 +88,8 @@ newCabalInfo flags' = withProcAndSys "/" $ do
   pkgDesc <- inputCabalization flags'
   copyrt <- liftIO $ defaultCopyrightDescription pkgDesc
   execStateT
-    (do (debInfo . copyright) ~= Just copyrt
-        (debInfo . control . S.homepage) ~= case strip (pack (Cabal.homepage pkgDesc)) of
+    (do (debInfo . copyright) .= Just copyrt
+        (debInfo . control . S.homepage) .= case strip (pack (Cabal.homepage pkgDesc)) of
                                               x | Text.null x -> Nothing
                                               x -> Just x)
     (makeCabalInfo flags' pkgDesc)

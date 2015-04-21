@@ -1,3 +1,9 @@
+haskell-cabal-debian (4.27.1) unstable; urgency=low
+
+  * Fix spurious "Just" in debian/copyright file.
+
+ -- David Fox <dsf@seereason.com>  Tue, 21 Apr 2015 07:01:35 -0700
+
 haskell-cabal-debian (4.27) unstable; urgency=low
 
   * Remove all vestiges of the old data-lens package.  Thanks to

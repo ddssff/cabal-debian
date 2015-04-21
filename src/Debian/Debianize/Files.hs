@@ -165,7 +165,7 @@ compat =
 copyright :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
 copyright =
     do copyrt <- lift $ use (D.copyright)
-       return [("debian/copyright", prettyText copyrt)]
+       return $ maybe [] (\ x -> [("debian/copyright", prettyText x)]) copyrt
 
 instance Pretty (PP (PackageDescription -> IO CopyrightDescription)) where
     pPrint _ = text "<function>"

@@ -32,11 +32,12 @@ import Debian.Debianize.Prelude (stripWith)
 import qualified Debian.Debianize.CabalInfo as A
 import qualified Debian.Debianize.BinaryDebDescription as B
 import Debian.Orphans ()
-import Debian.Policy (apacheAccessLog, apacheErrorLog, apacheLogDirectory, databaseDirectory, serverAccessLog, serverAppLog)
+import Debian.Policy (apacheAccessLog, apacheErrorLog, apacheLogDirectory, databaseDirectory, dataDirectory, serverAccessLog, serverAppLog)
 import Debian.Pretty (ppShow, ppText)
 import Debian.Relation (BinPkgName(BinPkgName), Relation(Rel))
 import Distribution.Package (PackageName(PackageName))
 import Distribution.PackageDescription as Cabal (PackageDescription(package, synopsis, description))
+import Distribution.Simple.Build.PathsModule (pkgPathEnvVar)
 import Prelude hiding (init, log, map, unlines, writeFile)
 import System.FilePath ((</>))
 
@@ -167,8 +168,8 @@ watchAtom :: PackageName -> Text
 watchAtom (PackageName pkgname) =
     pack $ "version=3\nhttp://hackage.haskell.org/package/" ++ pkgname ++ "/distro-monitor .*-([0-9\\.]+)\\.(?:zip|tgz|tbz|txz|(?:tar\\.(?:gz|bz2|xz)))\n"
 
-siteAtoms :: BinPkgName -> D.Site -> CabalInfo -> CabalInfo
-siteAtoms b site =
+siteAtoms :: PackageDescription -> BinPkgName -> D.Site -> CabalInfo -> CabalInfo
+siteAtoms pkgDesc b site =
     execCabalM
       (do (A.debInfo . D.atomSet) %= (Set.insert $ D.InstallDir b "/etc/apache2/sites-available")
           (A.debInfo . D.atomSet) %= (Set.insert $ D.Link b ("/etc/apache2/sites-available/" ++ D.domain site) ("/etc/apache2/sites-enabled/" ++ D.domain site))
@@ -192,7 +193,7 @@ siteAtoms b site =
                                                    , "  compress"
                                                    , "  missingok"
                                                    , "}" ]))) .
-      serverAtoms b (D.server site) True
+      serverAtoms pkgDesc b (D.server site) True
     where
       -- An apache site configuration file.  This is installed via a line
       -- in debianFiles.
@@ -232,13 +233,17 @@ siteAtoms b site =
                    , "</VirtualHost>" ]
       port' = pack (show (D.port (D.server site)))
 
-serverAtoms :: BinPkgName -> D.Server -> Bool -> CabalInfo -> CabalInfo
-serverAtoms b server' isSite =
-    over (A.debInfo . D.postInst) (insertWith (\ old new -> if old /= new then error ("serverAtoms: " ++ show old ++ " -> " ++ show new) else old) b debianPostinst) .
-    over (A.debInfo . D.installInit) (Map.insertWith (\ old new -> if old /= new then error ("serverAtoms: " ++ show old ++ " -> " ++ show new) else old) b debianInit) .
+serverAtoms :: PackageDescription -> BinPkgName -> D.Server -> Bool -> CabalInfo -> CabalInfo
+serverAtoms pkgDesc b server' isSite =
+    over (A.debInfo . D.postInst) (insertWith failOnMismatch b debianPostinst) .
+    over (A.debInfo . D.installInit) (Map.insertWith failOnMismatch b debianInit) .
     serverLogrotate' b .
     execAtoms b exec
     where
+      -- Combine two values (for insertWith) when there should only be
+      -- one.  If it happens twice with different values we should
+      -- really find out why.
+      failOnMismatch old new = if old /= new then error ("serverAtoms: " ++ show old ++ " -> " ++ show new) else old
       exec = D.installFile server'
       debianInit =
           Text.unlines $
@@ -252,6 +257,7 @@ serverAtoms b server' isSite =
                    , "    test -x /usr/bin/" <> pack (D.destName exec) <> " || exit 0"
                    , "    log_begin_msg \"Starting " <> pack (D.destName exec) <> "...\""
                    , "    mkdir -p " <> pack (databaseDirectory b)
+                   , "    export " <> pack (pkgPathEnvVar pkgDesc "datadir") <> "=" <> pack (dataDirectory pkgDesc)
                    , "    " <> startCommand
                    , "    log_end_msg $?"
                    , "    ;;"

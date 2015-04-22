@@ -4,6 +4,7 @@
 module Debian.Policy
     ( -- * Paths
       databaseDirectory
+    , dataDirectory
     , apacheLogDirectory
     , apacheErrorLog
     , apacheAccessLog
@@ -53,6 +54,9 @@ import Debian.Pretty (PP(..))
 import Debian.Relation (BinPkgName)
 import Debian.Version (DebianVersion, parseDebianVersion, version)
 import qualified Distribution.License as Cabal (License(..))
+import Distribution.Package (PackageIdentifier(pkgName))
+import Distribution.PackageDescription (PackageDescription(package))
+import Distribution.Text (display)
 import System.Environment (getEnvironment)
 import System.FilePath ((</>))
 import System.Process (readProcess)
@@ -63,6 +67,14 @@ import Text.Read (readMaybe)
 
 databaseDirectory :: BinPkgName -> String
 databaseDirectory x = "/srv" </> show (pPrint . PP $ x)
+
+dataDirectory :: PackageDescription -> String
+dataDirectory pkgDesc = "/usr/share" </> showPkgName (pkgName (package pkgDesc))
+    where
+      -- Copied from Distribution.Simple.Build.PatsModule in Cabal
+      showPkgName = map fixchar . display
+      fixchar '-' = '_'
+      fixchar c   = c
 
 apacheLogDirectory :: BinPkgName -> String
 apacheLogDirectory x =  "/var/log/apache2/" ++ show (pPrint . PP $ x)

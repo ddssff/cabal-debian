@@ -620,12 +620,14 @@ expandAtoms =
       expandWebsite :: Monad m => CabalT m ()
       expandWebsite =
           do mp <- get >>= return . view (A.debInfo . D.website)
-             List.mapM_ (\ (b, site) -> modify (siteAtoms b site)) (Map.toList mp)
+             pkgDesc <- use A.packageDescription
+             List.mapM_ (\ (b, site) -> modify (siteAtoms pkgDesc b site)) (Map.toList mp)
 
       expandServer :: Monad m => CabalT m ()
       expandServer =
           do mp <- get >>= return . view (A.debInfo . D.serverInfo)
-             List.mapM_ (\ (b, x) -> modify (serverAtoms b x False)) (Map.toList mp)
+             pkgDesc <- use A.packageDescription
+             List.mapM_ (\ (b, x) -> modify (serverAtoms pkgDesc b x False)) (Map.toList mp)
 
       expandBackups :: Monad m => CabalT m ()
       expandBackups =

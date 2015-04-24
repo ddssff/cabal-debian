@@ -386,20 +386,22 @@ cabalExecBinaryPackage b =
     where
 
 binaryPackageRelations :: Monad m => BinPkgName -> B.PackageType -> CabalT m ()
-binaryPackageRelations b typ =
-    do edds <- use (A.debInfo . D.extraDevDeps)
-       (A.debInfo . D.binaryDebDescription b . B.relations . B.depends) %= \ rels ->
-          [anyrel "${haskell:Depends}", anyrel "${misc:Depends}"] ++
-          [anyrel "${shlibs:Depends}" | typ `notElem` [B.Profiling, B.Documentation] ] ++
-          edds ++ rels
-       (A.debInfo . D.binaryDebDescription b . B.relations . B.recommends) %= \ rels -> [anyrel "${haskell:Recommends}"] ++ rels
-       (A.debInfo . D.binaryDebDescription b . B.relations . B.suggests) %= \ rels -> [anyrel "${haskell:Suggests}"] ++ rels
-       (A.debInfo . D.binaryDebDescription b . B.relations . B.preDepends) .= []
-       (A.debInfo . D.binaryDebDescription b . B.relations . B.breaks) .= []
-       (A.debInfo . D.binaryDebDescription b . B.relations . B.conflicts) %= \ rels -> [anyrel "${haskell:Conflicts}"] ++ rels
-       (A.debInfo . D.binaryDebDescription b . B.relations . B.provides) %= \ rels -> (if typ /= B.Documentation then [anyrel "${haskell:Provides}"] else []) ++ rels
-       -- T.replaces b %= \ rels -> [anyrel "${haskell:Replaces}"] ++ rels
-       (A.debInfo . D.binaryDebDescription b . B.relations . B.builtUsing) .= []
+binaryPackageRelations b typ = zoom A.debInfo $ do
+  edds <- use D.extraDevDeps
+  zoom (D.binaryDebDescription b . B.relations) $ do
+    when (typ == B.Development) $ do
+      B.depends %= (edds ++)
+      B.depends %= (anyrel "${shlibs:Depends}" : )
+    B.depends    %= ([anyrel "${haskell:Depends}", anyrel "${misc:Depends}"] ++)
+    B.recommends %= (anyrel "${haskell:Recommends}" : )
+    B.suggests   %= (anyrel "${haskell:Suggests}" :)
+    B.conflicts  %= (anyrel "${haskell:Conflicts}" :)
+    B.preDepends .= []
+    B.breaks     .= []
+    B.builtUsing .= []
+
+    unless (typ == B.Documentation) $ do
+      B.provides %= (anyrel "${haskell:Provides}" :)
 
 -- | Add the library paragraphs for a particular compiler flavor.
 librarySpecs :: (Monad m, Functor m) => PackageDescription -> CompilerFlavor -> CabalT m ()

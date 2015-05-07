@@ -191,7 +191,7 @@ sourceDefaultFilesDescription copyrt license =
 debianDefaultFilesDescription :: License -> FilesOrLicenseDescription
 debianDefaultFilesDescription license =
   FilesDescription {
-    _filesPattern = "*/debian"
+    _filesPattern = "debian/*"
   , _filesCopyright = "held by the contributors mentioned in debian/changelog"
   , _filesLicense = license
   , _filesComment = mempty

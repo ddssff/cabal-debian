@@ -7,7 +7,7 @@ Files: *
 Copyright: Copyright (c) 2012, Jeremy Shaw
 License: BSD3
 
-Files: */debian
+Files: debian/*
 Copyright: held by the contributors mentioned in debian/changelog
 License: BSD3
 

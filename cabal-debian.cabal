@@ -158,6 +158,7 @@ Library
   GHC-Options: -Wall -O2
   Build-Depends:
     base < 5,
+    bifunctors,
     Cabal >= 1.18,
     containers,
     data-default,

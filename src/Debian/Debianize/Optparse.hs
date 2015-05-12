@@ -18,6 +18,7 @@ import qualified Debian.Debianize.CabalInfo as A
 import Distribution.Compiler (CompilerFlavor(..))
 import Data.Maybe.Extended (fromMaybe)
 import Data.Foldable (forM_)
+import Data.Bifunctor (first)
 import Control.Monad.Trans
 import Debian.Debianize.Monad
 import System.FilePath(splitFileName)
@@ -39,6 +40,7 @@ import System.Posix.Env (getEnv)
 import System.Environment (getArgs)
 import Data.Char(toUpper)
 import GHC.Generics
+import Distribution.Package (PackageName(..))
 import Control.Newtype
 import Control.Monad.State.Class (MonadState)
 
@@ -63,6 +65,8 @@ newtype ExtraRecommends = ExtraRecommends (BinPkgName, Relations) deriving Gener
 instance Newtype ExtraRecommends
 newtype ExtraSuggests = ExtraSuggests (BinPkgName, Relations) deriving Generic
 instance Newtype ExtraSuggests
+newtype CabalDebMapping = CabalDebMapping (PackageName, Relations) deriving Generic
+instance Newtype CabalDebMapping
 
 -- | This data type is an abomination. It represent information,
 -- provided on command line. Part of such information provides
@@ -103,6 +107,7 @@ data BehaviorAdjustment = BehaviorAdjustment {
   _extraReplaces     :: [ExtraReplaces],
   _extraRecommends   :: [ExtraRecommends],
   _extraSuggests     :: [ExtraSuggests],
+  _cabalDebMapping   :: [CabalDebMapping],
   _profiling         :: ProfilingStatus,
   _haddock           :: HaddockStatus,
   _official          :: OfficialStatus
@@ -147,13 +152,18 @@ nameAddrR = either fail return =<< parseMaintainer <$> O.str
 relationsR :: O.ReadM Relations
 relationsR = either (fail . show) return =<< parseRelations <$> O.str
 
-extraRelationsR :: O.ReadM (BinPkgName, Relations)
-extraRelationsR = span (/= ':') <$> O.str >>= \case
+mappingR :: O.ReadM (String, Relations)
+mappingR = span (/= ':') <$> O.str >>= \case
   (str, "") -> fail $ "Does not contains colon: `" ++ str ++ "'"
-  (pkgstr, ':' : relstr) -> do
-    let pkgname = BinPkgName pkgstr
+  (pkgstr, _ : relstr) -> do
     rels <- either (fail . show) return $ parseRelations relstr
-    return (pkgname, rels)
+    return (pkgstr, rels)
+
+extraRelationsR :: O.ReadM (BinPkgName, Relations)
+extraRelationsR = first BinPkgName <$> mappingR
+
+cabalDebMappingR :: O.ReadM CabalDebMapping
+cabalDebMappingR = CabalDebMapping . first PackageName <$> mappingR
 
 -- Here are parser for BehaviorAdjustment and next are parsers for
 -- every field of this data.  Please, keep parsers declarations in
@@ -178,6 +188,7 @@ behaviorAdjustmentP = BehaviorAdjustment <$> maintainerP
                                          <*> extraReplacesP
                                          <*> extraRecommendsP
                                          <*> extraSuggestsP
+                                         <*> cabalDebMappingP
                                          <*> profilingP
                                          <*> haddockP
                                          <*> officialP
@@ -351,6 +362,16 @@ extraRecommendsP = mkExtraP "recommends"
 extraSuggestsP :: O.Parser [ExtraSuggests]
 extraSuggestsP = mkExtraP "suggests"
 
+cabalDebMappingP :: O.Parser [CabalDebMapping]
+cabalDebMappingP = many $ O.option cabalDebMappingR m where
+  m = O.help helpMsg
+      <> O.long "dep-map"
+  helpMsg = unlines [
+    "Specify what debian package name corresponds with a name that appears",
+    "in the Extra-Library field of a cabal file,",
+    "e.g. --map-dep cryptopp=libcrypto-dev."
+    ]
+
 profilingP :: O.Parser ProfilingStatus
 profilingP = O.flag ProfilingEnabled ProfilingDisabled m where
   m = O.help helpMsg
@@ -437,6 +458,8 @@ handleBehaviorAdjustment (BehaviorAdjustment {..}) = zoom A.debInfo $ do
   D.maintainerOption .= Just _maintainer
   D.uploadersOption %= (++ _uploaders)
   D.extraDevDeps %= (++ concatMap unpack _devDep)
+  forM_ _cabalDebMapping $ \(CabalDebMapping (PackageName pkg, rels)) -> do
+    D.extraLibMap %= Map.insert pkg rels
   addExtra _extraDepends B.depends
   addExtra _extraConflicts B.conflicts
   addExtra _extraProvides B.provides

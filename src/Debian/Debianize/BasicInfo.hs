@@ -17,20 +17,17 @@ module Debian.Debianize.BasicInfo
     ) where
 
 import Control.Lens
-import Control.Monad.State (StateT, execStateT)
+import Control.Monad.State (StateT)
 import Control.Monad.Trans (MonadIO)
 import Data.Char (toLower, toUpper)
-import Data.Default (Default(def))
 import Data.Generics (Data, Typeable)
-import Data.Monoid (Monoid(..))
 import Data.Set as Set (fromList, Set, union)
 import Debian.Debianize.Prelude (read')
 import Debian.Orphans ()
 import Distribution.Compiler (CompilerFlavor(..))
 import Distribution.PackageDescription as Cabal (FlagName(FlagName))
 import Prelude hiding (break, lines, log, null, readFile, sum)
-import System.Console.GetOpt (ArgDescr(ReqArg, NoArg), ArgOrder(Permute), getOpt, OptDescr(Option))
-import System.Environment (getArgs)
+import System.Console.GetOpt (ArgDescr(ReqArg, NoArg), OptDescr(Option))
 import System.FilePath ((</>))
 import Text.Read (readMaybe)
 

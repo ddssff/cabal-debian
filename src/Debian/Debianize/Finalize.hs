@@ -170,7 +170,7 @@ debianVersion =
                          Just Native3 -> y
                          _ -> maybe (Just "1") (Just . max "1") y
        versionArg <- use (A.debInfo . D.debVersion) -- from the --deb-version option
-       (debianVersion :: Maybe V.DebianVersion) <- use (A.debInfo . D.changelog) >>= return . maybe Nothing changelogVersion
+       (debVersion :: Maybe V.DebianVersion) <- use (A.debInfo . D.changelog) >>= return . maybe Nothing changelogVersion
 
        case () of
          _ | maybe False (\ v -> v < V.buildDebianVersion cabalEpoch (ppShow cabalVersion) Nothing) versionArg ->
@@ -178,12 +178,12 @@ debianVersion =
                       ") is older than cabal version (" ++ ppShow cabalVersion ++
                       "), maybe you need to unpin this package?")
          _ | isJust versionArg -> return $ fromJust versionArg
-         _ | isJust debianVersion ->
-               case (V.epoch (fromJust debianVersion),
-                     V.parseDebianVersion (V.version (fromJust debianVersion)),
-                     V.revision (fromJust debianVersion)) of
-                 (debianEpoch, debianVersion', (debianRevision :: Maybe String)) ->
-                     let finalEpoch = max debianEpoch cabalEpoch
+         _ | isJust debVersion ->
+               case (V.epoch (fromJust debVersion),
+                     V.parseDebianVersion (V.version (fromJust debVersion)),
+                     V.revision (fromJust debVersion)) of
+                 (debEpoch, debianVersion', (debianRevision :: Maybe String)) ->
+                     let finalEpoch = max debEpoch cabalEpoch
                          finalVersion = max debianVersion' cabalVersion
                          (finalRevision :: Maybe String) = maximumBy (compare `on` fmap V.parseDebianVersion) [debianRevision, cabalRevision] in
                      return $ V.buildDebianVersion finalEpoch (ppShow finalVersion) finalRevision

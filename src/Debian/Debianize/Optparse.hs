@@ -11,38 +11,38 @@ module Debian.Debianize.Optparse (
   Flags(..),
   parseProgramArguments,
   handleBehaviorAdjustment) where
-import qualified  Debian.Debianize.DebInfo as D
-import qualified Debian.Debianize.SourceDebDescription as S
-import qualified Debian.Debianize.BinaryDebDescription as B
-import qualified Debian.Debianize.CabalInfo as A
-import Distribution.Compiler (CompilerFlavor(..))
-import Data.Maybe.Extended (fromMaybe)
-import Data.Foldable (forM_)
-import Data.Bifunctor (first)
-import Control.Monad.Trans
-import Debian.Debianize.Monad
-import System.FilePath(splitFileName)
-import Debian.Debianize.VersionSplits
-import Debian.Policy
-import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr(..))
-import Debian.Relation
-import Debian.Debianize.Prelude (maybeRead)
-import qualified Options.Applicative as O
 import Control.Applicative ((<$>), (<*>), many, pure)
+import Control.Lens
+import Control.Monad.State.Class (MonadState)
+import Control.Monad.Trans
+import Control.Newtype
+import Data.Bifunctor (first)
+import Data.Char(toUpper)
+import Data.Foldable (forM_)
+import Data.Maybe.Extended (fromMaybe)
 import Data.Maybe.Extended (nothingIf)
 import Data.Monoid ((<>), mempty)
+import Debian.Debianize.BasicInfo
+import Debian.Debianize.Monad
+import Debian.Debianize.Prelude (maybeRead)
+import Debian.Debianize.VersionSplits
+import Debian.Policy
+import Debian.Relation
+import Distribution.Compiler (CompilerFlavor(..))
+import Distribution.Package (PackageName(..))
+import GHC.Generics
+import System.Environment (getArgs)
+import System.FilePath(splitFileName)
+import System.Posix.Env (getEnv)
+import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr(..))
 import Text.PrettyPrint.ANSI.Leijen (linebreak, (<+>), string, indent)
-import Control.Lens
+import qualified  Debian.Debianize.DebInfo as D
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Debian.Debianize.BasicInfo
-import System.Posix.Env (getEnv)
-import System.Environment (getArgs)
-import Data.Char(toUpper)
-import GHC.Generics
-import Distribution.Package (PackageName(..))
-import Control.Newtype
-import Control.Monad.State.Class (MonadState)
+import qualified Debian.Debianize.BinaryDebDescription as B
+import qualified Debian.Debianize.CabalInfo as A
+import qualified Debian.Debianize.SourceDebDescription as S
+import qualified Options.Applicative as O
 
 data HaddockStatus = HaddockEnabled | HaddockDisabled deriving Eq
 data ProfilingStatus = ProfilingEnabled | ProfilingDisabled deriving Eq

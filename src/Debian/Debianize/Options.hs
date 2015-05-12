@@ -1,12 +1,5 @@
 {-# LANGUAGE FlexibleContexts, RankNTypes #-}
-module Debian.Debianize.Options
-    ( options
-    , compileArgs
-    , compileEnvironmentArgs
-    , compileCommandlineArgs
-    , putEnvironmentArgs
-    , withEnvironmentArgs
-    ) where
+module Debian.Debianize.Options () where
 
 
 import Control.Lens

@@ -35,7 +35,6 @@ import Debian.Debianize.DebInfo (rulesSettings)
 import Debian.Debianize.Goodies (backupAtoms, describe, execAtoms, serverAtoms, siteAtoms, watchAtom)
 import Debian.Debianize.InputDebian (dataTop, dataDest, inputChangeLog)
 import Debian.Debianize.Monad as Monad (CabalT, liftCabal, unlessM)
-import Debian.Debianize.Options (compileCommandlineArgs, compileEnvironmentArgs)
 import Debian.Debianize.Prelude ((.?=))
 import qualified Debian.Debianize.SourceDebDescription as S
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
@@ -66,11 +65,9 @@ import Text.PrettyPrint.HughesPJClass (Pretty(pPrint))
 -- output.
 debianize :: (MonadIO m, Functor m) => CabalT m () -> CabalT m ()
 debianize customize =
-    do compileEnvironmentArgs
-       compileCommandlineArgs
-       liftCabal inputChangeLog
-       customize
-       finalizeDebianization
+  do liftCabal inputChangeLog
+     customize
+     finalizeDebianization
 
 -- | Do some light IO and call finalizeDebianization.
 finalizeDebianization :: (MonadIO m, Functor m) => CabalT m ()
@@ -262,7 +259,7 @@ finalizeMaintainer = do
       (A.debInfo . D.control . S.maintainer) .?= currentUser
       (A.debInfo . D.control . S.maintainer) .?= changelogSignature
       x <- use (A.debInfo . D.control . S.maintainer)
-      when (isNothing x) 
+      when (isNothing x)
            (do liftIO $ putStrLn ("Unable to construct a debian maintainer, using nobody <nobody@nowhere>. Cabal maintainer strings tried:\n " ++
                                   show cabalMaintainerString ++ ", " ++ show cabalMaintainerString' ++ ", " ++ show cabalMaintainerString'' ++
                                   ", currentUser: " ++ show currentUser)

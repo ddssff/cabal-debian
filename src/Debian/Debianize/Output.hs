@@ -32,7 +32,6 @@ import qualified Debian.Debianize.DebInfo as D
 import Debian.Debianize.Files (debianizationFileMap)
 import Debian.Debianize.InputDebian (inputDebianization)
 import Debian.Debianize.Monad (DebianT, CabalT, evalDebianT, evalCabalT)
-import Debian.Debianize.Options (options, putEnvironmentArgs)
 import Debian.Debianize.Prelude (indent, replaceFile, zipMaps)
 import Debian.Debianize.Finalize (debianize)
 import Debian.Debianize.Optparse
@@ -48,6 +47,7 @@ import System.FilePath ((</>), takeDirectory)
 import System.IO (hPutStrLn, stderr)
 import System.Process (readProcessWithExitCode, showCommandForUser)
 import Text.PrettyPrint.HughesPJClass (text)
+import System.Posix.Env (setEnv)
 
 -- | Run the script in @debian/Debianize.hs@ with the given command
 -- line arguments.  Returns @True@ if the script exists and succeeds.
@@ -73,7 +73,11 @@ runDebianizeScript args =
           (code, out, err) -> error ("runDebianizeScript: " ++ showCommandForUser "runhaskell" args' ++ " -> " ++ show code ++
                                      "\n stdout: " ++ show out ++"\n stderr: " ++ show err)
 
-
+-- | Insert a value for CABALDEBIAN into the environment that the
+-- withEnvironment* functions above will find and use.  E.g.
+-- putEnvironmentFlags ["--dry-run", "--validate"] (debianize defaultFlags)
+putEnvironmentArgs :: [String] -> IO ()
+putEnvironmentArgs fs = setEnv "CABALDEBIAN" (show fs) True
 
 -- | Perform whole debianization. You provide your customization,
 -- this function does everything else.

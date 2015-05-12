@@ -11,7 +11,7 @@ module Debian.Debianize.Optparse (
   Flags(..),
   parseProgramArguments,
   handleBehaviorAdjustment) where
-import Control.Applicative ((<$>), (<*>), many, pure)
+import Control.Applicative ((<$>), (<*>), many, pure, (<|>))
 import Control.Lens
 import Control.Monad.State.Class (MonadState)
 import Control.Monad.Trans
@@ -47,6 +47,7 @@ import qualified Options.Applicative as O
 data HaddockStatus = HaddockEnabled | HaddockDisabled deriving Eq
 data ProfilingStatus = ProfilingEnabled | ProfilingDisabled deriving Eq
 data OfficialStatus = Official| NonOfficial deriving Eq
+data TestsStatus = TestsDisable | TestsBuild | TestsRun
 newtype BuildDep = BuildDep Relations deriving Generic
 instance Newtype BuildDep
 newtype BuildDepIndep = BuildDepIndep Relations deriving Generic
@@ -114,7 +115,8 @@ data BehaviorAdjustment = BehaviorAdjustment {
   _profiling         :: ProfilingStatus,
   _haddock           :: HaddockStatus,
   _official          :: OfficialStatus,
-  _sourceFormat      :: SourceFormat
+  _sourceFormat      :: SourceFormat,
+  _tests             :: TestsStatus
 }
 
 -- Brief instruction to save you, dear developer from scrutinizing
@@ -198,6 +200,7 @@ behaviorAdjustmentP = BehaviorAdjustment <$> maintainerP
                                          <*> haddockP
                                          <*> officialP
                                          <*> sourceFormatP
+                                         <*> testsP
 
 maintainerP :: O.Parser NameAddr
 maintainerP = O.option nameAddrR m where
@@ -415,6 +418,21 @@ sourceFormatP = O.flag Quilt3 Native3 m where
     "write '3.0 (native)' into source/format."
     ]
 
+testsP :: O.Parser TestsStatus
+testsP = buildOnlyTestsP <|> disableTestsP
+
+disableTestsP :: O.Parser TestsStatus
+disableTestsP = O.flag TestsRun TestsDisable m where
+  m = O.help "disable test suite"
+      <> O.long "disable-tests"
+      <> O.long "no-tests"
+
+buildOnlyTestsP :: O.Parser TestsStatus
+buildOnlyTestsP = O.flag TestsRun TestsBuild m where
+  m = O.help "build, but do not run test suite"
+      <> O.long "no-run-tests"
+      <> O.long "disable-running-tests"
+
 -- Here is 'Flags' parser and parsers for every it's field.
 
 flagsP :: O.Parser Flags
@@ -493,6 +511,17 @@ handleBehaviorAdjustment (BehaviorAdjustment {..}) = zoom A.debInfo $ do
   addExtra _extraReplaces B.replaces
   addExtra _extraRecommends B.recommends
   addExtra _extraSuggests B.suggests
+  case _tests of
+  -- FIXME: You can't run, but not build tests. It should be type-enforced.
+    TestsDisable -> do
+      D.enableTests .= False
+      D.runTests .= False
+    TestsBuild -> do
+      D.enableTests .= True
+      D.runTests .= False
+    TestsRun -> do
+      D.enableTests .= True
+      D.runTests .= True
 
   D.official .= (_official == Official)
   zoom D.control $ do

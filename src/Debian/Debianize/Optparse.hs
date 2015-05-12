@@ -33,11 +33,11 @@ import Debian.Debianize.BasicInfo
 import System.Posix.Env (getEnv)
 import System.Environment (getArgs)
 
-data HaddockStatus = HaddockEnabled | HaddockDisabled deriving (Show, Eq)
-data ProfilingStatus = ProfilingEnabled | ProfilingDisabled deriving (Show, Eq)
-data OfficialStatus = Official| NonOfficial deriving (Show, Eq)
-newtype BuildDep = BuildDep { unBuildDep :: Relations } deriving Show
-newtype BuildDepIndep = BuildDepIndep { unBuildDepIndep :: Relations } deriving Show
+data HaddockStatus = HaddockEnabled | HaddockDisabled deriving Eq
+data ProfilingStatus = ProfilingEnabled | ProfilingDisabled deriving Eq
+data OfficialStatus = Official| NonOfficial deriving Eq
+newtype BuildDep = BuildDep { unBuildDep :: Relations }
+newtype BuildDepIndep = BuildDepIndep { unBuildDepIndep :: Relations }
 newtype DevDep = DevDep { unDevDep :: Relations }
 
 -- | This data type is an abomination. It represent information,

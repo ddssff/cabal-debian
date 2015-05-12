@@ -1,13 +1,15 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Debian.Debianize.Optparse (
+  CommandLineOptions(..),
   BehaviorAdjustment,
-  behaviorAdjustmentP,
-  behaviorAdjustmentParserInfo,
+  Flags(..),
+  commandLineOptionsParserInfo,
   handleBehaviorAdjustment) where
 import qualified  Debian.Debianize.DebInfo as D
 import qualified Debian.Debianize.SourceDebDescription as S
 import qualified Debian.Debianize.CabalInfo as A
+import Distribution.Compiler (CompilerFlavor(..))
 import Data.Foldable (forM_)
 import Control.Monad.Trans
 import Debian.Debianize.Monad
@@ -17,9 +19,9 @@ import Debian.Policy
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr(..))
 import Debian.Relation
 import qualified Options.Applicative as O
-import Control.Applicative ((<$>), (<*>), many)
+import Control.Applicative ((<$>), (<*>), many, pure)
 import Data.Maybe.Extended (nothingIf)
-import Data.Monoid ((<>))
+import Data.Monoid ((<>), mempty)
 import Text.PrettyPrint.ANSI.Leijen (linebreak, (<+>), string, indent)
 import Control.Lens
 import qualified Data.Map as Map
@@ -259,8 +261,42 @@ officialP = O.flag NonOfficial Official m where
       <> O.long "official"
   helpMsg = "Follow guidelines of Debian Haskell Group"
 
-behaviorAdjustmentParserInfo :: O.ParserInfo BehaviorAdjustment
-behaviorAdjustmentParserInfo = O.info (O.helper <*> behaviorAdjustmentP) im where
+-- Here is 'Flags' parser and parsers for every it's field.
+
+flagsP :: O.Parser Flags
+flagsP = Flags <$> verbosityP
+               <*> dryRunP
+               <*> pure False     -- validate
+               <*> pure Debianize -- debAction
+               <*> pure GHC       -- CompilerFlavor
+               <*> pure mempty    -- cabalFlagAssignments
+               <*> pure (EnvSet {cleanOS = "/", dependOS = "/", buildOS = "/"})
+
+verbosityP :: O.Parser Int
+verbosityP = length <$> many (O.flag' () m) where
+  m = O.help helpMsg
+      <> O.short 'v'
+      <> O.long "verbose"
+  helpMsg = unlines [
+    "Every instance of this flag increases amount",
+    "of progress messages generated"
+    ]
+
+dryRunP :: O.Parser Bool
+dryRunP = O.switch m where
+  m = O.help helpMsg
+      <> O.short 'n'
+      <> O.long "dry-run"
+  helpMsg = unlines [
+    "Just compare the existing debianization",
+    "to the one we would generate."
+    ]
+
+commandLineOptionsP :: O.Parser CommandLineOptions
+commandLineOptionsP = CommandLineOptions <$> flagsP <*> behaviorAdjustmentP
+
+commandLineOptionsParserInfo :: O.ParserInfo CommandLineOptions
+commandLineOptionsParserInfo = O.info (O.helper <*> commandLineOptionsP) im where
   im = O.header "cabal-debian -- create debianization of cabal package"
        <> O.fullDesc
        <> O.progDescDoc (Just descDoc)

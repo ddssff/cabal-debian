@@ -181,7 +181,9 @@ Library
     text,
     unix,
     Unixutils >= 1.53,
-    utf8-string
+    utf8-string,
+    optparse-applicative == 0.11.*,
+    ansi-wl-pprint == 0.6.*
   Exposed-Modules:
     Data.Maybe.Extended
     Debian.GHC

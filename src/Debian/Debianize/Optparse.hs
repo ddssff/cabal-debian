@@ -2,6 +2,9 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE FlexibleContexts #-}
 module Debian.Debianize.Optparse (
   CommandLineOptions(..),
   BehaviorAdjustment,
@@ -10,6 +13,7 @@ module Debian.Debianize.Optparse (
   handleBehaviorAdjustment) where
 import qualified  Debian.Debianize.DebInfo as D
 import qualified Debian.Debianize.SourceDebDescription as S
+import qualified Debian.Debianize.BinaryDebDescription as B
 import qualified Debian.Debianize.CabalInfo as A
 import Distribution.Compiler (CompilerFlavor(..))
 import Data.Maybe.Extended (fromMaybe)
@@ -33,8 +37,10 @@ import qualified Data.Set as Set
 import Debian.Debianize.BasicInfo
 import System.Posix.Env (getEnv)
 import System.Environment (getArgs)
+import Data.Char(toUpper)
 import GHC.Generics
 import Control.Newtype
+import Control.Monad.State.Class (MonadState)
 
 data HaddockStatus = HaddockEnabled | HaddockDisabled deriving Eq
 data ProfilingStatus = ProfilingEnabled | ProfilingDisabled deriving Eq
@@ -45,6 +51,18 @@ newtype BuildDepIndep = BuildDepIndep Relations deriving Generic
 instance Newtype BuildDepIndep
 newtype DevDep = DevDep Relations deriving Generic
 instance Newtype DevDep
+newtype ExtraDepends = ExtraDepends (BinPkgName, Relations) deriving Generic
+instance Newtype ExtraDepends
+newtype ExtraConflicts = ExtraConflicts (BinPkgName, Relations) deriving Generic
+instance Newtype ExtraConflicts
+newtype ExtraProvides = ExtraProvides (BinPkgName, Relations) deriving Generic
+instance Newtype ExtraProvides
+newtype ExtraReplaces = ExtraReplaces (BinPkgName, Relations) deriving Generic
+instance Newtype ExtraReplaces
+newtype ExtraRecommends = ExtraRecommends (BinPkgName, Relations) deriving Generic
+instance Newtype ExtraRecommends
+newtype ExtraSuggests = ExtraSuggests (BinPkgName, Relations) deriving Generic
+instance Newtype ExtraSuggests
 
 -- | This data type is an abomination. It represent information,
 -- provided on command line. Part of such information provides
@@ -79,6 +97,12 @@ data BehaviorAdjustment = BehaviorAdjustment {
   _buildDep          :: [BuildDep],
   _buildDepIndep     :: [BuildDepIndep],
   _devDep            :: [DevDep],
+  _extraDepends      :: [ExtraDepends],
+  _extraConflicts    :: [ExtraConflicts],
+  _extraProvides     :: [ExtraProvides],
+  _extraReplaces     :: [ExtraReplaces],
+  _extraRecommends   :: [ExtraRecommends],
+  _extraSuggests     :: [ExtraSuggests],
   _profiling         :: ProfilingStatus,
   _haddock           :: HaddockStatus,
   _official          :: OfficialStatus
@@ -148,6 +172,12 @@ behaviorAdjustmentP = BehaviorAdjustment <$> maintainerP
                                          <*> buildDepP
                                          <*> buildDepIndepP
                                          <*> devDepP
+                                         <*> extraDependsP
+                                         <*> extraConflictsP
+                                         <*> extraProvidesP
+                                         <*> extraReplacesP
+                                         <*> extraRecommendsP
+                                         <*> extraSuggestsP
                                          <*> profilingP
                                          <*> haddockP
                                          <*> officialP
@@ -281,6 +311,46 @@ devDepP = many $ O.option (DevDep <$> relationsR) m where
       <> O.metavar "RELATION"
   helpMsg = "Add an entry to the `Depends' field of the -dev package"
 
+
+-- Since `depends', `conflicts' and so on options are totally same,
+-- we can avoid code via this function, which, given long option name
+-- makes correct O.Parser. Newtype around (BinPkgName, Relations)
+-- is inferred, but there is still some duplication.
+--
+-- Long option name can also be inferred from Typeable instance of
+-- mentioned newtype, but this would introduce some amount of
+-- low-level string manipulations.
+--
+-- Nice to know, but now, to me, it would introduce more complexity,
+-- than eliminate.
+mkExtraP :: (Newtype n, O n ~ (BinPkgName, Relations))
+            => String -> O.Parser [n]
+mkExtraP long@(c:cr) = many $ O.option (pack <$> extraRelationsR) m where
+    fieldName = toUpper c : cr
+    m = O.help helpMsg
+        <> O.long long
+        <> O.metavar "DEB:RELATION"
+    helpMsg = "Add extry to '" ++ fieldName ++ " 'field of DEB binary package"
+mkExtraP "" = error "mkExtraP: empty long option"
+
+extraDependsP :: O.Parser [ExtraDepends]
+extraDependsP = mkExtraP "depends"
+
+extraConflictsP :: O.Parser [ExtraConflicts]
+extraConflictsP = mkExtraP "conflicts"
+
+extraProvidesP :: O.Parser [ExtraProvides]
+extraProvidesP = mkExtraP "conflicts"
+
+extraReplacesP :: O.Parser [ExtraReplaces]
+extraReplacesP = mkExtraP "replaces"
+
+extraRecommendsP :: O.Parser [ExtraRecommends]
+extraRecommendsP = mkExtraP "recommends"
+
+extraSuggestsP :: O.Parser [ExtraSuggests]
+extraSuggestsP = mkExtraP "suggests"
+
 profilingP :: O.Parser ProfilingStatus
 profilingP = O.flag ProfilingEnabled ProfilingDisabled m where
   m = O.help helpMsg
@@ -367,6 +437,12 @@ handleBehaviorAdjustment (BehaviorAdjustment {..}) = zoom A.debInfo $ do
   D.maintainerOption .= Just _maintainer
   D.uploadersOption %= (++ _uploaders)
   D.extraDevDeps %= (++ concatMap unpack _devDep)
+  addExtra _extraDepends B.depends
+  addExtra _extraConflicts B.conflicts
+  addExtra _extraProvides B.provides
+  addExtra _extraReplaces B.replaces
+  addExtra _extraRecommends B.recommends
+  addExtra _extraSuggests B.suggests
 
   D.official .= (_official == Official)
   zoom D.control $ do
@@ -376,6 +452,11 @@ handleBehaviorAdjustment (BehaviorAdjustment {..}) = zoom A.debInfo $ do
     S.buildDepends %= (++ concatMap unpack _devDep)
     S.buildDependsIndep %= (++ concatMap unpack _buildDepIndep)
 
+addExtra :: (MonadState D.DebInfo m, Newtype n, O n ~ (BinPkgName, Relations)) =>
+            [n] -> Lens' B.PackageRelations Relations -> m ()
+addExtra extra lens' = forM_ extra $ \arg -> do
+  let (pkg, rel) = unpack arg
+  D.binaryDebDescription pkg . B.relations . lens' %= (++ rel)
 
 parseProgramArguments' :: [String] -> IO CommandLineOptions
 parseProgramArguments' args =  O.handleParseResult result where

@@ -28,6 +28,7 @@ import Debian.Debianize.Prelude (maybeRead)
 import Debian.Debianize.VersionSplits
 import Debian.Policy
 import Debian.Relation
+import Debian.Version.Common (DebianVersion, parseDebianVersion)
 import Distribution.Compiler (CompilerFlavor(..))
 import Distribution.Package (PackageName(..))
 import GHC.Generics
@@ -70,6 +71,8 @@ newtype CabalDebMapping = CabalDebMapping (PackageName, Relations) deriving Gene
 instance Newtype CabalDebMapping
 newtype ExecDebMapping = ExecDebMapping (String, Relations) deriving Generic
 instance Newtype ExecDebMapping
+newtype Revision = Revision String deriving Generic
+instance Newtype Revision
 
 -- | This data type is an abomination. It represent information,
 -- provided on command line. Part of such information provides
@@ -98,6 +101,8 @@ data BehaviorAdjustment = BehaviorAdjustment {
   _defaultPackage    :: Maybe String,
   _missingDependency :: [BinPkgName],
   _debianNameBase    :: Maybe DebBase,
+  _debianVersion     :: Maybe DebianVersion,
+  _revision          :: Maybe Revision,
   _sourcePackageName :: Maybe SrcPkgName,
   _sourceSection     :: Section,
   _standardsVersion  :: StandardsVersion,
@@ -182,6 +187,8 @@ behaviorAdjustmentP = BehaviorAdjustment <$> maintainerP
                                          <*> defaultPackageP
                                          <*> missingDependencyP
                                          <*> debianNameBaseP
+                                         <*> debianVersionP
+                                         <*> debianRevisionP
                                          <*> sourcePackageNameP
                                          <*> sourceSectionP
                                          <*> standardsVersionP
@@ -268,6 +275,29 @@ debianNameBaseP = O.option (Just . DebBase <$> O.str) m where
   helpMsg = unlines [
     "Use this name for the base of the debian binary packages - the string between",
     "'libghc-' and '-dev'. Normally this is derived from the hackage package name."
+    ]
+
+debianVersionP :: O.Parser (Maybe DebianVersion)
+debianVersionP = O.option (Just . parseDebianVersion <$> O.str) m where
+  m = O.help helpMsg
+      <> O.long "deb-version"
+      <> O.metavar "VERSION"
+      <> O.value Nothing
+  helpMsg = unlines [
+    "Specify the version number for the debian package.",
+    "This will pin the version and should be considered dangerous."
+    ]
+
+debianRevisionP :: O.Parser (Maybe Revision)
+debianRevisionP = O.option (Just . Revision <$> O.str) m where
+  m = O.help helpMsg
+      <> O.long "revision"
+      <> O.value Nothing
+      <> O.metavar "REVISION"
+  helpMsg = unlines [
+    "Add this string to the cabal version to get the debian version number.",
+    "Debian policy says this must either be empty (--revision '')",
+    "or begin with a dash."
     ]
 
 sourcePackageNameP :: O.Parser (Maybe SrcPkgName)
@@ -501,6 +531,8 @@ handleBehaviorAdjustment (BehaviorAdjustment {..}) = zoom A.debInfo $ do
   D.sourcePackageName .= _sourcePackageName
   D.maintainerOption .= Just _maintainer
   D.sourceFormat .= _sourceFormat
+  D.revision .= unpack `fmap` _revision
+  D.debVersion .= _debianVersion
   D.uploadersOption %= (++ _uploaders)
   D.extraDevDeps %= (++ concatMap unpack _devDep)
   forM_ _cabalDebMapping $ \(CabalDebMapping (PackageName pkg, rels)) -> do

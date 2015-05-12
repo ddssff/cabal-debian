@@ -1,4 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Debian.Debianize.Optparse (
   CommandLineOptions(..),
@@ -116,6 +117,13 @@ nameAddrR = either fail return =<< parseMaintainer <$> O.str
 relationsR :: O.ReadM Relations
 relationsR = either (fail . show) return =<< parseRelations <$> O.str
 
+extraRelationsR :: O.ReadM (BinPkgName, Relations)
+extraRelationsR = span (/= ':') <$> O.str >>= \case
+  (str, "") -> fail $ "Does not contains colon: `" ++ str ++ "'"
+  (pkgstr, ':' : relstr) -> do
+    let pkgname = BinPkgName pkgstr
+    rels <- either (fail . show) return $ parseRelations relstr
+    return (pkgname, rels)
 
 -- Here are parser for BehaviorAdjustment and next are parsers for
 -- every field of this data.  Please, keep parsers declarations in

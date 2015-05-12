@@ -67,6 +67,8 @@ newtype ExtraSuggests = ExtraSuggests (BinPkgName, Relations) deriving Generic
 instance Newtype ExtraSuggests
 newtype CabalDebMapping = CabalDebMapping (PackageName, Relations) deriving Generic
 instance Newtype CabalDebMapping
+newtype ExecDebMapping = ExecDebMapping (String, Relations) deriving Generic
+instance Newtype ExecDebMapping
 
 -- | This data type is an abomination. It represent information,
 -- provided on command line. Part of such information provides
@@ -108,6 +110,7 @@ data BehaviorAdjustment = BehaviorAdjustment {
   _extraRecommends   :: [ExtraRecommends],
   _extraSuggests     :: [ExtraSuggests],
   _cabalDebMapping   :: [CabalDebMapping],
+  _execDebMapping    :: [ExecDebMapping],
   _profiling         :: ProfilingStatus,
   _haddock           :: HaddockStatus,
   _official          :: OfficialStatus,
@@ -190,6 +193,7 @@ behaviorAdjustmentP = BehaviorAdjustment <$> maintainerP
                                          <*> extraRecommendsP
                                          <*> extraSuggestsP
                                          <*> cabalDebMappingP
+                                         <*> execDebMappingP
                                          <*> profilingP
                                          <*> haddockP
                                          <*> officialP
@@ -374,6 +378,16 @@ cabalDebMappingP = many $ O.option cabalDebMappingR m where
     "e.g. --map-dep cryptopp=libcrypto-dev."
     ]
 
+execDebMappingP :: O.Parser [ExecDebMapping]
+execDebMappingP = many $ O.option (ExecDebMapping <$> mappingR) m where
+  m = O.help helpMsg
+      <> O.long "exec-map"
+  helpMsg = unlines [
+    "Specify a mapping from the name appearing in the Build-Tool",
+    "field of the cabal file to a debian binary package name,",
+    "e.g. --exec-map trhsx:haskell-hsx-utils"
+    ]
+
 profilingP :: O.Parser ProfilingStatus
 profilingP = O.flag ProfilingEnabled ProfilingDisabled m where
   m = O.help helpMsg
@@ -460,6 +474,7 @@ commandLineOptionsParserInfo = O.info (O.helper <*> commandLineOptionsP) im wher
 handleBehaviorAdjustment :: (MonadIO m, Functor m) => BehaviorAdjustment -> CabalT m ()
 handleBehaviorAdjustment (BehaviorAdjustment {..}) = zoom A.debInfo $ do
   forM_ _executable $ (D.executable %=) . uncurry Map.insert
+  forM_ _execDebMapping $ (D.execMap %=) . uncurry Map.insert . unpack
   forM_ _missingDependency $ (D.missingDependencies %=) . Set.insert
   D.utilsPackageNameBase .= _defaultPackage
   D.noDocumentationLibrary .= (_haddock == HaddockDisabled)

@@ -139,7 +139,7 @@ maintainerP = O.option maintainerR m where
       <> O.long "maintainer"
       <> O.short 'm'
       <> O.value (NameAddr (Just "Debian Haskell Group")
-                           "<pkg-haskell-maintainers@lists.alioth.debian.org>")
+                           "pkg-haskell-maintainers@lists.alioth.debian.org")
       <> O.metavar "'NAME <EMAIL>'"
   helpMsg = "Set the `Maintainer' field in debian/control file."
 

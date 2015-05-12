@@ -60,6 +60,7 @@ data CommandLineOptions = CommandLineOptions {
 -- requested at command line.
 data BehaviorAdjustment = BehaviorAdjustment {
   _maintainer        :: NameAddr,
+  _uploaders         :: [NameAddr],
   _executable        :: [(BinPkgName, D.InstallFile)],
   _defaultPackage    :: Maybe String,
   _missingDependency :: [BinPkgName],
@@ -107,8 +108,8 @@ executableR = parsePair . span (/= ':') <$> O.str where
 binPkgNameR :: O.ReadM BinPkgName
 binPkgNameR = BinPkgName <$> O.str
 
-maintainerR :: O.ReadM NameAddr
-maintainerR = either fail return =<< parseMaintainer <$> O.str
+nameAddrR :: O.ReadM NameAddr
+nameAddrR = either fail return =<< parseMaintainer <$> O.str
 
 relationsR :: O.ReadM Relations
 relationsR = either (fail . show) return =<< parseRelations <$> O.str
@@ -120,6 +121,7 @@ relationsR = either (fail . show) return =<< parseRelations <$> O.str
 
 behaviorAdjustmentP :: O.Parser BehaviorAdjustment
 behaviorAdjustmentP = BehaviorAdjustment <$> maintainerP
+                                         <*> uploadersP
                                          <*> executableP
                                          <*> defaultPackageP
                                          <*> missingDependencyP
@@ -134,7 +136,7 @@ behaviorAdjustmentP = BehaviorAdjustment <$> maintainerP
                                          <*> officialP
 
 maintainerP :: O.Parser NameAddr
-maintainerP = O.option maintainerR m where
+maintainerP = O.option nameAddrR m where
   m = O.help helpMsg
       <> O.long "maintainer"
       <> O.short 'm'
@@ -142,6 +144,14 @@ maintainerP = O.option maintainerR m where
                            "pkg-haskell-maintainers@lists.alioth.debian.org")
       <> O.metavar "'NAME <EMAIL>'"
   helpMsg = "Set the `Maintainer' field in debian/control file."
+
+uploadersP :: O.Parser [NameAddr]
+uploadersP = many $ O.option nameAddrR m where
+  m = O.help helpMsg
+      <> O.long "uploader"
+      <> O.short 'u'
+      <> O.metavar "'NAME <EMAIL>'"
+  helpMsg = "Add entry to `Uploaders' field in debian/control file."
 
 executableP :: O.Parser [(BinPkgName, D.InstallFile)]
 executableP = many $ O.option executableR m where
@@ -317,7 +327,11 @@ commandLineOptionsParserInfo = O.info (O.helper <*> commandLineOptionsP) im wher
      "using a revision control system to revert the package to a known state before running."
      ])
 
-handleBehaviorAdjustment :: (MonadIO m) => BehaviorAdjustment -> CabalT m ()
+-- FIXME: Separation of parsing of `BehaviorAdjustment' and performing
+-- of corresponding actions is all great, but now it is pretty easy
+-- to not handle particular field in `BehaviorAdjustment' field and
+-- ghc will not complain.
+handleBehaviorAdjustment :: (MonadIO m, Functor m) => BehaviorAdjustment -> CabalT m ()
 handleBehaviorAdjustment (BehaviorAdjustment {..}) = zoom A.debInfo $ do
   forM_ _executable $ (D.executable %=) . uncurry Map.insert
   forM_ _missingDependency $ (D.missingDependencies %=) . Set.insert
@@ -327,6 +341,8 @@ handleBehaviorAdjustment (BehaviorAdjustment {..}) = zoom A.debInfo $ do
   D.overrideDebianNameBase .= _debianNameBase
   D.sourcePackageName .= _sourcePackageName
   D.maintainerOption .= Just _maintainer
+  D.uploadersOption %= (++ _uploaders)
+
   D.official .= (_official == Official)
   zoom D.control $ do
     S.section .= Just _sourceSection

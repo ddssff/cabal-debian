@@ -201,7 +201,7 @@ inputCabalInfoFromDirectory =
 -- here, though I don't recall why at the moment.
 inputCabalInfo :: MonadIO m => FilePath -> FilePath -> DebianT m ()
 inputCabalInfo _ path | elem path ["control"] = return ()
-inputCabalInfo debian name@"source/format" = liftIO (readFile (debian </> name)) >>= \ text -> either (\ x -> warning %= Set.insert x) ((sourceFormat .=) . Just) (readSourceFormat text)
+inputCabalInfo debian name@"source/format" = liftIO (readFile (debian </> name)) >>= \ text -> either (\ x -> warning %= Set.insert x) ((sourceFormat .=)) (readSourceFormat text)
 inputCabalInfo debian name@"watch" = liftIO (readFile (debian </> name)) >>= \ text -> watch .= Just text
 inputCabalInfo debian name@"rules" = liftIO (readFile (debian </> name)) >>= \ text -> rulesHead .= (Just $ strip text <> pack "\n")
 inputCabalInfo debian name@"compat" = liftIO (readFile (debian </> name)) >>= \ text -> compat .= Just (read' (\ s -> error $ "compat: " ++ show s) (unpack text))

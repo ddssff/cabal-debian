@@ -68,8 +68,9 @@ debianizationFileMap =
        tell =<< intermediates
 
 sourceFormatFiles :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
-sourceFormatFiles =
-    maybe [] (\ x -> [("debian/source/format", pack (ppShow x))]) <$> (lift $ use D.sourceFormat)
+sourceFormatFiles = do
+    fmt <- lift $ use D.sourceFormat
+    return $ [("debian/source/format", pack . ppShow $ fmt)]
 
 watchFile :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
 watchFile = maybe [] (\ x -> [("debian/watch", x)]) <$> (lift $ use D.watch)

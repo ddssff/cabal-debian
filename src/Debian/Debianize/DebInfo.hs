@@ -102,7 +102,7 @@ import Debian.Debianize.CopyrightDescription (CopyrightDescription)
 import qualified Debian.Debianize.SourceDebDescription as S (newSourceDebDescription, SourceDebDescription, binaryPackages)
 import Debian.Debianize.VersionSplits (DebBase)
 import Debian.Orphans ()
-import Debian.Policy (PackageArchitectures, PackagePriority, Section, SourceFormat)
+import Debian.Policy (PackageArchitectures, PackagePriority, Section, SourceFormat(..))
 import Debian.Relation (BinPkgName, Relations, SrcPkgName)
 import Debian.Version (DebianVersion)
 import Prelude hiding (init, init, log, log)
@@ -115,7 +115,7 @@ data DebInfo
       -- ^ Information regarding mode of operation - verbosity, dry-run, usage, etc
       , _warning :: Set Text
       -- ^ A warning to be reported later
-      , _sourceFormat :: Maybe SourceFormat
+      , _sourceFormat :: SourceFormat
       -- ^ Write debian/source/format
       , _watch :: Maybe Text
       -- ^ the @debian\/watch@ file
@@ -316,7 +316,7 @@ makeDebInfo fs =
     DebInfo
     { _flags = fs
     , _warning = mempty
-    , _sourceFormat = Nothing
+    , _sourceFormat = Quilt3
     , _watch = Nothing
     , _rulesHead = Nothing
     , _rulesSettings = mempty

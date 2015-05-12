@@ -168,9 +168,9 @@ options =
                       , "dependencies are less useful and more troublesome for debian packages than cabal,"
                       , "because you can't install multiple versions of a given debian package.  For more"
                       , "google 'cabal hell'."]),
-      Option "" ["quilt"] (NoArg ((A.debInfo . D.sourceFormat) .= Just Quilt3))
+      Option "" ["quilt"] (NoArg ((A.debInfo . D.sourceFormat) .= Quilt3))
              "The package has an upstream tarball, write '3.0 (quilt)' into source/format.",
-      Option "" ["native"] (NoArg ((A.debInfo . D.sourceFormat) .= Just Native3))
+      Option "" ["native"] (NoArg ((A.debInfo . D.sourceFormat) .= Native3))
              "The package has an no upstream tarball, write '3.0 (native)' into source/format.",
       Option "" ["official"] (NoArg ((A.debInfo . D.official) .= True))
              "This packaging is created of the official Debian Haskell Group",

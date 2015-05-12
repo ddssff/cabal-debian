@@ -11,7 +11,7 @@ module Debian.Debianize.Optparse (
   Flags(..),
   parseProgramArguments,
   handleBehaviorAdjustment) where
-import Control.Applicative ((<$>), (<*>), many, pure, (<|>))
+import Control.Applicative ((<$>), (<*>), many, pure)
 import Control.Lens
 import Control.Monad.State.Class (MonadState)
 import Control.Monad.Trans
@@ -393,19 +393,7 @@ officialP = O.flag NonOfficial Official m where
   helpMsg = "Follow guidelines of Debian Haskell Group"
 
 sourceFormatP :: O.Parser SourceFormat
-sourceFormatP = nativeP <|> quiltP
-
-quiltP :: O.Parser SourceFormat
-quiltP = O.flag Native3 Quilt3 m where
-  m = O.help helpMsg
-      <> O.long "quilt"
-  helpMsg = unlines [
-    "Package has an upstream tarball,",
-    "write '3.0 (quilt)' into source/format."
-    ]
-
-nativeP :: O.Parser SourceFormat
-nativeP = O.flag Quilt3 Native3 m where
+sourceFormatP = O.flag Quilt3 Native3 m where
   m = O.help helpMsg
       <> O.long "native"
   helpMsg = unlines [
@@ -479,7 +467,7 @@ handleBehaviorAdjustment (BehaviorAdjustment {..}) = zoom A.debInfo $ do
   D.overrideDebianNameBase .= _debianNameBase
   D.sourcePackageName .= _sourcePackageName
   D.maintainerOption .= Just _maintainer
-  D.sourceFormat .= Just _sourceFormat
+  D.sourceFormat .= _sourceFormat
   D.uploadersOption %= (++ _uploaders)
   D.extraDevDeps %= (++ concatMap unpack _devDep)
   forM_ _cabalDebMapping $ \(CabalDebMapping (PackageName pkg, rels)) -> do

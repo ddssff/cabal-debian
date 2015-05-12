@@ -1,6 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveGeneric #-}
 module Debian.Debianize.Optparse (
   CommandLineOptions(..),
   BehaviorAdjustment,
@@ -32,13 +33,18 @@ import qualified Data.Set as Set
 import Debian.Debianize.BasicInfo
 import System.Posix.Env (getEnv)
 import System.Environment (getArgs)
+import GHC.Generics
+import Control.Newtype
 
 data HaddockStatus = HaddockEnabled | HaddockDisabled deriving Eq
 data ProfilingStatus = ProfilingEnabled | ProfilingDisabled deriving Eq
 data OfficialStatus = Official| NonOfficial deriving Eq
-newtype BuildDep = BuildDep { unBuildDep :: Relations }
-newtype BuildDepIndep = BuildDepIndep { unBuildDepIndep :: Relations }
-newtype DevDep = DevDep { unDevDep :: Relations }
+newtype BuildDep = BuildDep Relations deriving Generic
+instance Newtype BuildDep
+newtype BuildDepIndep = BuildDepIndep Relations deriving Generic
+instance Newtype BuildDepIndep
+newtype DevDep = DevDep Relations deriving Generic
+instance Newtype DevDep
 
 -- | This data type is an abomination. It represent information,
 -- provided on command line. Part of such information provides
@@ -360,15 +366,15 @@ handleBehaviorAdjustment (BehaviorAdjustment {..}) = zoom A.debInfo $ do
   D.sourcePackageName .= _sourcePackageName
   D.maintainerOption .= Just _maintainer
   D.uploadersOption %= (++ _uploaders)
-  D.extraDevDeps %= (++ concatMap unDevDep _devDep)
+  D.extraDevDeps %= (++ concatMap unpack _devDep)
 
   D.official .= (_official == Official)
   zoom D.control $ do
     S.section .= Just _sourceSection
     S.standardsVersion .= Just _standardsVersion
-    S.buildDepends %= (++ concatMap unBuildDep _buildDep)
-    S.buildDepends %= (++ concatMap unDevDep _devDep)
-    S.buildDependsIndep %= (++ concatMap unBuildDepIndep _buildDepIndep)
+    S.buildDepends %= (++ concatMap unpack _buildDep)
+    S.buildDepends %= (++ concatMap unpack _devDep)
+    S.buildDependsIndep %= (++ concatMap unpack _buildDepIndep)
 
 
 parseProgramArguments' :: [String] -> IO CommandLineOptions

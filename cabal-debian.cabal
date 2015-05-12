@@ -172,6 +172,7 @@ Library
     memoize >= 0.7,
     mtl,
     network-uri,
+    newtype-generics >= 0.4,
     parsec >= 3,
     process,
     pureMD5,

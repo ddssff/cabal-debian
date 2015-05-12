@@ -11,7 +11,7 @@ module Debian.Debianize.Optparse (
   Flags(..),
   parseProgramArguments,
   handleBehaviorAdjustment) where
-import Control.Applicative ((<$>), (<*>), many, pure)
+import Control.Applicative ((<$>), (<*>), many, pure, (<|>))
 import Control.Lens
 import Control.Monad.State.Class (MonadState)
 import Control.Monad.Trans
@@ -110,7 +110,8 @@ data BehaviorAdjustment = BehaviorAdjustment {
   _cabalDebMapping   :: [CabalDebMapping],
   _profiling         :: ProfilingStatus,
   _haddock           :: HaddockStatus,
-  _official          :: OfficialStatus
+  _official          :: OfficialStatus,
+  _sourceFormat      :: SourceFormat
 }
 
 -- Brief instruction to save you, dear developer from scrutinizing
@@ -192,6 +193,7 @@ behaviorAdjustmentP = BehaviorAdjustment <$> maintainerP
                                          <*> profilingP
                                          <*> haddockP
                                          <*> officialP
+                                         <*> sourceFormatP
 
 maintainerP :: O.Parser NameAddr
 maintainerP = O.option nameAddrR m where
@@ -390,6 +392,27 @@ officialP = O.flag NonOfficial Official m where
       <> O.long "official"
   helpMsg = "Follow guidelines of Debian Haskell Group"
 
+sourceFormatP :: O.Parser SourceFormat
+sourceFormatP = nativeP <|> quiltP
+
+quiltP :: O.Parser SourceFormat
+quiltP = O.flag Native3 Quilt3 m where
+  m = O.help helpMsg
+      <> O.long "quilt"
+  helpMsg = unlines [
+    "Package has an upstream tarball,",
+    "write '3.0 (quilt)' into source/format."
+    ]
+
+nativeP :: O.Parser SourceFormat
+nativeP = O.flag Quilt3 Native3 m where
+  m = O.help helpMsg
+      <> O.long "native"
+  helpMsg = unlines [
+    "Package has an no upstream tarball,",
+    "write '3.0 (native)' into source/format."
+    ]
+
 -- Here is 'Flags' parser and parsers for every it's field.
 
 flagsP :: O.Parser Flags
@@ -456,6 +479,7 @@ handleBehaviorAdjustment (BehaviorAdjustment {..}) = zoom A.debInfo $ do
   D.overrideDebianNameBase .= _debianNameBase
   D.sourcePackageName .= _sourcePackageName
   D.maintainerOption .= Just _maintainer
+  D.sourceFormat .= Just _sourceFormat
   D.uploadersOption %= (++ _uploaders)
   D.extraDevDeps %= (++ concatMap unpack _devDep)
   forM_ _cabalDebMapping $ \(CabalDebMapping (PackageName pkg, rels)) -> do

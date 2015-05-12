@@ -4,12 +4,13 @@ module Debian.Debianize.Optparse (
   CommandLineOptions(..),
   BehaviorAdjustment,
   Flags(..),
-  commandLineOptionsParserInfo,
+  parseProgramArguments,
   handleBehaviorAdjustment) where
 import qualified  Debian.Debianize.DebInfo as D
 import qualified Debian.Debianize.SourceDebDescription as S
 import qualified Debian.Debianize.CabalInfo as A
 import Distribution.Compiler (CompilerFlavor(..))
+import Data.Maybe.Extended (fromMaybe)
 import Data.Foldable (forM_)
 import Control.Monad.Trans
 import Debian.Debianize.Monad
@@ -18,6 +19,7 @@ import Debian.Debianize.VersionSplits
 import Debian.Policy
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr(..))
 import Debian.Relation
+import Debian.Debianize.Prelude (maybeRead)
 import qualified Options.Applicative as O
 import Control.Applicative ((<$>), (<*>), many, pure)
 import Data.Maybe.Extended (nothingIf)
@@ -27,6 +29,8 @@ import Control.Lens
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Debian.Debianize.BasicInfo
+import System.Posix.Env (getEnv)
+import System.Environment (getArgs)
 
 data HaddockStatus = HaddockEnabled | HaddockDisabled deriving (Show, Eq)
 data ProfilingStatus = ProfilingEnabled | ProfilingDisabled deriving (Show, Eq)
@@ -330,3 +334,15 @@ handleBehaviorAdjustment (BehaviorAdjustment {..}) = zoom A.debInfo $ do
     S.standardsVersion .= Just _standardsVersion
     S.buildDepends %= (++ concatMap unBuildDep _buildDep)
     S.buildDependsIndep %= (++ concatMap unBuildDepIndep _buildDepIndep)
+
+
+parseProgramArguments' :: [String] -> IO CommandLineOptions
+parseProgramArguments' args =  O.handleParseResult result where
+  prefs = O.prefs O.idm
+  result = O.execParserPure prefs commandLineOptionsParserInfo args
+
+parseProgramArguments :: IO CommandLineOptions
+parseProgramArguments = defArgs >>= parseProgramArguments'
+
+defArgs :: IO [String]
+defArgs = (++) <$> getArgs <*> (fromMaybe [] . (maybeRead =<<) <$> getEnv "CABALDEBIAN")

@@ -1,7 +1,7 @@
 -- | Wrappers around the debianization function to perform various
 -- tasks - output, describe, validate a debianization, run an external
 -- script to produce a debianization.
-
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE FlexibleInstances, OverloadedStrings, ScopedTypeVariables, StandaloneDeriving, TupleSections, TypeSynonymInstances #-}
 {-# OPTIONS -Wall -fno-warn-name-shadowing -fno-warn-orphans #-}
 
@@ -12,8 +12,8 @@ module Debian.Debianize.Output
     , describeDebianization
     , compareDebianization
     , validateDebianization
+    , performDebianization
     ) where
-
 
 import Control.Exception as E (throw)
 import Control.Lens
@@ -24,15 +24,18 @@ import Data.List (unlines)
 import Data.Map as Map (elems, toList)
 import Data.Maybe (fromMaybe)
 import Data.Text as Text (split, Text, unpack)
+import Debian.Debianize.CabalInfo (newCabalInfo)
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(..))
 import Debian.Debianize.BasicInfo (DebAction(Usage), debAction, dryRun, validate)
 import Debian.Debianize.CabalInfo (CabalInfo, debInfo)
 import qualified Debian.Debianize.DebInfo as D
 import Debian.Debianize.Files (debianizationFileMap)
 import Debian.Debianize.InputDebian (inputDebianization)
-import Debian.Debianize.Monad (DebianT, evalDebianT)
+import Debian.Debianize.Monad (DebianT, CabalT, evalDebianT, evalCabalT)
 import Debian.Debianize.Options (options, putEnvironmentArgs)
 import Debian.Debianize.Prelude (indent, replaceFile, zipMaps)
+import Debian.Debianize.Finalize (debianize)
+import Debian.Debianize.Optparse
 import Debian.Debianize.BinaryDebDescription as B (canonical, package)
 import qualified Debian.Debianize.SourceDebDescription as S
 import Debian.Pretty (ppShow, ppPrint)
@@ -69,6 +72,18 @@ runDebianizeScript args =
           (ExitSuccess, _, _) -> return True
           (code, out, err) -> error ("runDebianizeScript: " ++ showCommandForUser "runhaskell" args' ++ " -> " ++ show code ++
                                      "\n stdout: " ++ show out ++"\n stderr: " ++ show err)
+
+
+
+-- | Perform whole debianization. You provide your customization,
+-- this function does everything else.
+performDebianization :: CabalT IO () -> IO ()
+performDebianization custom =
+  parseProgramArguments >>= \CommandLineOptions {..} ->
+    newCabalInfo _flags >>= (evalCabalT $ do
+                                handleBehaviorAdjustment _adjustment
+                                debianize custom
+                                finishDebianization)
 
 -- | Depending on the options in @atoms@, either validate, describe,
 -- or write the generated debianization.

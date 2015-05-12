@@ -271,7 +271,6 @@ flagsP :: O.Parser Flags
 flagsP = Flags <$> verbosityP
                <*> dryRunP
                <*> pure False     -- validate
-               <*> pure Debianize -- debAction
                <*> pure GHC       -- CompilerFlavor
                <*> pure mempty    -- cabalFlagAssignments
                <*> pure (EnvSet {cleanOS = "/", dependOS = "/", buildOS = "/"})

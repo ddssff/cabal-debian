@@ -6,6 +6,7 @@ module Main
     ) where
 
 import Control.Applicative ((<$>))
+import Debian.Debianize.Optparse(_flags, parseProgramArguments)
 import Control.Lens
 import Data.Algorithm.DiffContext (getContextDiff, prettyContextDiff)
 import Data.Function (on)
@@ -18,7 +19,7 @@ import Data.Set as Set (fromList, union, insert)
 import Data.Text as Text (intercalate, split, Text, unlines, unpack)
 import Data.Version (Version(Version))
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(..), parseEntry)
-import Debian.Debianize.BasicInfo (compilerFlavor, newFlags)
+import Debian.Debianize.BasicInfo (compilerFlavor, Flags)
 import qualified Debian.Debianize.BinaryDebDescription as B
 import Debian.Debianize.CabalInfo as A
 import Debian.Debianize.CopyrightDescription
@@ -46,6 +47,11 @@ import System.Process (readProcessWithExitCode)
 import Test.HUnit
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr(..))
 import Text.PrettyPrint.HughesPJClass (pPrint, text, Doc)
+
+
+-- | Backward compatibility. Should be fixed.
+newFlags :: IO Flags
+newFlags = _flags <$> parseProgramArguments
 
 -- | A suitable defaultAtoms value for the debian repository.
 defaultAtoms :: Monad m => CabalT m ()

@@ -4,22 +4,18 @@ module Debian.Debianize.BasicInfo
     ( -- * Types
       Flags(..)
     , EnvSet(..)
-    , DebAction(..)
     , DebType(..)
       -- * Lenses
     , verbosity
     , dryRun
     , validate
-    , debAction
     , compilerFlavor
     , cabalFlagAssignments
     , buildEnv
       -- * State Monad
     , flagOptions
-    , newFlags
     ) where
 
-import Control.Applicative ((<$>))
 import Control.Lens
 import Control.Monad.State (StateT, execStateT)
 import Control.Monad.Trans (MonadIO)
@@ -54,8 +50,6 @@ data Flags = Flags
     -- configure is run.  Specifically, the version number in the top
     -- changelog entry must match, and the sets of package names in
     -- the control file must match.
-    , _debAction :: DebAction
-    -- ^ What to do - Usage, Debianize or Substvar
     , _compilerFlavor :: CompilerFlavor
     -- ^ Which compiler should we generate library packages for?  In theory a single
     -- deb could handle multiple compiler flavors, but the support tools are not ready
@@ -79,21 +73,10 @@ data EnvSet = EnvSet
     , buildOS :: FilePath  -- ^ An environment where we have built a package
     } deriving (Eq, Ord, Show, Data, Typeable)
 
-data DebAction = Usage | Debianize deriving (Read, Show, Eq, Ord, Data, Typeable)
-
 -- | A redundant data type, too lazy to expunge.
 data DebType = Dev | Prof | Doc deriving (Eq, Ord, Read, Show, Data, Typeable)
 
-instance Default Flags where
-    def = Flags
-          { _verbosity = 1
-          , _debAction = Debianize
-          , _dryRun = False
-          , _validate = False
-          , _compilerFlavor = GHC
-          , _cabalFlagAssignments = mempty
-          , _buildEnv = EnvSet {cleanOS = "/", dependOS = "/", buildOS = "/"}
-          }
+
 
 -- Build the lenses
 $(makeLenses ''Flags)
@@ -106,8 +89,6 @@ flagOptions =
              "Change the amount of progress messages generated",
       Option "n" ["dry-run", "compare"] (NoArg (dryRun .= True))
              "Just compare the existing debianization to the one we would generate.",
-      Option "h?" ["help"] (NoArg (debAction .= Usage))
-             "Show this help text",
       Option "" ["ghc"] (NoArg (compilerFlavor .= GHC)) "Generate packages for GHC - same as --with-compiler GHC",
 #if MIN_VERSION_Cabal(1,22,0)
       Option "" ["ghcjs"] (NoArg (compilerFlavor .= GHCJS)) "Generate packages for GHCJS - same as --with-compiler GHCJS",
@@ -121,8 +102,6 @@ flagOptions =
       -- Option "f" ["flags"] (ReqArg (\ fs p -> foldl (\ p' x -> p' {cabalFlagAssignments_ = Set.insert x (cabalFlagAssignments_ p')}) p (flagList fs)) "FLAGS")
              (unlines [ "Flags to pass to the finalizePackageDescription function in"
                       , "Distribution.PackageDescription.Configuration when loading the cabal file."]),
-      Option "" ["debianize"] (NoArg (debAction .= Debianize))
-             "Deprecated - formerly used to get what is now the normal benavior.",
       Option "" ["buildenvdir"] (ReqArg (\ s -> buildEnv .= EnvSet {cleanOS = s </> "clean", dependOS = s </> "depend", buildOS = s </> "build"}) "PATH")
              "Directory containing the three build environments, clean, depend, and build.",
       Option "f" ["cabal-flags"] (ReqArg (\ s -> cabalFlagAssignments %= (Set.union (fromList (flagList s)))) "FLAG FLAG ...")
@@ -134,10 +113,3 @@ flagList :: String -> [(FlagName, Bool)]
 flagList = map tagWithValue . words
   where tagWithValue ('-':name) = (FlagName (map toLower name), False)
         tagWithValue name       = (FlagName (map toLower name), True)
-
--- | Use 'flagOptions' to build a new 'Flags' value from the command
--- line arguments in the environment.
-newFlags :: IO Flags
-newFlags = do
-  (fns, _, _) <- getOpt Permute flagOptions <$> getArgs
-  execStateT (sequence fns) def

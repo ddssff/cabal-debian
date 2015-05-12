@@ -209,7 +209,6 @@ Library
     Debian.Debianize.InputDebian
     Debian.Debianize.Interspersed
     Debian.Debianize.Monad
-    Debian.Debianize.Options
     Debian.Debianize.Optparse
     Debian.Debianize.Output
     Debian.Debianize.Prelude

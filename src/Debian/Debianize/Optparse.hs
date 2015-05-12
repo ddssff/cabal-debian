@@ -37,6 +37,7 @@ data ProfilingStatus = ProfilingEnabled | ProfilingDisabled deriving (Show, Eq)
 data OfficialStatus = Official| NonOfficial deriving (Show, Eq)
 newtype BuildDep = BuildDep { unBuildDep :: Relations } deriving Show
 newtype BuildDepIndep = BuildDepIndep { unBuildDepIndep :: Relations } deriving Show
+newtype DevDep = DevDep { unDevDep :: Relations }
 
 -- | This data type is an abomination. It represent information,
 -- provided on command line. Part of such information provides
@@ -70,6 +71,7 @@ data BehaviorAdjustment = BehaviorAdjustment {
   _standardsVersion  :: StandardsVersion,
   _buildDep          :: [BuildDep],
   _buildDepIndep     :: [BuildDepIndep],
+  _devDep            :: [DevDep],
   _profiling         :: ProfilingStatus,
   _haddock           :: HaddockStatus,
   _official          :: OfficialStatus
@@ -131,6 +133,7 @@ behaviorAdjustmentP = BehaviorAdjustment <$> maintainerP
                                          <*> standardsVersionP
                                          <*> buildDepP
                                          <*> buildDepIndepP
+                                         <*> devDepP
                                          <*> profilingP
                                          <*> haddockP
                                          <*> officialP
@@ -257,6 +260,13 @@ buildDepIndepP = many $ O.option (BuildDepIndep <$> relationsR) m where
     "field for this source package."
     ]
 
+devDepP :: O.Parser [DevDep]
+devDepP = many $ O.option (DevDep <$> relationsR) m where
+  m = O.help helpMsg
+      <> O.long "dev-dep"
+      <> O.metavar "RELATION"
+  helpMsg = "Add an entry to the `Depends' field of the -dev package"
+
 profilingP :: O.Parser ProfilingStatus
 profilingP = O.flag ProfilingEnabled ProfilingDisabled m where
   m = O.help helpMsg
@@ -342,12 +352,14 @@ handleBehaviorAdjustment (BehaviorAdjustment {..}) = zoom A.debInfo $ do
   D.sourcePackageName .= _sourcePackageName
   D.maintainerOption .= Just _maintainer
   D.uploadersOption %= (++ _uploaders)
+  D.extraDevDeps %= (++ concatMap unDevDep _devDep)
 
   D.official .= (_official == Official)
   zoom D.control $ do
     S.section .= Just _sourceSection
     S.standardsVersion .= Just _standardsVersion
     S.buildDepends %= (++ concatMap unBuildDep _buildDep)
+    S.buildDepends %= (++ concatMap unDevDep _devDep)
     S.buildDependsIndep %= (++ concatMap unBuildDepIndep _buildDepIndep)
 
 

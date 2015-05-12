@@ -24,12 +24,34 @@ import Text.PrettyPrint.ANSI.Leijen (linebreak, (<+>), string, indent)
 import Control.Lens
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import Debian.Debianize.BasicInfo
 
 data HaddockStatus = HaddockEnabled | HaddockDisabled deriving (Show, Eq)
 data ProfilingStatus = ProfilingEnabled | ProfilingDisabled deriving (Show, Eq)
 data OfficialStatus = Official| NonOfficial deriving (Show, Eq)
 newtype BuildDep = BuildDep { unBuildDep :: Relations } deriving Show
 newtype BuildDepIndep = BuildDepIndep { unBuildDepIndep :: Relations } deriving Show
+
+-- | This data type is an abomination. It represent information,
+-- provided on command line. Part of such information provides
+-- means to create initial 'CabalT' state and is stored in
+-- '_flags' field. See 'newCabalInfo'.
+--
+-- Other, much greater part represent changes to already created
+-- state. They are stored in '_adjustment' field.
+--
+-- All this can be understood from (simplified) types:
+--
+-- > type CabalT m a = StateT CabalInfo m a
+-- > newCabalInfo :: Flags -> IO CabalInfo
+-- > handleBehaviorAdjustment :: BehaviorAdjustment -> CabalT IO ()
+
+data CommandLineOptions = CommandLineOptions {
+  _flags :: Flags,
+  _adjustment :: BehaviorAdjustment
+}
+-- | This data type represents changes to 'CabalT' state,
+-- requested at command line.
 data BehaviorAdjustment = BehaviorAdjustment {
   _maintainer        :: NameAddr,
   _executable        :: [(BinPkgName, D.InstallFile)],
@@ -44,7 +66,26 @@ data BehaviorAdjustment = BehaviorAdjustment {
   _profiling         :: ProfilingStatus,
   _haddock           :: HaddockStatus,
   _official          :: OfficialStatus
-} deriving Show
+}
+
+-- Brief instruction to save you, dear developer from scrutinizing
+-- `optparse-applicative` documentation.
+--
+-- There is two main types in command line parsing.
+--
+-- 'ReadM' is description how make object from string.
+-- For every object of type 'a' with some parsing logic
+-- we define auxiliary function with 'R' suffix and
+-- type 'ReadM a'.
+--
+-- 'Parser' is type, containing information about
+-- which string in command line should be converted
+-- to object. Every field in 'BehaviorAdjustment'
+-- and 'Flags' type of type 'b' have corresponding function
+-- of type 'Parser' with suffix 'P'.
+
+
+-- Here are all 'ReadM' values.
 
 executableR :: O.ReadM (BinPkgName, D.InstallFile)
 executableR = parsePair . span (/= ':') <$> O.str where
@@ -56,6 +97,46 @@ executableR = parsePair . span (/= ':') <$> O.str where
                                       D.destDir   = case md of
                                                       (':' : dd) -> Just dd
                                                       _          -> Nothing })
+
+binPkgNameR :: O.ReadM BinPkgName
+binPkgNameR = BinPkgName <$> O.str
+
+maintainerR :: O.ReadM NameAddr
+maintainerR = either fail return =<< parseMaintainer <$> O.str
+
+relationsR :: O.ReadM Relations
+relationsR = either (fail . show) return =<< parseRelations <$> O.str
+
+
+-- Here are parser for BehaviorAdjustment and next are parsers for
+-- every field of this data.  Please, keep parsers declarations in
+-- same order, as are fields.
+
+behaviorAdjustmentP :: O.Parser BehaviorAdjustment
+behaviorAdjustmentP = BehaviorAdjustment <$> maintainerP
+                                         <*> executableP
+                                         <*> defaultPackageP
+                                         <*> missingDependencyP
+                                         <*> debianNameBaseP
+                                         <*> sourcePackageNameP
+                                         <*> sourceSectionP
+                                         <*> standardsVersionP
+                                         <*> buildDepP
+                                         <*> buildDepIndepP
+                                         <*> profilingP
+                                         <*> haddockP
+                                         <*> officialP
+
+maintainerP :: O.Parser NameAddr
+maintainerP = O.option maintainerR m where
+  m = O.help helpMsg
+      <> O.long "maintainer"
+      <> O.short 'm'
+      <> O.value (NameAddr (Just "Debian Haskell Group")
+                           "<pkg-haskell-maintainers@lists.alioth.debian.org>")
+      <> O.metavar "'NAME <EMAIL>'"
+  helpMsg = "Set the `Maintainer' field in debian/control file."
+
 executableP :: O.Parser [(BinPkgName, D.InstallFile)]
 executableP = many $ O.option executableR m where
   m = O.help helpMsg
@@ -80,27 +161,6 @@ defaultPackageP = O.option (Just <$> O.str) m where
     "all the files not included in a library package or some",
     "other executable package. By default this is `haskell-PACKAGENAME-utils'"
     ]
-
-haddockP :: O.Parser HaddockStatus
-haddockP = O.flag HaddockEnabled HaddockDisabled m where
-  m = O.help helpMsg
-      <> O.long "disable-haddock"
-  helpMsg = "Do not build haddoc documentation"
-
-officialP :: O.Parser OfficialStatus
-officialP = O.flag NonOfficial Official m where
-  m = O.help helpMsg
-      <> O.long "official"
-  helpMsg = "Follow guidelines of Debian Haskell Group"
-
-profilingP :: O.Parser ProfilingStatus
-profilingP = O.flag ProfilingEnabled ProfilingDisabled m where
-  m = O.help helpMsg
-      <> O.long "disable-profiling"
-  helpMsg = "Do not generate profiling (-prof) library package."
-
-binPkgNameR :: O.ReadM BinPkgName
-binPkgNameR = BinPkgName <$> O.str
 
 missingDependencyP :: O.Parser [BinPkgName]
 missingDependencyP = many $ O.option binPkgNameR m where
@@ -150,20 +210,6 @@ sourceSectionP = O.option (MainSection <$> O.str) m where
       <> O.metavar "SECTION"
   helpMsg = "Set the `Section' field in debian/control file."
 
-maintainerR :: O.ReadM NameAddr
-maintainerR = either fail return =<< parseMaintainer <$> O.str
-
-maintainerP :: O.Parser NameAddr
-maintainerP = O.option maintainerR m where
-  m = O.help helpMsg
-      <> O.long "maintainer"
-      <> O.short 'm'
-      <> O.value (NameAddr (Just "Debian Haskell Group")
-                           "<pkg-haskell-maintainers@lists.alioth.debian.org>")
-      <> O.metavar "'NAME <EMAIL>'"
-  helpMsg = "Set the `Maintainer' field in debian/control file."
-
-
 standardsVersionP :: O.Parser StandardsVersion
 standardsVersionP = O.option (parseStandardsVersion <$> O.str) m where
   m = O.help helpMsg
@@ -174,9 +220,6 @@ standardsVersionP = O.option (parseStandardsVersion <$> O.str) m where
     "Claim compatibility to this version of the Debian policy",
     "(i.e. the value of the Standards-Version field)"
     ]
-
-relationsR :: O.ReadM Relations
-relationsR = either (fail . show) return =<< parseRelations <$> O.str
 
 buildDepP :: O.Parser [BuildDep]
 buildDepP = many $ O.option (BuildDep <$> relationsR) m where
@@ -198,21 +241,23 @@ buildDepIndepP = many $ O.option (BuildDepIndep <$> relationsR) m where
     "field for this source package."
     ]
 
+profilingP :: O.Parser ProfilingStatus
+profilingP = O.flag ProfilingEnabled ProfilingDisabled m where
+  m = O.help helpMsg
+      <> O.long "disable-profiling"
+  helpMsg = "Do not generate profiling (-prof) library package."
 
-behaviorAdjustmentP :: O.Parser BehaviorAdjustment
-behaviorAdjustmentP = BehaviorAdjustment <$> maintainerP
-                                         <*> executableP
-                                         <*> defaultPackageP
-                                         <*> missingDependencyP
-                                         <*> debianNameBaseP
-                                         <*> sourcePackageNameP
-                                         <*> sourceSectionP
-                                         <*> standardsVersionP
-                                         <*> buildDepP
-                                         <*> buildDepIndepP
-                                         <*> profilingP
-                                         <*> haddockP
-                                         <*> officialP
+haddockP :: O.Parser HaddockStatus
+haddockP = O.flag HaddockEnabled HaddockDisabled m where
+  m = O.help helpMsg
+      <> O.long "disable-haddock"
+  helpMsg = "Do not build haddoc documentation"
+
+officialP :: O.Parser OfficialStatus
+officialP = O.flag NonOfficial Official m where
+  m = O.help helpMsg
+      <> O.long "official"
+  helpMsg = "Follow guidelines of Debian Haskell Group"
 
 behaviorAdjustmentParserInfo :: O.ParserInfo BehaviorAdjustment
 behaviorAdjustmentParserInfo = O.info (O.helper <*> behaviorAdjustmentP) im where

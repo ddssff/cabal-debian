@@ -202,7 +202,7 @@ X-Description: Haskell modules for fine art appraisal applications
 Package: artvaluereport2-backups
 Architecture: any
 Section: misc
-Depends: ${haskell:Depends}, ${misc:Depends}, ${shlibs:Depends}, anacron
+Depends: ${haskell:Depends}, ${misc:Depends}, anacron
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}
@@ -214,7 +214,7 @@ Description: backup program for the appraisalreportonline.com site
 Package: artvaluereport2-production
 Architecture: all
 Section: misc
-Depends: ${haskell:Depends}, ${misc:Depends}, ${shlibs:Depends}, apache2, libjpeg-progs, libjs-jcrop, libjs-jquery, libjs-jquery-ui, netpbm, texlive-fonts-extra, texlive-fonts-recommended, texlive-latex-extra, texlive-latex-recommended
+Depends: ${haskell:Depends}, ${misc:Depends}, apache2, libjpeg-progs, libjs-jcrop, libjs-jquery, libjs-jquery-ui, netpbm, texlive-fonts-extra, texlive-fonts-recommended, texlive-latex-extra, texlive-latex-recommended
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}
@@ -227,7 +227,7 @@ Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
 Package: artvaluereport2-development
 Architecture: all
 Section: misc
-Depends: ${haskell:Depends}, ${misc:Depends}, ${shlibs:Depends}, libjpeg-progs, libjs-jcrop, libjs-jquery, libjs-jquery-ui, netpbm, texlive-fonts-extra, texlive-fonts-recommended, texlive-latex-extra, texlive-latex-recommended
+Depends: ${haskell:Depends}, ${misc:Depends}, libjpeg-progs, libjs-jcrop, libjs-jquery, libjs-jquery-ui, netpbm, texlive-fonts-extra, texlive-fonts-recommended, texlive-latex-extra, texlive-latex-recommended
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}
@@ -240,7 +240,7 @@ Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
 Package: artvaluereport2-staging
 Architecture: all
 Section: misc
-Depends: ${haskell:Depends}, ${misc:Depends}, ${shlibs:Depends}, libjpeg-progs, libjs-jcrop, libjs-jquery, libjs-jquery-ui, netpbm, texlive-fonts-extra, texlive-fonts-recommended, texlive-latex-extra, texlive-latex-recommended
+Depends: ${haskell:Depends}, ${misc:Depends}, libjpeg-progs, libjs-jcrop, libjs-jquery, libjs-jquery-ui, netpbm, texlive-fonts-extra, texlive-fonts-recommended, texlive-latex-extra, texlive-latex-recommended
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}
@@ -253,7 +253,7 @@ Description: ${haskell:ShortDescription}${haskell:ShortBlurb}
 Package: appraisalscope
 Architecture: any
 Section: misc
-Depends: ${haskell:Depends}, ${misc:Depends}, ${shlibs:Depends}
+Depends: ${haskell:Depends}, ${misc:Depends}
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}

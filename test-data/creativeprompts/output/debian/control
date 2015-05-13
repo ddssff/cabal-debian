@@ -140,7 +140,6 @@ Architecture: all
 Section: misc
 Depends: ${haskell:Depends},
  ${misc:Depends},
- ${shlibs:Depends},
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}
@@ -153,7 +152,6 @@ Architecture: all
 Section: misc
 Depends: ${haskell:Depends},
  ${misc:Depends},
- ${shlibs:Depends},
  markdown,
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
@@ -168,7 +166,6 @@ Architecture: all
 Section: misc
 Depends: ${haskell:Depends}
  ${misc:Depends},
- ${shlibs:Depends},
  markdown,
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
@@ -183,7 +180,6 @@ Architecture: any
 Section: misc
 Depends: ${haskell:Depends},
  ${misc:Depends},
- ${shlibs:Depends},
  anacron
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}

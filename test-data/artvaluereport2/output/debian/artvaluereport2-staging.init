@@ -8,6 +8,7 @@ case "$1" in
     test -x /usr/bin/artvaluereport2-staging || exit 0
     log_begin_msg "Starting artvaluereport2-staging..."
     mkdir -p /srv/artvaluereport2-staging
+    export ArtValueReport_datadir=/usr/share/ArtValueReport
     "start-stop-daemon" "--start" "-b" "--make-pidfile" "-d" "/srv/artvaluereport2-staging" "--exec" "/usr/bin/artvaluereport2-staging" "--pidfile" "/var/run/artvaluereport2-staging" "--" "--http-port" "9031" "--base-uri" "http://seereason.com:9031/" "--top" "/srv/artvaluereport2-staging" "--logs" "/var/log/artvaluereport2-staging" "--log-mode" "Development" "--static" "/usr/share/artvaluereport2-data" "--no-validate"
     log_end_msg $?
     ;;

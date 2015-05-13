@@ -21,7 +21,6 @@ Architecture: any
 Section: misc
 Depends: ${haskell:Depends},
  ${misc:Depends},
- ${shlibs:Depends},
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}

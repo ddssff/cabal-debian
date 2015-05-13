@@ -25,7 +25,7 @@ X-Description: Backups of the seereason darcs repositories
 Package: seereason-darcs-backups
 Architecture: any
 Section: misc
-Depends: ${haskell:Depends}, ${misc:Depends}, ${shlibs:Depends}, anacron
+Depends: ${haskell:Depends}, ${misc:Depends}, anacron
 Recommends: ${haskell:Recommends}
 Suggests: ${haskell:Suggests}
 Conflicts: ${haskell:Conflicts}

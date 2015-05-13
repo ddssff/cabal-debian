@@ -241,7 +241,7 @@ test3 label =
           execCabalM
             (do defaultAtoms
                 newDebianization log (Just 7) (Just (StandardsVersion 3 9 4 Nothing))
-                (debInfo . D.sourceFormat) .= Just Native3
+                (debInfo . D.sourceFormat) .= Native3
                 (debInfo . D.rulesHead) .=
                                Just (Text.unlines  ["#!/usr/bin/make -f",
                                                     "# -*- makefile -*-",
@@ -411,7 +411,7 @@ test4 label =
              doWebsite (BinPkgName "clckwrks-dot-com-production") (theSite (BinPkgName "clckwrks-dot-com-production"))
              (A.debInfo . D.revision) .= Nothing
              (A.debInfo . D.missingDependencies) %= Set.insert (BinPkgName "libghc-clckwrks-theme-clckwrks-doc")
-             (A.debInfo . D.sourceFormat) .= Just Native3
+             (A.debInfo . D.sourceFormat) .= Native3
              (A.debInfo . D.control . S.homepage) .= Just "http://www.clckwrks.com/"
              newDebianization' (Just 9) (Just (StandardsVersion 3 9 6 Nothing))
 {-
@@ -537,7 +537,7 @@ test5 label =
              (debInfo . D.binaryDebDescription (BinPkgName "creativeprompts-production") . B.architecture) .= Just All
              (debInfo . D.binaryDebDescription (BinPkgName "creativeprompts-data") . B.architecture) .= Just All
              (debInfo . D.binaryDebDescription (BinPkgName "creativeprompts-development") . B.architecture) .= Just All
-             (debInfo . D.sourceFormat) .= Just Native3
+             (debInfo . D.sourceFormat) .= Native3
 
       theSite :: BinPkgName -> D.Site
       theSite deb =
@@ -592,7 +592,7 @@ test7 :: String -> Test
 test7 label =
     TestLabel label $
     TestCase (do new <- readProcessWithExitCode "runhaskell" ["--ghc-arg=-package-db=dist/package.conf.inplace", "debian/Debianize.hs", "--dry-run", "--native"] ""
-                 assertEqual label (ExitSuccess, "Ignored debianization file: debian/cabal-debian.1\nIgnored debianization file: debian/cabal-debian.manpages\nDebianization (dry run):\n  No changes\n\n", "") new)
+                 assertEqual label (ExitSuccess, "Ignored debianization file: debian/cabal-debian.manpages\nIgnored debianization file: debian/cabal-debian.1\nDebianization (dry run):\n  No changes\n\n", "") new)
 
 test8 :: String -> Test
 test8 label =
@@ -610,7 +610,7 @@ test8 label =
       customize (Just log) =
           do (debInfo . D.control . S.buildDepends) %= (++ [[Rel (BinPkgName "haskell-hsx-utils") Nothing Nothing]])
              (debInfo . D.control . S.homepage) .= Just "http://artvaluereportonline.com"
-             (debInfo . D.sourceFormat) .= Just Native3
+             (debInfo . D.sourceFormat) .= Native3
              (debInfo . D.changelog) .= Just log
              newDebianization' (Just 9) (Just (StandardsVersion 3 9 6 Nothing))
 
@@ -643,7 +643,7 @@ test9 label =
                    , "AlexWrapper-posn-bytestring"
                    , "AlexWrapper-strict-bytestring"]
              (debInfo . D.control . S.homepage) .= Just "http://www.haskell.org/alex/"
-             (debInfo . D.sourceFormat) .= Just Native3
+             (debInfo . D.sourceFormat) .= Native3
              (debInfo . D.debVersion) .= Just (parseDebianVersion ("3.0.2-1~hackage1" :: String))
              doExecutable (BinPkgName "alex")
                           (D.InstallFile {D.execName = "alex", D.destName = "alex", D.sourceDir = Nothing, D.destDir = Nothing})
@@ -664,7 +664,7 @@ test10 label =
     where
       customize :: CabalT IO ()
       customize =
-          do (A.debInfo . D.sourceFormat) .= Just Native3
+          do (A.debInfo . D.sourceFormat) .= Native3
              (A.debInfo . D.sourcePackageName) .= Just (SrcPkgName "seereason-darcs-backups")
              (A.debInfo . D.compat) .= Just 9
              (A.debInfo . D.control . S.standardsVersion) .= Just (StandardsVersion 3 8 1 Nothing)

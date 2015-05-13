@@ -8,11 +8,12 @@ import Data.Set as Set (insert)
 import Data.Text as Text (pack)
 import Data.Version (Version(Version))
 import Debian.Debianize
+import Debian.Debianize.Optparse (parseProgramArguments, CommandLineOptions(..))
 import Debian.Relation (BinPkgName(BinPkgName), Relations, parseRelations)
 import Distribution.Package (PackageName(PackageName))
 
 main :: IO ()
-main = newFlags >>= newCabalInfo >>= evalStateT cabalDebian
+main = parseProgramArguments >>= \opts -> newCabalInfo (_flags opts) >>= evalStateT cabalDebian
     where
       cabalDebian = do
         -- Read and inspect the cabal info to compute the debianization
@@ -28,7 +29,7 @@ main = newFlags >>= newCabalInfo >>= evalStateT cabalDebian
              -- changing as new package versions arrive.
              mapCabal (PackageName "Cabal") (DebBase "cabal-122")
              splitCabal (PackageName "Cabal") (DebBase "cabal") (Version [1,22] [])
-             (debInfo . sourceFormat) .= Just Native3
+             (debInfo . sourceFormat) .= Native3
              (debInfo . control . standardsVersion) .= Just (StandardsVersion 3 9 3 Nothing)
              (debInfo . compat) .= Just 9
              (debInfo . utilsPackageNameBase) .= Just "cabal-debian"

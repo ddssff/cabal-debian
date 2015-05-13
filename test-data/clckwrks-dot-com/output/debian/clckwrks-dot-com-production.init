@@ -8,6 +8,7 @@ case "$1" in
     test -x /usr/bin/clckwrks-dot-com-production || exit 0
     log_begin_msg "Starting clckwrks-dot-com-production..."
     mkdir -p /srv/clckwrks-dot-com-production
+    export clckwrks_dot_com_datadir=/usr/share/clckwrks_dot_com
     "start-stop-daemon" "--start" "-b" "--make-pidfile" "-d" "/srv/clckwrks-dot-com-production" "--exec" "/usr/bin/clckwrks-dot-com-production" "--pidfile" "/var/run/clckwrks-dot-com-production" "--" "--http-port" "9029" "--hide-port" "--hostname" "clckwrks.com" "--top" "/srv/clckwrks-dot-com-production" "--enable-analytics" "--jquery-path" "/usr/share/javascript/jquery/" "--jqueryui-path" "/usr/share/javascript/jquery-ui/" "--jstree-path" "/usr/share/clckwrks-0.13.2/jstree" "--json2-path" "/usr/share/clckwrks-0.13.2/json2"
     log_end_msg $?
     ;;

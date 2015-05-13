@@ -8,6 +8,7 @@ case "$1" in
     test -x /usr/bin/creativeprompts-production || exit 0
     log_begin_msg "Starting creativeprompts-production..."
     mkdir -p /srv/creativeprompts-production
+    export creativeprompts_datadir=/usr/share/creativeprompts
     "start-stop-daemon" "--start" "-b" "--make-pidfile" "-d" "/srv/creativeprompts-production" "--exec" "/usr/bin/creativeprompts-production" "--pidfile" "/var/run/creativeprompts-production" "--" "--http-port" "9022" "--hide-port" "--hostname" "creativeprompts.com" "--top" "/srv/creativeprompts-production" "--enable-analytics" "--jquery-path" "/usr/share/javascript/jquery/" "--jqueryui-path" "/usr/share/javascript/jquery-ui/" "--jstree-path" "/usr/share/clckwrks-0.13.2/jstree" "--json2-path" "/usr/share/clckwrks-0.13.2/json2"
     log_end_msg $?
     ;;

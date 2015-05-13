@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, OverloadedStrings #-}
+{-# LANGUAGE CPP, FlexibleContexts, OverloadedStrings #-}
 
 
 import Control.Lens
@@ -8,6 +8,7 @@ import Data.Set as Set (singleton, insert)
 import Data.Text as Text (intercalate)
 import Debian.Changes (ChangeLog(..))
 import Debian.Debianize -- (debianize, doBackups, doExecutable, doServer, doWebsite, inputChangeLog, inputDebianization, debianDefaultAtoms)
+import Debian.Debianize.Optparse (parseProgramArguments, CommandLineOptions(..))
 import Debian.Pretty (ppShow)
 import Debian.Policy (databaseDirectory, PackageArchitectures(All), StandardsVersion(StandardsVersion))
 import Debian.Relation (BinPkgName(BinPkgName), Relation(Rel), SrcPkgName(..), VersionReq(SLT))
@@ -20,9 +21,9 @@ import Debian.Version (parseDebianVersion)
 -- to copyFirstLogEntry in real life, this is to make sure old and new match.
 main :: IO ()
 main =
-    do log <- withCurrentDirectory "test-data/artvaluereport2/input" $ newFlags >>= newCabalInfo >>= evalCabalT (liftCabal inputChangeLog >> use (debInfo . changelog))
-       new <- withCurrentDirectory "test-data/artvaluereport2/input" $ newFlags >>= newCabalInfo >>= execCabalT (debianize (debianDefaults >> customize log {- >> removeFirstLogEntry -}))
-       old <- withCurrentDirectory "test-data/artvaluereport2/output" $ newFlags >>= execDebianT inputDebianization . makeDebInfo
+    do log <- withCurrentDirectory "test-data/artvaluereport2/input" $ parseProgramArguments >>= \opts -> newCabalInfo (_flags opts) >>= evalCabalT (liftCabal inputChangeLog >> use (debInfo . changelog))
+       new <- withCurrentDirectory "test-data/artvaluereport2/input" $ parseProgramArguments >>= \opts -> newCabalInfo (_flags opts) >>= execCabalT (debianize (debianDefaults >> customize log {- >> removeFirstLogEntry -}))
+       old <- withCurrentDirectory "test-data/artvaluereport2/output" $ parseProgramArguments >>= \opts -> execDebianT inputDebianization (makeDebInfo (_flags opts))
        -- The newest log entry gets modified when the Debianization is
        -- generated, it won't match so drop it for the comparison.
        compareDebianization old ({-copyFirstLogEntry old $ -} view debInfo new) >>= putStr
@@ -30,7 +31,7 @@ main =
       customize :: Maybe ChangeLog -> CabalT IO ()
       customize log =
           do (debInfo . revision) .= Nothing
-             (debInfo . sourceFormat) .= Just Native3
+             (debInfo . sourceFormat) .= Native3
              (debInfo . changelog) .?= log
              (debInfo . atomSet) %= (Set.insert $ InstallCabalExec (BinPkgName "appraisalscope") "lookatareport" "usr/bin")
              doExecutable (BinPkgName "appraisalscope") (InstallFile {execName = "appraisalscope", sourceDir = Nothing, destDir = Nothing, destName = "appraisalscope"})

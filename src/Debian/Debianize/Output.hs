@@ -1,7 +1,7 @@
 -- | Wrappers around the debianization function to perform various
 -- tasks - output, describe, validate a debianization, run an external
 -- script to produce a debianization.
-
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE FlexibleInstances, OverloadedStrings, ScopedTypeVariables, StandaloneDeriving, TupleSections, TypeSynonymInstances #-}
 {-# OPTIONS -Wall -fno-warn-name-shadowing -fno-warn-orphans #-}
 
@@ -12,39 +12,39 @@ module Debian.Debianize.Output
     , describeDebianization
     , compareDebianization
     , validateDebianization
+    , performDebianization
     ) where
-
 
 import Control.Exception as E (throw)
 import Control.Lens
 import Control.Monad.State (get, StateT)
 import Control.Monad.Trans (liftIO, MonadIO)
 import Data.Algorithm.DiffContext (getContextDiff, prettyContextDiff)
-import Data.List (unlines)
 import Data.Map as Map (elems, toList)
 import Data.Maybe (fromMaybe)
 import Data.Text as Text (split, Text, unpack)
+import Debian.Debianize.CabalInfo (newCabalInfo)
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(..))
-import Debian.Debianize.BasicInfo (DebAction(Usage), debAction, dryRun, validate)
+import Debian.Debianize.BasicInfo (dryRun, validate)
 import Debian.Debianize.CabalInfo (CabalInfo, debInfo)
 import qualified Debian.Debianize.DebInfo as D
 import Debian.Debianize.Files (debianizationFileMap)
 import Debian.Debianize.InputDebian (inputDebianization)
-import Debian.Debianize.Monad (DebianT, evalDebianT)
-import Debian.Debianize.Options (options, putEnvironmentArgs)
+import Debian.Debianize.Monad (DebianT, CabalT, evalDebianT, evalCabalT)
 import Debian.Debianize.Prelude (indent, replaceFile, zipMaps)
+import Debian.Debianize.Finalize (debianize)
+import Debian.Debianize.Optparse
 import Debian.Debianize.BinaryDebDescription as B (canonical, package)
 import qualified Debian.Debianize.SourceDebDescription as S
 import Debian.Pretty (ppShow, ppPrint)
 import Prelude hiding (unlines, writeFile)
-import System.Console.GetOpt (OptDescr, usageInfo)
 import System.Directory (createDirectoryIfMissing, doesFileExist, getPermissions, Permissions(executable), setPermissions)
-import System.Environment (getProgName)
 import System.Exit (ExitCode(ExitSuccess))
 import System.FilePath ((</>), takeDirectory)
 import System.IO (hPutStrLn, stderr)
 import System.Process (readProcessWithExitCode, showCommandForUser)
 import Text.PrettyPrint.HughesPJClass (text)
+import System.Posix.Env (setEnv)
 
 -- | Run the script in @debian/Debianize.hs@ with the given command
 -- line arguments.  Returns @True@ if the script exists and succeeds.
@@ -70,15 +70,28 @@ runDebianizeScript args =
           (code, out, err) -> error ("runDebianizeScript: " ++ showCommandForUser "runhaskell" args' ++ " -> " ++ show code ++
                                      "\n stdout: " ++ show out ++"\n stderr: " ++ show err)
 
+-- | Insert a value for CABALDEBIAN into the environment that the
+-- withEnvironment* functions above will find and use.  E.g.
+-- putEnvironmentFlags ["--dry-run", "--validate"] (debianize defaultFlags)
+putEnvironmentArgs :: [String] -> IO ()
+putEnvironmentArgs fs = setEnv "CABALDEBIAN" (show fs) True
+
+-- | Perform whole debianization. You provide your customization,
+-- this function does everything else.
+performDebianization :: CabalT IO () -> IO ()
+performDebianization custom =
+  parseProgramArguments >>= \CommandLineOptions {..} ->
+    newCabalInfo _flags >>= (evalCabalT $ do
+                                handleBehaviorAdjustment _adjustment
+                                debianize custom
+                                finishDebianization)
+
 -- | Depending on the options in @atoms@, either validate, describe,
 -- or write the generated debianization.
 finishDebianization :: forall m. (MonadIO m, Functor m) => StateT CabalInfo m ()
 finishDebianization = zoom debInfo $
     do new <- get
        case () of
-         _ | view (D.flags . debAction) new == Usage ->
-               do progName <- liftIO getProgName
-                  liftIO $ putStrLn (usageInfo (usageHeader progName) (options :: [OptDescr (StateT CabalInfo m ())]))
          _ | view (D.flags . validate) new ->
                do inputDebianization
                   old <- get
@@ -89,19 +102,7 @@ finishDebianization = zoom debInfo $
                   diff <- liftIO $ compareDebianization old new
                   liftIO $ putStrLn ("Debianization (dry run):\n" ++ if null diff then "  No changes\n" else diff)
          _ -> writeDebianization
-    where
-      usageHeader progName =
-          unlines [ "Typical usage is to cd to the top directory of the package's unpacked source and run: "
-                  , ""
-                  , "    " ++ progName ++ " --maintainer 'Maintainer Name <maintainer@email>'."
-                  , ""
-                  , "This will read the package's cabal file and any existing debian/changelog file and"
-                  , "deduce what it can about the debianization, then it will create or modify files in"
-                  , "the debian subdirectory.  Note that it will not remove any files in debian, and"
-                  , "these could affect the operation of the debianization in unknown ways.  For this"
-                  , "reason I recommend either using a pristine unpacked directory each time, or else"
-                  , "using a revision control system to revert the package to a known state before running."
-                  , "The following additional options are available:" ]
+
 
 -- | Write the files of the debianization @d@ to ./debian
 writeDebianization :: (MonadIO m, Functor m) => DebianT m ()

@@ -86,7 +86,6 @@ module Debian.Debianize
     , module Debian.Debianize.CabalInfo
       -- * State monads to carry the collected information, command line options
     , module Debian.Debianize.Monad
-    , module Debian.Debianize.Options
       -- * Functions for maping Cabal name and version number to Debian name
     , module Debian.Debianize.DebianName
       -- * Specific details about the particular packages and versions in the Debian repo
@@ -119,7 +118,6 @@ import Debian.Debianize.Goodies -- (doBackups, doExecutable, doServer, doWebsite
 import Debian.Debianize.InputDebian (inputChangeLog, inputDebianization, inputDebianizationFile)
 import Debian.Debianize.InputCabal (inputCabalization)
 import Debian.Debianize.Monad (CabalM, CabalT, evalCabalM, evalCabalT, execCabalM, execCabalT, runCabalM, runCabalT, DebianT, execDebianT, evalDebianT, liftCabal)
-import Debian.Debianize.Options (compileArgs)
 import Debian.Debianize.Output (compareDebianization, describeDebianization, finishDebianization, runDebianizeScript, validateDebianization, writeDebianization)
 import Debian.Debianize.Prelude (buildDebVersionMap, debOfFile, dpkgFileMap, withCurrentDirectory, (.?=))
 import Debian.Debianize.SourceDebDescription

@@ -35,12 +35,11 @@ import Debian.Debianize.DebInfo (rulesSettings)
 import Debian.Debianize.Goodies (backupAtoms, describe, execAtoms, serverAtoms, siteAtoms, watchAtom)
 import Debian.Debianize.InputDebian (dataTop, dataDest, inputChangeLog)
 import Debian.Debianize.Monad as Monad (CabalT, liftCabal, unlessM)
-import Debian.Debianize.Options (compileCommandlineArgs, compileEnvironmentArgs)
 import Debian.Debianize.Prelude ((.?=))
 import qualified Debian.Debianize.SourceDebDescription as S
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
 import Debian.Orphans ()
-import Debian.Policy (getCurrentDebianUser, getDebhelperCompatLevel, haskellMaintainer, PackageArchitectures(Any, All), PackagePriority(Extra), parseMaintainer, parseStandardsVersion, Section(..), SourceFormat(Native3, Quilt3))
+import Debian.Policy (getCurrentDebianUser, getDebhelperCompatLevel, haskellMaintainer, PackageArchitectures(Any, All), PackagePriority(Extra), parseMaintainer, parseStandardsVersion, Section(..), SourceFormat(Native3))
 import Debian.Pretty (PP(..), ppShow)
 import Debian.Relation (BinPkgName, BinPkgName(BinPkgName), Relation(Rel), Relations, SrcPkgName(SrcPkgName))
 import qualified Debian.Relation as D (BinPkgName(BinPkgName), Relation(..))
@@ -66,11 +65,9 @@ import Text.PrettyPrint.HughesPJClass (Pretty(pPrint))
 -- output.
 debianize :: (MonadIO m, Functor m) => CabalT m () -> CabalT m ()
 debianize customize =
-    do compileEnvironmentArgs
-       compileCommandlineArgs
-       liftCabal inputChangeLog
-       customize
-       finalizeDebianization
+  do liftCabal inputChangeLog
+     customize
+     finalizeDebianization
 
 -- | Do some light IO and call finalizeDebianization.
 finalizeDebianization :: (MonadIO m, Functor m) => CabalT m ()
@@ -107,7 +104,6 @@ finalizeDebianization' date debhelperCompat =
        (A.debInfo . D.watch) .?= Just (watchAtom (pkgName $ Cabal.package $ pkgDesc))
        (A.debInfo . D.control . S.section) .?= Just (MainSection "haskell")
        (A.debInfo . D.control . S.priority) .?= Just Extra
-       (A.debInfo . D.sourceFormat) .?= Just Quilt3
        (A.debInfo . D.compat) .?= debhelperCompat
        finalizeChangelog date
        finalizeControl
@@ -170,10 +166,10 @@ debianVersion =
                         Just ('-':r) -> Just r
                         Just _ -> error "The --revision argument must start with a dash"
               return $ case fmt of
-                         Just Native3 -> y
+                         Native3 -> y
                          _ -> maybe (Just "1") (Just . max "1") y
        versionArg <- use (A.debInfo . D.debVersion) -- from the --deb-version option
-       (debianVersion :: Maybe V.DebianVersion) <- use (A.debInfo . D.changelog) >>= return . maybe Nothing changelogVersion
+       (debVersion :: Maybe V.DebianVersion) <- use (A.debInfo . D.changelog) >>= return . maybe Nothing changelogVersion
 
        case () of
          _ | maybe False (\ v -> v < V.buildDebianVersion cabalEpoch (ppShow cabalVersion) Nothing) versionArg ->
@@ -181,12 +177,12 @@ debianVersion =
                       ") is older than cabal version (" ++ ppShow cabalVersion ++
                       "), maybe you need to unpin this package?")
          _ | isJust versionArg -> return $ fromJust versionArg
-         _ | isJust debianVersion ->
-               case (V.epoch (fromJust debianVersion),
-                     V.parseDebianVersion (V.version (fromJust debianVersion)),
-                     V.revision (fromJust debianVersion)) of
-                 (debianEpoch, debianVersion', (debianRevision :: Maybe String)) ->
-                     let finalEpoch = max debianEpoch cabalEpoch
+         _ | isJust debVersion ->
+               case (V.epoch (fromJust debVersion),
+                     V.parseDebianVersion (V.version (fromJust debVersion)),
+                     V.revision (fromJust debVersion)) of
+                 (debEpoch, debianVersion', (debianRevision :: Maybe String)) ->
+                     let finalEpoch = max debEpoch cabalEpoch
                          finalVersion = max debianVersion' cabalVersion
                          (finalRevision :: Maybe String) = maximumBy (compare `on` fmap V.parseDebianVersion) [debianRevision, cabalRevision] in
                      return $ V.buildDebianVersion finalEpoch (ppShow finalVersion) finalRevision
@@ -262,7 +258,7 @@ finalizeMaintainer = do
       (A.debInfo . D.control . S.maintainer) .?= currentUser
       (A.debInfo . D.control . S.maintainer) .?= changelogSignature
       x <- use (A.debInfo . D.control . S.maintainer)
-      when (isNothing x) 
+      when (isNothing x)
            (do liftIO $ putStrLn ("Unable to construct a debian maintainer, using nobody <nobody@nowhere>. Cabal maintainer strings tried:\n " ++
                                   show cabalMaintainerString ++ ", " ++ show cabalMaintainerString' ++ ", " ++ show cabalMaintainerString'' ++
                                   ", currentUser: " ++ show currentUser)

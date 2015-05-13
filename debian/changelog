@@ -1,3 +1,11 @@
+haskell-cabal-debian (4.28) unstable; urgency=low
+
+  * New command line parsing code from Dmitry Bogatov
+  * Drop support for old package old package formats
+  * Bug fixes and typos, API simplification, more
+
+ -- David Fox <dsf@seereason.com>  Wed, 13 May 2015 06:49:04 -0700
+
 haskell-cabal-debian (4.27.2) unstable; urgency=low
 
   * Change to the contents of the init.d file created for server packages.

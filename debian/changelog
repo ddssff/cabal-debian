@@ -1,3 +1,11 @@
+haskell-cabal-debian (4.29) unstable; urgency=low
+
+  * Restore the --epoch-map, --cabal-flag, --ghcjs, and --buildenvdir options
+  * Export parseProgramArguments' for parsing internally constructed
+    argument lists.
+
+ -- David Fox <dsf@seereason.com>  Mon, 08 Jun 2015 06:37:25 -0700
+
 haskell-cabal-debian (4.28) unstable; urgency=low
 
   * New command line parsing code from Dmitry Bogatov

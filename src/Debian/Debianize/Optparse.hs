@@ -304,7 +304,7 @@ debianVersionP :: O.Parser (Maybe DebianVersion)
 debianVersionP = O.option (Just . parseDebianVersion <$> O.str) m where
   m = O.help helpMsg
       <> O.long "deb-version"
-      <> O.metavar "VERSION"
+      <> O.metavar "DEBIANVERSION"
       <> O.value Nothing
   helpMsg = unlines [
     "Specify the version number for the debian package.",
@@ -316,7 +316,7 @@ debianRevisionP = O.option (Just . Revision <$> O.str) m where
   m = O.help helpMsg
       <> O.long "revision"
       <> O.value Nothing
-      <> O.metavar "REVISION"
+      <> O.metavar "DEBIANREVISION"
   helpMsg = unlines [
     "Add this string to the cabal version to get the debian version number.",
     "Debian policy says this must either be empty (--revision '')",
@@ -329,7 +329,7 @@ sourcePackageNameP = O.option (Just . SrcPkgName <$> O.str) m where
       <> O.long "source-package-name"
       <> O.short 's'
       <> O.value Nothing
-      <> O.metavar "NAME"
+      <> O.metavar "DEBIANNAME"
   helpMsg = unlines [
     "Use this name for the debian source package, the name in the Source field",
     "at the top of the debian/control file, and also at the very beginning",
@@ -351,7 +351,7 @@ standardsVersionP = O.option (parseStandardsVersion <$> O.str) m where
   m = O.help helpMsg
       <> O.long "standards-version"
       <> O.value (parseStandardsVersion "3.9.6")
-      <> O.metavar "VERSION"
+      <> O.metavar "CABALVERSION"
   helpMsg = unlines [
     "Claim compatibility to this version of the Debian policy",
     "(i.e. the value of the Standards-Version field)"
@@ -361,7 +361,7 @@ buildDepP :: O.Parser [BuildDep]
 buildDepP = many $ O.option (BuildDep <$> relationsR) m where
   m = O.help helpMsg
       <> O.long "build-dep"
-      <> O.metavar "RELATION"
+      <> O.metavar "DEBIANRELATIONS"
   helpMsg = unlines [
     "Add a dependency relation to the `Build-Depends'",
     "field for this source package."
@@ -371,7 +371,7 @@ buildDepIndepP :: O.Parser [BuildDepIndep]
 buildDepIndepP = many $ O.option (BuildDepIndep <$> relationsR) m where
   m = O.help helpMsg
       <> O.long "build-dep-indep"
-      <> O.metavar "RELATION"
+      <> O.metavar "DEBIANRELATIONS"
   helpMsg = unlines [
     "Add a dependency relation to the `Build-Depends-Indep'",
     "field for this source package."
@@ -428,16 +428,18 @@ cabalDebMappingP :: O.Parser [CabalDebMapping]
 cabalDebMappingP = many $ O.option cabalDebMappingR m where
   m = O.help helpMsg
       <> O.long "dep-map"
+      <> O.metavar "CABAL:DEBIANBINARYPACKAGE"
   helpMsg = unlines [
     "Specify what debian package name corresponds with a name that appears",
     "in the Extra-Library field of a cabal file,",
-    "e.g. --map-dep cryptopp=libcrypto-dev."
+    "e.g. --map-dep cryptopp:libcrypto-dev."
     ]
 
 execDebMappingP :: O.Parser [ExecDebMapping]
 execDebMappingP = many $ O.option (ExecDebMapping <$> mappingR) m where
   m = O.help helpMsg
       <> O.long "exec-map"
+      <> O.metavar "CABAL:DEBIANBINARYPACKAGE"
   helpMsg = unlines [
     "Specify a mapping from the name appearing in the Build-Tool",
     "field of the cabal file to a debian binary package name,",
@@ -448,7 +450,7 @@ cabalEpochMappingP :: O.Parser [CabalEpochMapping]
 cabalEpochMappingP = many $ O.option (cabalEpochMappingR) m where
   m = O.help helpMsg
       <> O.long "epoch-map"
-      <> O.metavar "PACKAGE=DIGIT"
+      <> O.metavar "CABALPACKAGE=DIGIT"
   helpMsg = unlines [
     "Specify a mapping from the cabal package name to a digit to use",
     "as the debian package epoch number, e.g. --epoch-map HTTP=1"
@@ -459,7 +461,7 @@ cabalFlagsP = many $ O.option (cabalFlagMappingR) m where
   m = O.help helpMsg
       <> O.long "cabal-flags"
       <> O.long "cabal-flag"
-      <> O.metavar "NAME or -NAME"
+      <> O.metavar "CABALFLAG or -CABALFLAG"
   helpMsg = "Flags to pass to cabal configure with the --flags= option"
 
 

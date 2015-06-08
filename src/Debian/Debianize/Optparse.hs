@@ -496,8 +496,8 @@ dryRunP = O.switch m where
 commandLineOptionsP :: O.Parser CommandLineOptions
 commandLineOptionsP = CommandLineOptions <$> flagsP <*> behaviorAdjustmentP
 
-commandLineOptionsParserInfo :: O.ParserInfo CommandLineOptions
-commandLineOptionsParserInfo = O.info (O.helper <*> commandLineOptionsP) im where
+commandLineOptionsParserInfo :: [String] -> O.ParserInfo CommandLineOptions
+commandLineOptionsParserInfo args = O.info (O.helper <*> commandLineOptionsP) im where
   im = O.header "cabal-debian -- create debianization of cabal package"
        <> O.fullDesc
        <> O.progDescDoc (Just descDoc)
@@ -512,7 +512,9 @@ commandLineOptionsParserInfo = O.info (O.helper <*> commandLineOptionsP) im wher
      "the debian subdirectory.  Note that it will not remove any files in debian, and",
      "these could affect the operation of the debianization in unknown ways.  For this",
      "reason it is recommended either using a pristine unpacked directory each time, or else",
-     "using a revision control system to revert the package to a known state before running."
+     "using a revision control system to revert the package to a known state before running.",
+     "",
+     "Arguments: " ++ show args
      ])
 
 -- FIXME: Separation of parsing of `BehaviorAdjustment' and performing
@@ -572,7 +574,7 @@ addExtra extra lens' = forM_ extra $ \arg -> do
 parseProgramArguments' :: [String] -> IO CommandLineOptions
 parseProgramArguments' args =  O.handleParseResult result where
   prefs = O.prefs O.idm
-  result = O.execParserPure prefs commandLineOptionsParserInfo args
+  result = O.execParserPure prefs (commandLineOptionsParserInfo args) args
 
 parseProgramArguments :: IO CommandLineOptions
 parseProgramArguments = defArgs >>= parseProgramArguments'

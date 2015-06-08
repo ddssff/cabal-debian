@@ -10,6 +10,7 @@ module Debian.Debianize.Optparse (
   BehaviorAdjustment,
   Flags(..),
   parseProgramArguments,
+  parseProgramArguments',
   handleBehaviorAdjustment) where
 import Control.Applicative ((<$>), (<*>), many, pure, (<|>))
 import Control.Lens

@@ -390,7 +390,7 @@ extraConflictsP :: O.Parser [ExtraConflicts]
 extraConflictsP = mkExtraP "conflicts"
 
 extraProvidesP :: O.Parser [ExtraProvides]
-extraProvidesP = mkExtraP "conflicts"
+extraProvidesP = mkExtraP "provides"
 
 extraReplacesP :: O.Parser [ExtraReplaces]
 extraReplacesP = mkExtraP "replaces"

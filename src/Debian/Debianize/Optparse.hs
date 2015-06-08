@@ -22,7 +22,7 @@ import Data.Char(toUpper)
 import Data.Foldable (forM_)
 import Data.Maybe.Extended (fromMaybe)
 import Data.Maybe.Extended (nothingIf)
-import Data.Monoid ((<>), mempty)
+import Data.Monoid ((<>))
 import Debian.Debianize.BasicInfo
 import Debian.Debianize.Monad
 import Debian.Debianize.Prelude (maybeRead)
@@ -32,9 +32,10 @@ import Debian.Relation
 import Debian.Version.Common (DebianVersion, parseDebianVersion)
 import Distribution.Compiler (CompilerFlavor(..))
 import Distribution.Package (PackageName(..))
+import Distribution.PackageDescription (FlagName(FlagName))
 import GHC.Generics
 import System.Environment (getArgs)
-import System.FilePath(splitFileName)
+import System.FilePath(splitFileName, (</>))
 import System.Posix.Env (getEnv)
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr(..))
 import Text.PrettyPrint.ANSI.Leijen (linebreak, (<+>), string, indent)
@@ -74,6 +75,10 @@ newtype ExecDebMapping = ExecDebMapping (String, Relations) deriving Generic
 instance Newtype ExecDebMapping
 newtype Revision = Revision String deriving Generic
 instance Newtype Revision
+newtype CabalEpochMapping = CabalEpochMapping (PackageName, Int) deriving Generic
+instance Newtype CabalEpochMapping
+newtype CabalFlagMapping = CabalFlagMapping (FlagName, Bool) deriving Generic
+instance Newtype CabalFlagMapping
 
 -- | This data type is an abomination. It represent information,
 -- provided on command line. Part of such information provides
@@ -117,6 +122,7 @@ data BehaviorAdjustment = BehaviorAdjustment {
   _extraRecommends   :: [ExtraRecommends],
   _extraSuggests     :: [ExtraSuggests],
   _cabalDebMapping   :: [CabalDebMapping],
+  _cabalEpochMapping :: [CabalEpochMapping],
   _execDebMapping    :: [ExecDebMapping],
   _profiling         :: ProfilingStatus,
   _haddock           :: HaddockStatus,
@@ -171,11 +177,26 @@ mappingR = span (/= ':') <$> O.str >>= \case
     rels <- either (fail . show) return $ parseRelations relstr
     return (pkgstr, rels)
 
+epochMappingR :: O.ReadM (String, Int)
+epochMappingR = span (/= '=') <$> O.str >>= \case
+  (pkgstr, '=' : numstr) -> do
+    let epoch = fromMaybe (error ("Invalid epoch: " ++ numstr)) (maybeRead numstr :: Maybe Int)
+    return (pkgstr, epoch)
+  (str, _) -> fail $ "Does not contains equals: `" ++ str ++ "'"
+
 extraRelationsR :: O.ReadM (BinPkgName, Relations)
 extraRelationsR = first BinPkgName <$> mappingR
 
 cabalDebMappingR :: O.ReadM CabalDebMapping
 cabalDebMappingR = CabalDebMapping . first PackageName <$> mappingR
+
+cabalEpochMappingR :: O.ReadM CabalEpochMapping
+cabalEpochMappingR = CabalEpochMapping . first PackageName <$> epochMappingR
+
+cabalFlagMappingR :: O.ReadM CabalFlagMapping
+cabalFlagMappingR = O.str >>= \case
+  ('-' : str) -> return $ CabalFlagMapping (FlagName str, False)
+  str -> return $ CabalFlagMapping (FlagName str, True)
 
 -- Here are parser for BehaviorAdjustment and next are parsers for
 -- every field of this data.  Please, keep parsers declarations in
@@ -203,6 +224,7 @@ behaviorAdjustmentP = BehaviorAdjustment <$> maintainerP
                                          <*> extraRecommendsP
                                          <*> extraSuggestsP
                                          <*> cabalDebMappingP
+                                         <*> cabalEpochMappingP
                                          <*> execDebMappingP
                                          <*> profilingP
                                          <*> haddockP
@@ -422,6 +444,25 @@ execDebMappingP = many $ O.option (ExecDebMapping <$> mappingR) m where
     "e.g. --exec-map trhsx:haskell-hsx-utils"
     ]
 
+cabalEpochMappingP :: O.Parser [CabalEpochMapping]
+cabalEpochMappingP = many $ O.option (cabalEpochMappingR) m where
+  m = O.help helpMsg
+      <> O.long "epoch-map"
+      <> O.metavar "PACKAGE=DIGIT"
+  helpMsg = unlines [
+    "Specify a mapping from the cabal package name to a digit to use",
+    "as the debian package epoch number, e.g. --epoch-map HTTP=1"
+    ]
+
+cabalFlagsP :: O.Parser [CabalFlagMapping]
+cabalFlagsP = many $ O.option (cabalFlagMappingR) m where
+  m = O.help helpMsg
+      <> O.long "cabal-flags"
+      <> O.long "cabal-flag"
+      <> O.metavar "NAME or -NAME"
+  helpMsg = "Flags to pass to cabal configure with the --flags= option"
+
+
 profilingP :: O.Parser ProfilingStatus
 profilingP = O.flag ProfilingEnabled ProfilingDisabled m where
   m = O.help helpMsg
@@ -470,9 +511,11 @@ flagsP :: O.Parser Flags
 flagsP = Flags <$> verbosityP
                <*> dryRunP
                <*> pure False     -- validate
-               <*> pure GHC       -- CompilerFlavor
-               <*> pure mempty    -- cabalFlagAssignments
-               <*> pure (EnvSet {cleanOS = "/", dependOS = "/", buildOS = "/"})
+               <*> ghcjsP         -- CompilerFlavor
+               <*> (flagSet <$> cabalFlagsP)    -- cabalFlagAssignments
+               <*> buildEnvDirP
+    where
+      flagSet cfms = Set.fromList (map (\ (CabalFlagMapping (name, bool)) -> (name, bool)) cfms)
 
 verbosityP :: O.Parser Int
 verbosityP = length <$> many (O.flag' () m) where
@@ -493,6 +536,19 @@ dryRunP = O.switch m where
     "Just compare the existing debianization",
     "to the one we would generate."
     ]
+
+ghcjsP :: O.Parser CompilerFlavor
+ghcjsP = O.flag GHC GHCJS m where
+  m = O.help helpMsg
+      <> O.long "ghcjs"
+  helpMsg = "Set compiler flavor to GHCJS."
+
+buildEnvDirP :: O.Parser EnvSet
+buildEnvDirP = O.option ((\s -> EnvSet {cleanOS = s </> "clean", dependOS = s </> "depend", buildOS = s </> "build"}) <$> O.str) m where
+  m = O.help "Directory containing the three build environments, clean, depend, and build."
+      <> O.long "buildenvdir"
+      <> O.value (EnvSet {cleanOS = "/", dependOS = "/", buildOS = "/"})
+      <> O.metavar "DIR"
 
 commandLineOptionsP :: O.Parser CommandLineOptions
 commandLineOptionsP = CommandLineOptions <$> flagsP <*> behaviorAdjustmentP
@@ -523,7 +579,9 @@ commandLineOptionsParserInfo args = O.info (O.helper <*> commandLineOptionsP) im
 -- to not handle particular field in `BehaviorAdjustment' field and
 -- ghc will not complain.
 handleBehaviorAdjustment :: (MonadIO m, Functor m) => BehaviorAdjustment -> CabalT m ()
-handleBehaviorAdjustment (BehaviorAdjustment {..}) = zoom A.debInfo $ do
+handleBehaviorAdjustment (BehaviorAdjustment {..}) = do
+ forM_ _cabalEpochMapping $ \(CabalEpochMapping (pkg, num)) -> A.epochMap %= Map.insert pkg num
+ zoom A.debInfo $ do
   forM_ _executable $ (D.executable %=) . uncurry Map.insert
   forM_ _execDebMapping $ (D.execMap %=) . uncurry Map.insert . unpack
   forM_ _missingDependency $ (D.missingDependencies %=) . Set.insert

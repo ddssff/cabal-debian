@@ -1,10 +1,11 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE Rank2Types #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeFamilies #-}
 module Debian.Debianize.Optparse (
   CommandLineOptions(..),
   BehaviorAdjustment,
@@ -540,7 +541,13 @@ dryRunP = O.switch m where
     ]
 
 ghcjsP :: O.Parser CompilerFlavor
-ghcjsP = O.flag GHC GHCJS m where
+ghcjsP = O.flag GHC
+#if MIN_VERSION_Cabal(1,22,0)
+                    GHCJS
+#else
+                    GHC
+#endif
+                          m where
   m = O.help helpMsg
       <> O.long "ghcjs"
   helpMsg = "Set compiler flavor to GHCJS."

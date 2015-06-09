@@ -22,7 +22,7 @@ import Debian.Control (Control'(Control, unControl), Field'(Field), Paragraph'(P
 import Debian.Control.Common ()
 import qualified Debian.Debianize.DebInfo as D (Atom(Install, InstallDir, Link), atomSet, changelog, compat, control, copyright, installInit, intermediateFiles, logrotateStanza, postInst, postRm, preInst, preRm, rulesFragments, rulesHead, rulesIncludes, rulesSettings, sourceFormat, watch)
 import Debian.Debianize.Monad (DebianT)
-import Debian.Debianize.Prelude (showDeps')
+import Debian.Debianize.Prelude (escapeDebianWildcards, showDeps')
 import qualified Debian.Debianize.BinaryDebDescription as B (architecture, BinaryDebDescription, binaryPriority, binarySection, breaks, builtUsing, conflicts, depends, description, essential, package, PackageRelations, preDepends, provides, recommends, relations, replaces, suggests)
 import Debian.Debianize.CopyrightDescription (CopyrightDescription)
 import qualified Debian.Debianize.SourceDebDescription as S (binaryPackages, buildConflicts, buildConflictsIndep, buildDepends, buildDependsIndep, dmUploadAllowed, homepage, maintainer, priority, section, source, SourceDebDescription, standardsVersion, uploaders, vcsFields, VersionControlSpec(VCSArch, VCSBrowser, VCSBzr, VCSCvs, VCSDarcs, VCSGit, VCSHg, VCSMtn, VCSSvn), xDescription, XField(XField), XFieldDest(B, C, S), xFields)
@@ -82,7 +82,7 @@ installs :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
 installs =
     (Map.toList . Map.map unlines . Set.fold doAtom mempty) <$> (lift $ use (D.atomSet))
     where
-      doAtom (D.Install b frm dst) mp = Map.insertWith (++) (pathf b) [pack (frm <> " " <> dst)] mp
+      doAtom (D.Install b frm dst) mp = Map.insertWith (++) (pathf b) [pack (escapeDebianWildcards frm <> " " <> dst)] mp
       doAtom _ mp = mp
       pathf name = "debian" </> show (ppPrint name) ++ ".install"
 

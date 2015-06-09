@@ -37,6 +37,7 @@ module Debian.Debianize.Prelude
     , fromEmpty
     , fromSingleton
     , (.?=)
+    , escapeDebianWildcards
     ) where
 
 
@@ -335,3 +336,9 @@ instance Pretty (PP PackageName) where
 --  2. Nothing happens if the current value isJust
 (.?=) :: Monad m => Lens' a (Maybe b) -> Maybe b -> StateT a m ()
 l .?= mx = use l >>= assign l . maybe mx Just
+
+-- | This should probably be used in a lot of places.
+escapeDebianWildcards :: String -> String
+escapeDebianWildcards (c : more) | elem c "[]*" = '\\' : c : escapeDebianWildcards more
+escapeDebianWildcards (c : more) = c : escapeDebianWildcards more
+escapeDebianWildcards "" = ""

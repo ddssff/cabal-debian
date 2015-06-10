@@ -63,11 +63,11 @@ runDebianizeScript args =
       True -> do
         let args' = ["debian/Debianize.hs"] ++ args
         putEnvironmentArgs args
-        hPutStrLn stderr (showCommandForUser "runhaskell" args')
-        result <- readProcessWithExitCode "runhaskell" args' ""
+        -- hPutStrLn stderr ("running external debianization script:\n  " ++ showCommandForUser "runhaskell" args')
+        result <- readProcessWithExitCode "runhaskell" ["debian/Debianize.hs"] ""
         case result of
           (ExitSuccess, _, _) -> return True
-          (code, out, err) -> error ("runDebianizeScript: " ++ showCommandForUser "runhaskell" args' ++ " -> " ++ show code ++
+          (code, out, err) -> error (" external debianization script failed:\n  " ++ showCommandForUser "runhaskell" args' ++ " -> " ++ show code ++
                                      "\n stdout: " ++ show out ++"\n stderr: " ++ show err)
 
 -- | Insert a value for CABALDEBIAN into the environment that the

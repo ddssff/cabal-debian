@@ -63,7 +63,7 @@ runDebianizeScript args =
       True -> do
         let args' = ["debian/Debianize.hs"] ++ args
         putEnvironmentArgs args
-        -- hPutStrLn stderr ("running external debianization script:\n  " ++ showCommandForUser "runhaskell" args')
+        hPutStrLn stderr ("running external debianization script:\n  " ++ showCommandForUser "runhaskell" args')
         result <- readProcessWithExitCode "runhaskell" ["debian/Debianize.hs"] ""
         case result of
           (ExitSuccess, _, _) -> return True

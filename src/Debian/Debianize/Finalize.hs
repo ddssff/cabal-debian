@@ -93,10 +93,12 @@ finalizeDebianization' date debhelperCompat =
        pkgDesc <- use A.packageDescription
 
        testsEnabled <- use (A.debInfo . D.enableTests)
+       testsRun <- use (A.debInfo . D.runTests)
        let testsExist = not $ List.null $ Cabal.testSuites pkgDesc
-       when (testsExist && testsEnabled) $
-            do (A.debInfo . rulesSettings) %= (++ ["DEB_ENABLE_TESTS = yes"])
-               unlessM (use (A.debInfo . D.runTests)) $ (A.debInfo . D.rulesSettings) %= (++ ["DEB_BUILD_OPTIONS += nocheck"])
+       case (testsExist && testsEnabled, testsRun) of
+         (False, _) -> (A.debInfo . D.rulesSettings) %= (++ ["DEB_BUILD_OPTIONS += nocheck"])
+         (True, False) -> (A.debInfo . D.rulesSettings) %= (++ ["DEB_ENABLE_TESTS = yes", "DEB_BUILD_OPTIONS += nocheck"])
+         (_, True) -> (A.debInfo . D.rulesSettings) %= (++ ["DEB_ENABLE_TESTS = yes"])
 
        finalizeSourceName B.HaskellSource
        checkOfficialSettings hc

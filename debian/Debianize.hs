@@ -8,12 +8,13 @@ import Data.Set as Set (insert)
 import Data.Text as Text (pack)
 import Data.Version (Version(Version))
 import Debian.Debianize
+import Debian.Debianize.Output (performDebianization)
 import Debian.Debianize.Optparse (parseProgramArguments, CommandLineOptions(..))
 import Debian.Relation (BinPkgName(BinPkgName), Relations, parseRelations)
 import Distribution.Package (PackageName(PackageName))
 
 main :: IO ()
-main = parseProgramArguments >>= \opts -> newCabalInfo (_flags opts) >>= evalStateT cabalDebian
+main = performDebianization cabalDebian
     where
       cabalDebian = do
         -- Read and inspect the cabal info to compute the debianization

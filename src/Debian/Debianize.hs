@@ -97,7 +97,7 @@ module Debian.Debianize
     , module Debian.Debianize.InputDebian
     , module Debian.Debianize.InputCabal
       -- * Finish computing the debianization and output the result
-    , module Debian.Debianize.Finalize
+    -- , module Debian.Debianize.Finalize
     , module Debian.Debianize.Output
       -- * Utility functions
     , module Debian.Debianize.Prelude
@@ -113,12 +113,12 @@ import Debian.Debianize.CopyrightDescription
 import Debian.Debianize.DebInfo -- (Atom(..), atomSet, changelog, compat, control, copyright, DebInfo, file, flags, install, installCabalExec, installCabalExecTo, installData, installDir, installInit, installTo, intermediateFiles, link, logrotateStanza, makeDebInfo, postInst, postRm, preInst, preRm, rulesFragments, rulesHead, rulesIncludes, rulesSettings, sourceFormat, warning, watch, apacheSite, backups, buildDir, comments, debVersion, execMap, executable, extraDevDeps, extraLibMap, InstallFile(..), maintainerOption, missingDependencies, noDocumentationLibrary, noProfilingLibrary, official, omitLTDeps, omitProfVersionDeps, revision, Server(..), serverInfo, Site(..), sourceArchitectures, sourcePackageName, uploadersOption, utilsPackageNameBase, website, xDescription, overrideDebianNameBase)
 import Debian.Debianize.DebianName (mapCabal, splitCabal, remapCabal)
 import Debian.Debianize.Details (debianDefaults)
-import Debian.Debianize.Finalize (debianize)
+--import Debian.Debianize.Finalize (debianize)
 import Debian.Debianize.Goodies -- (doBackups, doExecutable, doServer, doWebsite, tightDependencyFixup)
 import Debian.Debianize.InputDebian (inputChangeLog, inputDebianization, inputDebianizationFile)
 import Debian.Debianize.InputCabal (inputCabalization)
 import Debian.Debianize.Monad (CabalM, CabalT, evalCabalM, evalCabalT, execCabalM, execCabalT, runCabalM, runCabalT, DebianT, execDebianT, evalDebianT, liftCabal)
-import Debian.Debianize.Output (compareDebianization, describeDebianization, finishDebianization, runDebianizeScript, validateDebianization, writeDebianization)
+import Debian.Debianize.Output (compareDebianization, describeDebianization, finishDebianization, performDebianization, runDebianizeScript, validateDebianization, writeDebianization)
 import Debian.Debianize.Prelude (buildDebVersionMap, debOfFile, dpkgFileMap, withCurrentDirectory, (.?=))
 import Debian.Debianize.SourceDebDescription
 import Debian.Debianize.VersionSplits (DebBase(DebBase))

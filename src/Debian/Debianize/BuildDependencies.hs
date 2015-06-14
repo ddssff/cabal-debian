@@ -75,12 +75,12 @@ unboxDependency (ExtraLibs _) = Nothing -- Dependency (PackageName d) anyVersion
 -- so we just gather them all up here.
 allBuildDepends :: Monad m => PackageDescription -> CabalT m [Dependency_]
 allBuildDepends pkgDesc =
-    use (A.debInfo . D.enableTests) >>= \ testsEnabled ->
+    use (A.debInfo . D.testsStatus) >>= \ testsStatus ->
     allBuildDepends'
       (mergeCabalDependencies $
        Cabal.buildDepends pkgDesc ++
             concatMap (Cabal.targetBuildDepends . Cabal.buildInfo) (Cabal.executables pkgDesc) ++
-            (if testsEnabled then concatMap (Cabal.targetBuildDepends . Cabal.testBuildInfo) $ {-filter Cabal.testEnabled-} (Cabal.testSuites pkgDesc) else []))
+            (if testsStatus /= D.TestsDisable then concatMap (Cabal.targetBuildDepends . Cabal.testBuildInfo) $ {-filter Cabal.testEnabled-} (Cabal.testSuites pkgDesc) else []))
       (mergeCabalDependencies $ concatMap buildTools $ allBuildInfo pkgDesc)
       (mergeCabalDependencies $ concatMap pkgconfigDepends $ allBuildInfo pkgDesc)
       (concatMap extraLibs . allBuildInfo $ pkgDesc) >>=

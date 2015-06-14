@@ -15,6 +15,7 @@ module Debian.Debianize.DebInfo
     , Site(Site, domain, server, serverAdmin)
     , Server(Server, headerMessage, hostname, installFile, port, retry, serverFlags)
     , InstallFile(InstallFile, destDir, destName, execName, sourceDir)
+    , TestsStatus(..)
 
       -- * Lenses
     , flags
@@ -67,8 +68,7 @@ module Debian.Debianize.DebInfo
     , backups
     , extraDevDeps
     , official
-    , enableTests
-    , runTests
+    , testsStatus
     , allowDebianSelfBuildDeps
 
     , binaryDebDescription
@@ -248,10 +248,8 @@ data DebInfo
       -- reason to use this is because we don't yet know the name of the dev library package.
       , _official :: Bool
       -- ^ Whether this packaging is created by the Debian Haskell Group
-      , _enableTests :: Bool
-      -- ^ Include the test suites in the debianization if they exists
-      , _runTests :: Bool
-      -- ^ Prevent the test suite from being run during the package build
+      , _testsStatus :: TestsStatus
+      -- ^ Whether or not to build and/or run the test suite
       , _allowDebianSelfBuildDeps :: Bool
       -- ^ Normally self dependencies are filtered out of the debian
       -- build dependency list because they usually reflect
@@ -311,6 +309,8 @@ data Server
       , installFile :: InstallFile -- ^ The hint to install the server executable
       } deriving (Read, Show, Eq, Ord, Data, Typeable)
 
+data TestsStatus = TestsDisable | TestsBuild | TestsRun deriving (Eq, Show, Data, Typeable)
+
 makeDebInfo :: Flags -> DebInfo
 makeDebInfo fs =
     DebInfo
@@ -364,8 +364,7 @@ makeDebInfo fs =
     , _backups = mempty
     , _extraDevDeps = mempty
     , _official = False
-    , _enableTests = True
-    , _runTests = True
+    , _testsStatus = TestsRun
     , _allowDebianSelfBuildDeps = False
     }
 

@@ -25,6 +25,7 @@ import Data.Maybe.Extended (fromMaybe)
 import Data.Maybe.Extended (nothingIf)
 import Data.Monoid ((<>))
 import Debian.Debianize.BasicInfo
+import Debian.Debianize.DebInfo (TestsStatus(..))
 import Debian.Debianize.Monad
 import Debian.Debianize.Prelude (maybeRead)
 import Debian.Debianize.VersionSplits
@@ -51,7 +52,6 @@ import qualified Options.Applicative as O
 data HaddockStatus = HaddockEnabled | HaddockDisabled deriving Eq
 data ProfilingStatus = ProfilingEnabled | ProfilingDisabled deriving Eq
 data OfficialStatus = Official| NonOfficial deriving Eq
-data TestsStatus = TestsDisable | TestsBuild | TestsRun
 newtype BuildDep = BuildDep Relations deriving Generic
 instance Newtype BuildDep
 newtype BuildDepIndep = BuildDepIndep Relations deriving Generic
@@ -613,18 +613,7 @@ handleBehaviorAdjustment (BehaviorAdjustment {..}) = do
   addExtra _extraReplaces B.replaces
   addExtra _extraRecommends B.recommends
   addExtra _extraSuggests B.suggests
-  case _tests of
-  -- FIXME: You can't run, but not build tests. It should be type-enforced.
-    TestsDisable -> do
-      D.enableTests .= False
-      D.runTests .= False
-    TestsBuild -> do
-      D.enableTests .= True
-      D.runTests .= False
-    TestsRun -> do
-      D.enableTests .= True
-      D.runTests .= True
-
+  D.testsStatus .= _tests
   D.official .= (_official == Official)
   zoom D.control $ do
     S.section .= Just _sourceSection

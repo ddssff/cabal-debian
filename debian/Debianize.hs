@@ -14,15 +14,8 @@ import Debian.Relation (BinPkgName(BinPkgName), Relations, parseRelations)
 import Distribution.Package (PackageName(PackageName))
 
 main :: IO ()
-main = performDebianization cabalDebian
+main = performDebianization customize
     where
-      cabalDebian = do
-        -- Read and inspect the cabal info to compute the debianization
-        debianize customize
-        -- Write, compare, or validate the resulting debianization,
-        -- or print usage message, depending on options.
-        finishDebianization
-
       customize :: Monad m => CabalT m ()
       customize =
           do debianDefaults
@@ -30,6 +23,7 @@ main = performDebianization cabalDebian
              -- changing as new package versions arrive.
              mapCabal (PackageName "Cabal") (DebBase "cabal-122")
              splitCabal (PackageName "Cabal") (DebBase "cabal") (Version [1,22] [])
+             (debInfo . control . maintainer) .= either (const Nothing) Just (parseMaintainer "David Fox <dsf@seereason.com>")
              (debInfo . sourceFormat) .= Native3
              (debInfo . control . standardsVersion) .= Just (StandardsVersion 3 9 3 Nothing)
              (debInfo . compat) .= Just 9

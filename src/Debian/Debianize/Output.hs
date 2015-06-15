@@ -30,7 +30,7 @@ import Debian.Debianize.CabalInfo (CabalInfo, debInfo)
 import qualified Debian.Debianize.DebInfo as D
 import Debian.Debianize.Files (debianizationFileMap)
 import Debian.Debianize.InputDebian (inputDebianization)
-import Debian.Debianize.Monad (DebianT, CabalT, evalDebianT, evalCabalT)
+import Debian.Debianize.Monad (DebianT, CabalT, evalDebian, evalCabalT)
 import Debian.Debianize.Prelude (indent, replaceFile, zipMaps)
 import Debian.Debianize.Finalize (debianize)
 import Debian.Debianize.Optparse
@@ -99,8 +99,8 @@ finishDebianization = zoom debInfo $
          _ | view (D.flags . dryRun) new ->
                do inputDebianization
                   old <- get
-                  diff <- liftIO $ compareDebianization old new
-                  liftIO $ putStrLn ("Debianization (dry run):\n" ++ if null diff then "  No changes\n" else diff)
+                  let diff = compareDebianization old new
+                  liftIO $ putStrLn ("Debianization (dry run):\n" ++ if null diff then "  No changes\n" else show diff)
          _ -> writeDebianization
 
 
@@ -123,11 +123,11 @@ describeDebianization =
 
 -- | Compare the old and new debianizations, returning a string
 -- describing the differences.
-compareDebianization :: D.DebInfo -> D.DebInfo -> IO String
+compareDebianization :: D.DebInfo -> D.DebInfo -> [String]
 compareDebianization old new =
-    do oldFiles <- evalDebianT debianizationFileMap (canonical old)
-       newFiles <- evalDebianT debianizationFileMap (canonical new)
-       return $ concat $ Map.elems $ zipMaps doFile oldFiles newFiles
+    let oldFiles = evalDebian debianizationFileMap (canonical old)
+        newFiles = evalDebian debianizationFileMap (canonical new) in
+    elems $ zipMaps doFile oldFiles newFiles
     where
       doFile :: FilePath -> Maybe Text -> Maybe Text -> Maybe String
       doFile path (Just _) Nothing = Just (path ++ ": Deleted\n")

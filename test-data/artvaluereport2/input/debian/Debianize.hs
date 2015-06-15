@@ -27,7 +27,7 @@ main =
        old <- withCurrentDirectory "test-data/artvaluereport2/output" $ parseProgramArguments >>= \opts -> execDebianT inputDebianization (makeDebInfo (_flags opts))
        -- The newest log entry gets modified when the Debianization is
        -- generated, it won't match so drop it for the comparison.
-       compareDebianization old ({-copyFirstLogEntry old $ -} view debInfo new) >>= putStr
+       putStr $ concat $ compareDebianization old $ view debInfo new
     where
       customize :: Maybe ChangeLog -> CabalT IO ()
       customize log =

@@ -17,6 +17,7 @@ module Debian.Debianize.Monad
 
     , DebianT
     , evalDebianT
+    , evalDebian
     , execDebianT
     , liftCabal
 
@@ -57,6 +58,9 @@ type DebianT m = StateT DebInfo m
 
 evalDebianT :: Monad m => DebianT m a -> DebInfo -> m a
 evalDebianT = evalStateT
+
+evalDebian :: DebianT Identity a -> DebInfo -> a
+evalDebian = evalState
 
 execDebianT :: Monad m => DebianT m () -> DebInfo -> m DebInfo
 execDebianT = execStateT

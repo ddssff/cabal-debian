@@ -23,7 +23,7 @@ main = performDebianization customize
              -- changing as new package versions arrive.
              mapCabal (PackageName "Cabal") (DebBase "cabal-122")
              splitCabal (PackageName "Cabal") (DebBase "cabal") (Version [1,22] [])
-             (debInfo . control . maintainer) .= either (const Nothing) Just (parseMaintainer "David Fox <dsf@seereason.com>")
+             (debInfo . control . maintainer) .= parseMaintainer "David Fox <dsf@seereason.com>"
              (debInfo . sourceFormat) .= Native3
              (debInfo . control . standardsVersion) .= Just (StandardsVersion 3 9 3 Nothing)
              (debInfo . compat) .= Just 9

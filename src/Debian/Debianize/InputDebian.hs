@@ -256,13 +256,13 @@ readDir p line = installDir p (unpack line)
 -- the path cabal assigns to datadir in the
 -- dist/build/autogen/Paths_packagename.hs module, or perhaps the path
 -- in the CABAL_DEBIAN_DATADIR environment variable.
-dataDest :: MonadIO m => CabalT m FilePath
+dataDest :: Monad m => CabalT m FilePath
 dataDest = do
   d <- use packageDescription
   return $ "usr/share" </> ((\ (PackageName x) -> x) $ pkgName $ Cabal.package d)
 
 -- | Where to look for the data-files
-dataTop :: MonadIO m => CabalT m FilePath
+dataTop :: Monad m => CabalT m FilePath
 dataTop = do
   d <- use packageDescription
   return $ case Cabal.dataDir d of

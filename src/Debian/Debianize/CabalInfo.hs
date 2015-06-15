@@ -1,6 +1,3 @@
--- | This module holds a long list of lenses that access the Atoms
--- record, the record that holds the input data from which the
--- debianization is to be constructed.
 {-# LANGUAGE CPP, DeriveDataTypeable, OverloadedStrings, TemplateHaskell #-}
 {-# OPTIONS_GHC -Wall #-}
 module Debian.Debianize.CabalInfo
@@ -39,14 +36,6 @@ import Distribution.Package (PackageName)
 import Distribution.PackageDescription as Cabal (PackageDescription(homepage))
 import Prelude hiding (init, init, log, log, null)
 import System.Unix.Mount (withProcAndSys)
-
--- This enormous record is a mistake - instead it should be an Atom
--- type with lots of constructors, and the Atoms type is a set of
--- these.  Then we can cruise through the atom set converting the
--- elements into other simpler elements until they elements are all
--- simple enough to convert directly into a debianization.  At the
--- moment I really need this for the Install atoms, so I will try to
--- convert just that portion of the type to this new scheme.
 
 -- | Bits and pieces of information about the mapping from cabal package
 -- names and versions to debian package names and versions.  In essence,

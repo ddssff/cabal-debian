@@ -9,7 +9,6 @@ module Debian.Debianize.BuildDependencies
 import Control.Applicative ((<$>))
 import Control.Lens
 import Control.Monad.State (MonadState(get))
-import Control.Monad.Trans (MonadIO)
 import Data.Char (isSpace, toLower)
 import Data.Function (on)
 import Data.List as List (filter, groupBy, map, minimumBy, nub, sortBy)
@@ -108,7 +107,7 @@ mergeCabalDependencies =
 
 -- The haskell-cdbs package contains the hlibrary.mk file with
 -- the rules for building haskell packages.
-debianBuildDeps :: (MonadIO m, Functor m) => PackageDescription -> CabalT m D.Relations
+debianBuildDeps :: (Monad m, Functor m) => PackageDescription -> CabalT m D.Relations
 debianBuildDeps pkgDesc =
     do hc <- use (A.debInfo . D.flags . compilerFlavor)
        let hcs = singleton hc -- vestigial
@@ -141,7 +140,7 @@ debianBuildDeps pkgDesc =
       hcPackageTypes hc = error $ "Unsupported compiler flavor: " ++ show hc
 
 
-debianBuildDepsIndep :: (MonadIO m, Functor m) => PackageDescription -> CabalT m D.Relations
+debianBuildDepsIndep :: (Monad m, Functor m) => PackageDescription -> CabalT m D.Relations
 debianBuildDepsIndep pkgDesc =
     do hc <- use (A.debInfo . D.flags . compilerFlavor)
        let hcs = singleton hc -- vestigial
@@ -160,7 +159,7 @@ debianBuildDepsIndep pkgDesc =
 -- | The documentation dependencies for a package include the
 -- documentation package for any libraries which are build
 -- dependencies, so we have use to all the cross references.
-docDependencies :: (MonadIO m, Functor m) => Dependency_ -> CabalT m D.Relations
+docDependencies :: (Monad m, Functor m) => Dependency_ -> CabalT m D.Relations
 docDependencies (BuildDepends (Dependency name ranges)) =
     do hc <- use (A.debInfo . D.flags . compilerFlavor)
        let hcs = singleton hc -- vestigial
@@ -171,7 +170,7 @@ docDependencies _ = return []
 -- | The Debian build dependencies for a package include the profiling
 -- libraries and the documentation packages, used for creating cross
 -- references.  Also the packages associated with extra libraries.
-buildDependencies :: (MonadIO m, Functor m) => Set (CompilerFlavor, B.PackageType) -> Dependency_ -> CabalT m D.Relations
+buildDependencies :: (Monad m, Functor m) => Set (CompilerFlavor, B.PackageType) -> Dependency_ -> CabalT m D.Relations
 buildDependencies hcTypePairs (BuildDepends (Dependency name ranges)) =
     use (A.debInfo . D.omitProfVersionDeps) >>= \ omitProfDeps ->
     concat <$> mapM (\ (hc, typ) -> dependencies hc typ name ranges omitProfDeps) (toList hcTypePairs)
@@ -226,7 +225,7 @@ anyrel' x = [D.Rel x Nothing Nothing]
 -- | Turn a cabal dependency into debian dependencies.  The result
 -- needs to correspond to a single debian package to be installed,
 -- so we will return just an OrRelation.
-dependencies :: MonadIO m => CompilerFlavor -> B.PackageType -> PackageName -> VersionRange -> Bool -> CabalT m Relations
+dependencies :: Monad m => CompilerFlavor -> B.PackageType -> PackageName -> VersionRange -> Bool -> CabalT m Relations
 dependencies hc typ name cabalRange omitProfVersionDeps =
     do nameMap <- use A.debianNameMap
        -- Compute a list of alternative debian dependencies for
@@ -293,7 +292,7 @@ dependencies hc typ name cabalRange omitProfVersionDeps =
 -- compiler a substitute for that package.  If we were to
 -- specify the virtual package (e.g. libghc-base-dev) we would
 -- have to make sure not to specify a version number.
-doBundled :: MonadIO m =>
+doBundled :: Monad m =>
              B.PackageType
           -> PackageName
           -> CompilerFlavor
@@ -305,7 +304,7 @@ doBundled typ name hc rels =
       -- If a library is built into the compiler, this is the debian
       -- package name the compiler will conflict with.
       comp = D.Rel (compilerPackageName hc typ) Nothing Nothing
-      doRel :: MonadIO m => D.Relation -> CabalT m [D.Relation]
+      doRel :: Monad m => D.Relation -> CabalT m [D.Relation]
       doRel rel@(D.Rel dname req _) = do
         -- gver <- use ghcVersion
         splits <- use A.debianNameMap

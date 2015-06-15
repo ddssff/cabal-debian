@@ -80,7 +80,7 @@ newDebianization (log@(ChangeLog (entry : _))) level standards =
     do (A.debInfo . D.changelog) .= Just log
        (A.debInfo . D.compat) .= level
        (A.debInfo . D.control . S.source) .= Just (SrcPkgName (logPackage entry))
-       (A.debInfo . D.control . S.maintainer) .= either error Just (parseMaintainer (logWho entry))
+       (A.debInfo . D.control . S.maintainer) .= either error Right (parseMaintainer (logWho entry))
        (A.debInfo . D.control . S.standardsVersion) .= standards
 newDebianization _ _ _ = error "Invalid changelog"
 
@@ -290,7 +290,7 @@ test3 label =
                 (debInfo . D.compat) .= Just 9
                 (debInfo . D.copyright) %= (Just . id . fromMaybe (readCopyrightDescription "This package was debianized by John Goerzen <jgoerzen@complete.org> on\nWed,  6 Oct 2004 09:46:14 -0500.\n\nCopyright information removed from this test data.\n"))
                 (debInfo . D.control . S.source) .= Just (SrcPkgName {unSrcPkgName = "haskell-devscripts"})
-                (debInfo . D.control . S.maintainer) .= Just (NameAddr {nameAddr_name = Just "Debian Haskell Group", nameAddr_addr = "pkg-haskell-maintainers@lists.alioth.debian.org"})
+                (debInfo . D.control . S.maintainer) .= Right (NameAddr {nameAddr_name = Just "Debian Haskell Group", nameAddr_addr = "pkg-haskell-maintainers@lists.alioth.debian.org"})
                 (debInfo . D.control . S.uploaders) .= [NameAddr {nameAddr_name = Just "Marco Silva", nameAddr_addr = "marcot@debian.org"},NameAddr {nameAddr_name = Just "Joachim Breitner", nameAddr_addr = "nomeata@debian.org"}]
                 (debInfo . D.control . S.priority) .= Just Extra
                 (debInfo . D.control . S.section) .= Just (MainSection "haskell")
@@ -668,7 +668,7 @@ test10 label =
              (A.debInfo . D.sourcePackageName) .= Just (SrcPkgName "seereason-darcs-backups")
              (A.debInfo . D.compat) .= Just 9
              (A.debInfo . D.control . S.standardsVersion) .= Just (StandardsVersion 3 8 1 Nothing)
-             (A.debInfo . D.control . S.maintainer) .= either (const Nothing) Just (parseMaintainer "David Fox <dsf@seereason.com>")
+             (A.debInfo . D.control . S.maintainer) .= parseMaintainer "David Fox <dsf@seereason.com>"
              (A.debInfo . D.binaryDebDescription (BinPkgName "seereason-darcs-backups") . B.relations . B.depends) %= (++ [[Rel (BinPkgName "anacron") Nothing Nothing]])
              (A.debInfo . D.control . S.section) .= Just (MainSection "haskell")
              (A.debInfo . D.utilsPackageNameBase) .= Just "seereason-darcs-backups"

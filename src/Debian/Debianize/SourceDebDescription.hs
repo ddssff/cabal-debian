@@ -44,7 +44,7 @@ data SourceDebDescription
     = SourceDebDescription
       { _source :: Maybe SrcPkgName
       -- ^ <http://www.debian.org/doc/debian-policy/ch-controlfields.html#s-f-Source>
-      , _maintainer :: Maybe NameAddr
+      , _maintainer :: Either String NameAddr
       -- ^ <http://www.debian.org/doc/debian-policy/ch-controlfields.html#s-f-Maintainer>
       , _changedBy :: Maybe NameAddr
       -- ^ <http://www.debian.org/doc/debian-policy/ch-controlfields.html#s-f-Changed-By>
@@ -85,7 +85,7 @@ newSourceDebDescription :: SourceDebDescription
 newSourceDebDescription =
     SourceDebDescription
       { _source = Nothing
-      , _maintainer = Nothing
+      , _maintainer = Left "Maintainer not set"
       , _changedBy = Nothing
       , _uploaders = []
       , _dmUploadAllowed = False
@@ -106,7 +106,7 @@ newSourceDebDescription' :: SrcPkgName -> NameAddr -> SourceDebDescription
 newSourceDebDescription' src who =
     newSourceDebDescription
       { _source = Just src
-      , _maintainer = Just who }
+      , _maintainer = Right who }
 
 data VersionControlSpec
     = VCSBrowser Text

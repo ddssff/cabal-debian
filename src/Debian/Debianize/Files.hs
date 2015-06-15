@@ -26,6 +26,7 @@ import Debian.Debianize.Prelude (escapeDebianWildcards, showDeps')
 import qualified Debian.Debianize.BinaryDebDescription as B (architecture, BinaryDebDescription, binaryPriority, binarySection, breaks, builtUsing, conflicts, depends, description, essential, package, PackageRelations, preDepends, provides, recommends, relations, replaces, suggests)
 import Debian.Debianize.CopyrightDescription (CopyrightDescription)
 import qualified Debian.Debianize.SourceDebDescription as S (binaryPackages, buildConflicts, buildConflictsIndep, buildDepends, buildDependsIndep, dmUploadAllowed, homepage, maintainer, priority, section, source, SourceDebDescription, standardsVersion, uploaders, vcsFields, VersionControlSpec(VCSArch, VCSBrowser, VCSBzr, VCSCvs, VCSDarcs, VCSGit, VCSHg, VCSMtn, VCSSvn), xDescription, XField(XField), XFieldDest(B, C, S), xFields)
+import Debian.Policy (maintainerOfLastResort)
 import Debian.Pretty (PP(..), ppShow, prettyText, ppText, ppPrint)
 import Debian.Relation (BinPkgName(BinPkgName), Relations)
 import Distribution.PackageDescription (PackageDescription)
@@ -177,7 +178,7 @@ controlFile src =
     { unControl =
           (Paragraph
            ([Field ("Source", " " ++ (show . maybe empty ppPrint . view S.source $ src)),
-             Field ("Maintainer", " " <> (show . maybe empty ppPrint . view S.maintainer $ src))] ++
+             Field ("Maintainer", " " <> (ppShow . either (const maintainerOfLastResort) id . view S.maintainer $ src))] ++
             lField "Uploaders" (view S.uploaders src) ++
             (case view S.dmUploadAllowed src of True -> [Field ("DM-Upload-Allowed", " yes")]; False -> []) ++
             mField "Priority" (view S.priority src) ++

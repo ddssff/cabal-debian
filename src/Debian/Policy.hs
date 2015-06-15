@@ -32,6 +32,7 @@ module Debian.Policy
     , Area(..)
     , parseUploaders
     , parseMaintainer
+    , maintainerOfLastResort
     , getCurrentDebianUser
     , haskellMaintainer
     , License(..)
@@ -291,6 +292,12 @@ parseMaintainer x =
       Right [y] -> Right y
       Right [] -> Left $ "Missing maintainer: " ++ show x
       Right ys -> Left $ "Too many maintainers: " ++ show ys
+
+
+-- | Maintainer is a mandatory field, so we need a value we can use
+-- when all else fails.
+maintainerOfLastResort :: NameAddr
+Right maintainerOfLastResort = parseMaintainer "nobody <nobody@nowhere>"
 
 -- | Official Debian license types as described in
 -- <https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/#license-specification>.

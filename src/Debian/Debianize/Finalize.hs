@@ -18,7 +18,7 @@ import Data.Digest.Pure.MD5 (md5)
 import Data.Function (on)
 import Data.List as List (filter, intercalate, map, nub, null, unlines, maximumBy)
 import Data.Map as Map (delete, elems, insertWith, lookup, Map, toList)
-import Data.Maybe (fromMaybe, isJust, isNothing, fromJust)
+import Data.Maybe (fromMaybe, isJust, fromJust)
 import Data.Monoid ((<>), mempty)
 import Data.Set as Set (difference, filter, fold, fromList, insert, map, null, Set, singleton, toList, union, unions)
 import Data.Set.Extra as Set (mapM_)
@@ -31,15 +31,14 @@ import qualified Debian.Debianize.CabalInfo as A
 import Debian.Debianize.Changelog (dropFutureEntries)
 import qualified Debian.Debianize.DebInfo as D
 import Debian.Debianize.DebianName (debianName, debianNameBase)
-import Debian.Debianize.DebInfo (rulesSettings)
 import Debian.Debianize.Goodies (backupAtoms, describe, execAtoms, serverAtoms, siteAtoms, watchAtom)
 import Debian.Debianize.InputDebian (dataTop, dataDest, inputChangeLog)
-import Debian.Debianize.Monad as Monad (CabalT, liftCabal, unlessM)
+import Debian.Debianize.Monad as Monad (CabalT, liftCabal)
 import Debian.Debianize.Prelude ((.?=))
 import qualified Debian.Debianize.SourceDebDescription as S
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
 import Debian.Orphans ()
-import Debian.Policy (getCurrentDebianUser, getDebhelperCompatLevel, haskellMaintainer, PackageArchitectures(Any, All), PackagePriority(Extra), parseMaintainer, parseStandardsVersion, Section(..), SourceFormat(Native3))
+import Debian.Policy (getCurrentDebianUser, getDebhelperCompatLevel, haskellMaintainer, maintainerOfLastResort, PackageArchitectures(Any, All), PackagePriority(Extra), parseMaintainer, parseStandardsVersion, Section(..), SourceFormat(Native3))
 import Debian.Pretty (PP(..), ppShow)
 import Debian.Relation (BinPkgName, BinPkgName(BinPkgName), Relation(Rel), Relations, SrcPkgName(SrcPkgName))
 import qualified Debian.Relation as D (BinPkgName(BinPkgName), Relation(..))
@@ -55,6 +54,7 @@ import Distribution.PackageDescription as Cabal (allBuildInfo, author, BuildInfo
 import qualified Distribution.PackageDescription as Cabal (PackageDescription(dataFiles, executables, library, package))
 import Prelude hiding (init, log, map, unlines, unlines, writeFile)
 import System.FilePath ((<.>), (</>), makeRelative, splitFileName, takeDirectory, takeFileName)
+import System.IO (hPutStrLn, stderr)
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr(..))
 import Text.PrettyPrint.HughesPJClass (Pretty(pPrint))
 
@@ -73,10 +73,12 @@ debianize customize =
 finalizeDebianization :: (MonadIO m, Functor m) => CabalT m ()
 finalizeDebianization =
     do date <- liftIO getCurrentLocalRFC822Time
+       currentUser <- liftIO getCurrentDebianUser
        debhelperCompat <- liftIO getDebhelperCompatLevel
-       finalizeDebianization' date debhelperCompat
+       finalizeDebianization' date currentUser debhelperCompat
        vb <- use (A.debInfo . D.flags . verbosity)
        when (vb >= 3) (get >>= \ x -> liftIO (putStrLn ("\nFinalized Cabal Info: " ++ show x ++ "\n")))
+       either (\e -> liftIO $ hPutStrLn stderr ("WARNING: " ++ e)) (\_ -> return ()) =<< use (A.debInfo . D.control . S.maintainer)
 
 -- | Now that we know the build and data directories, we can expand
 -- some atoms into sets of simpler atoms which can eventually be
@@ -86,8 +88,8 @@ finalizeDebianization =
 -- this function is not idempotent.  (Exported for use in unit tests.)
 -- FIXME: we should be able to run this without a PackageDescription, change
 --        paramter type to Maybe PackageDescription and propagate down thru code
-finalizeDebianization'  :: (MonadIO m, Functor m) => String -> Maybe Int -> CabalT m ()
-finalizeDebianization' date debhelperCompat =
+finalizeDebianization'  :: (Monad m, Functor m) => String -> Maybe NameAddr -> Maybe Int -> CabalT m ()
+finalizeDebianization' date currentUser debhelperCompat =
     do -- In reality, hcs must be a singleton or many things won't work.  But some day...
        hc <- use (A.debInfo . D.flags . compilerFlavor)
        pkgDesc <- use A.packageDescription
@@ -106,8 +108,8 @@ finalizeDebianization' date debhelperCompat =
        (A.debInfo . D.control . S.section) .?= Just (MainSection "haskell")
        (A.debInfo . D.control . S.priority) .?= Just Extra
        (A.debInfo . D.compat) .?= debhelperCompat
-       finalizeChangelog date
-       finalizeControl
+       finalizeChangelog date currentUser
+       finalizeControl currentUser
        finalizeRules
        -- T.license .?= Just (Cabal.license pkgDesc)
        expandAtoms
@@ -220,10 +222,9 @@ finalizeSourceName typ =
 --    6. the Debian Haskell Group, @pkg-haskell-maintainers\@lists.alioth.debian.org@
 -- <http://www.debian.org/doc/debian-policy/ch-controlfields.html#s-f-Maintainer>
 -- <http://www.debian.org/doc/debian-policy/ch-controlfields.html#s-f-Uploaders>
-finalizeMaintainer :: MonadIO m => CabalT m ()
-finalizeMaintainer = do
+finalizeMaintainer :: Monad m => Maybe NameAddr -> CabalT m ()
+finalizeMaintainer currentUser = do
   o <- use (A.debInfo . D.official)
-  currentUser <- liftIO getCurrentDebianUser
   pkgDesc <- use A.packageDescription
   maintainerOption <- use (A.debInfo . D.maintainerOption)
   uploadersOption <- use (A.debInfo . D.uploadersOption)
@@ -241,30 +242,28 @@ finalizeMaintainer = do
            _ -> return Nothing
   case o of
     True -> do
-      (A.debInfo . D.control . S.maintainer) .= Just haskellMaintainer
+      (A.debInfo . D.control . S.maintainer) .= Right haskellMaintainer
       (A.debInfo . D.control . S.uploaders) %= whenEmpty (maybe [] (: []) currentUser)
     False -> do
-      (A.debInfo . D.control . S.maintainer) .?= maintainerOption
-      (A.debInfo . D.control . S.maintainer) .?= (either (const Nothing) Just $ parseMaintainer cabalMaintainerString)
-      (A.debInfo . D.control . S.maintainer) .?= (either (const Nothing) Just $ parseMaintainer cabalMaintainerString')
-      (A.debInfo . D.control . S.maintainer) .?= (either (const Nothing) Just $ parseMaintainer cabalMaintainerString'')
+      (A.debInfo . D.control . S.maintainer) %= either (\x -> maybe (Left x) Right maintainerOption) Right
+      (A.debInfo . D.control . S.maintainer) %= either (\_ -> parseMaintainer cabalMaintainerString) Right
+      (A.debInfo . D.control . S.maintainer) %= either (\_ -> parseMaintainer cabalMaintainerString') Right
+      (A.debInfo . D.control . S.maintainer) %= either (\_ -> parseMaintainer cabalMaintainerString'') Right
       -- Sometimes the maintainer is just an email, if it matches the author's email we can use it
-      (A.debInfo . D.control . S.maintainer) .?= (case parseMaintainer cabalAuthorString of
-                                        Right x | nameAddr_addr x == cabalMaintainerString -> Just x
-                                        _ -> Nothing)
+      (A.debInfo . D.control . S.maintainer) %= either (\e -> case parseMaintainer cabalAuthorString of
+                                                                Right x | nameAddr_addr x == cabalMaintainerString -> Right x
+                                                                Right _ -> Left e
+                                                                Left x -> Left x) Right
       -- Sometimes the maintainer is just an email, try combining it with the author's name
-      (A.debInfo . D.control . S.maintainer) .?= (case parseMaintainer cabalAuthorString of
-                                        Right (NameAddr {nameAddr_name = Just name}) -> either (const Nothing) Just (parseMaintainer (name ++ " <" ++ cabalMaintainerString ++ ">"))
-                                        _ -> Nothing)
-      (A.debInfo . D.control . S.maintainer) .?= currentUser
-      (A.debInfo . D.control . S.maintainer) .?= changelogSignature
-      x <- use (A.debInfo . D.control . S.maintainer)
-      when (isNothing x)
-           (do liftIO $ putStrLn ("Unable to construct a debian maintainer, using nobody <nobody@nowhere>. Cabal maintainer strings tried:\n " ++
-                                  show cabalMaintainerString ++ ", " ++ show cabalMaintainerString' ++ ", " ++ show cabalMaintainerString'' ++
-                                  ", currentUser: " ++ show currentUser)
-               return ())
-      (A.debInfo . D.control . S.maintainer) .?= (either (const Nothing) Just $ parseMaintainer "nobody <nobody@nowhere>")
+      (A.debInfo . D.control . S.maintainer) %= either (\e -> case parseMaintainer cabalAuthorString of
+                                                                Right (NameAddr {nameAddr_name = Just name}) -> parseMaintainer (name ++ " <" ++ cabalMaintainerString ++ ">")
+                                                                Right _ -> Left e
+                                                                Left x -> Left x) Right
+      (A.debInfo . D.control . S.maintainer) %= either (\e -> maybe (Left e) Right currentUser) Right
+      (A.debInfo . D.control . S.maintainer) %= either (\e -> maybe (Left e) Right changelogSignature) Right
+      (A.debInfo . D.control . S.maintainer) %= either (\_ -> Left ("Unable to construct a debian maintainer, using default.  Cabal maintainer strings tried:\n " ++
+                                                                    show cabalMaintainerString ++ ", " ++ show cabalMaintainerString' ++ ", " ++ show cabalMaintainerString'' ++
+                                                                    ", currentUser: " ++ show currentUser)) Right
       (A.debInfo . D.control . S.uploaders) %= whenEmpty uploadersOption
 
 -- | If l is the empty list return d, otherwise return l.
@@ -272,9 +271,9 @@ whenEmpty :: [a] -> [a] -> [a]
 whenEmpty d [] = d
 whenEmpty _ l = l
 
-finalizeControl :: (MonadIO m, Functor m) => CabalT m ()
-finalizeControl =
-    do finalizeMaintainer
+finalizeControl :: (Monad m, Functor m) => Maybe NameAddr -> CabalT m ()
+finalizeControl currentUser =
+    do finalizeMaintainer currentUser
        Just src <- use (A.debInfo . D.sourcePackageName)
        (A.debInfo . D.control . S.source) .= Just src
        desc' <- describe
@@ -285,19 +284,19 @@ finalizeControl =
 -- source package name implied by the debianization.  This means
 -- either adding an entry or modifying the latest entry (if its
 -- version number is the exact one in our debianization.)
-finalizeChangelog :: (MonadIO m, Functor m) => String -> CabalT m ()
-finalizeChangelog date =
-    do finalizeMaintainer
+finalizeChangelog :: (Monad m, Functor m) => String -> Maybe NameAddr -> CabalT m ()
+finalizeChangelog date currentUser =
+    do finalizeMaintainer currentUser
        ver <- debianVersion
        src <- use (A.debInfo . D.sourcePackageName)
-       Just debianMaintainer <- use (A.debInfo . D.control . S.maintainer)
+       debianMaintainer <- use (A.debInfo . D.control . S.maintainer)
        -- pkgDesc <- use T.packageDescription >>= return . maybe Nothing (either Nothing Just . parseMaintainer . Cabal.maintainer)
        cmts <- use (A.debInfo . D.comments)
        (A.debInfo . D.changelog) %= fmap (dropFutureEntries ver)
        let msg = "Initial release (Closes: #nnnn)"
        (A.debInfo . D.changelog) %= fixLog src ver cmts debianMaintainer msg
     where
-      fixLog :: Maybe SrcPkgName -> V.DebianVersion -> Maybe [[Text]] -> NameAddr -> Text -> Maybe ChangeLog -> Maybe ChangeLog
+      fixLog :: Maybe SrcPkgName -> V.DebianVersion -> Maybe [[Text]] -> Either String NameAddr -> Text -> Maybe ChangeLog -> Maybe ChangeLog
       -- Ensure that the package name is correct in the first log entry.
       fixLog src ver cmts _maint _ (Just (ChangeLog (entry : older)))
           | logVersion entry == ver =
@@ -314,7 +313,7 @@ finalizeChangelog date =
                                  , logUrgency = "low"
                                  , logComments =
                                      List.unlines $ List.map (("  * " <>) . List.intercalate "\n    " . List.map unpack) (fromMaybe [[msg]] cmts)
-                                 , logWho = ppShow maint
+                                 , logWho = either (\_ -> ppShow maintainerOfLastResort) ppShow maint
                                  , logDate = date } in
           -- Creating new log entry for version
           Just (ChangeLog (entry : maybe [] (\ (ChangeLog entries) -> entries) log))
@@ -358,7 +357,7 @@ officialSettings =
           , S.VCSDarcs  $ "http://darcs.debian.org/pkg-haskell/" <> pack src
           ])
 
-putBuildDeps :: (MonadIO m, Functor m) => (Relations -> Relations) -> PackageDescription -> CabalT m ()
+putBuildDeps :: (Monad m, Functor m) => (Relations -> Relations) -> PackageDescription -> CabalT m ()
 putBuildDeps finalizeRelations pkgDesc =
     do deps <- debianBuildDeps pkgDesc >>= return . finalizeRelations
        depsIndep <- debianBuildDepsIndep pkgDesc >>= return . finalizeRelations
@@ -444,7 +443,7 @@ desc = Text.intercalate "\n "
 -- files, assign them to the packages returned by the
 -- utilsPackageNames lens, and make sure those packages are in the
 -- source deb description.
-makeUtilsPackage :: forall m. (MonadIO m, Functor m) => PackageDescription -> CompilerFlavor -> CabalT m ()
+makeUtilsPackage :: forall m. (Monad m, Functor m) => PackageDescription -> CompilerFlavor -> CabalT m ()
 makeUtilsPackage pkgDesc hc =
     do -- Files the cabal package expects to be installed
        -- Files that are already assigned to any binary deb
@@ -505,7 +504,7 @@ makeUtilsPackage pkgDesc hc =
             (Nothing) -> D.execName i
             (Just s) ->  s </> D.execName i
 
-expandAtoms :: MonadIO m => CabalT m ()
+expandAtoms :: Monad m => CabalT m ()
 expandAtoms =
     do hc <- use (A.debInfo . D.flags . compilerFlavor)
        case hc of

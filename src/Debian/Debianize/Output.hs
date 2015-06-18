@@ -62,19 +62,12 @@ runDebianizeScript args =
       False -> return False
       True -> do
         let args' = ["debian/Debianize.hs"] ++ args
-        putEnvironmentArgs args
         hPutStrLn stderr ("running external debianization script in " ++ show here ++ ":\n  " ++ showCommandForUser "runhaskell" args')
-        result <- readProcessWithExitCode "runhaskell" ["debian/Debianize.hs"] ""
+        result <- readProcessWithExitCode "runhaskell" args' ""
         case result of
           (ExitSuccess, _, _) -> return True
           (code, out, err) -> error (" external debianization script failed:\n  " ++ showCommandForUser "runhaskell" args' ++ " -> " ++ show code ++
                                      "\n stdout: " ++ show out ++"\n stderr: " ++ show err)
-
--- | Insert a value for CABALDEBIAN into the environment that the
--- withEnvironment* functions above will find and use.  E.g.
--- putEnvironmentFlags ["--dry-run", "--validate"] (debianize defaultFlags)
-putEnvironmentArgs :: [String] -> IO ()
-putEnvironmentArgs fs = setEnv "CABALDEBIAN" (show fs) True
 
 -- | Perform whole debianization. You provide your customization,
 -- this function does everything else.

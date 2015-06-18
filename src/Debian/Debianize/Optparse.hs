@@ -634,7 +634,4 @@ parseProgramArguments' args =  O.handleParseResult result where
   result = O.execParserPure prefs (commandLineOptionsParserInfo args) args
 
 parseProgramArguments :: IO CommandLineOptions
-parseProgramArguments = defArgs >>= parseProgramArguments'
-
-defArgs :: IO [String]
-defArgs = (++) <$> getArgs <*> (fromMaybe [] . (maybeRead =<<) <$> getEnv "CABALDEBIAN")
+parseProgramArguments = getArgs >>= parseProgramArguments'

@@ -1,3 +1,12 @@
+haskell-cabal-debian (4.30) unstable; urgency=low
+
+  * Remove mechanism to pass arguments via the CABALDEBIAN environment
+    variable.
+  * Make compareDebianization a pure function.
+  * Remove MonadIO superclass from some functions
+
+ -- David Fox <dsf@seereason.com>  Thu, 18 Jun 2015 09:12:59 -0700
+
 haskell-cabal-debian (4.29.3) unstable; urgency=low
 
   * Fix escaping of wildcard characters that are not meaningful in cabal (i.e. square brackets)

@@ -172,8 +172,8 @@ siteAtoms :: PackageDescription -> BinPkgName -> D.Site -> CabalInfo -> CabalInf
 siteAtoms pkgDesc b site =
     execCabalM
       (do (A.debInfo . D.atomSet) %= (Set.insert $ D.InstallDir b "/etc/apache2/sites-available")
-          (A.debInfo . D.atomSet) %= (Set.insert $ D.Link b ("/etc/apache2/sites-available/" ++ D.domain site) ("/etc/apache2/sites-enabled/" ++ D.domain site))
-          (A.debInfo . D.atomSet) %= (Set.insert $ D.File b ("/etc/apache2/sites-available" </> D.domain site) apacheConfig)
+          (A.debInfo . D.atomSet) %= (Set.insert $ D.Link b ("/etc/apache2/sites-available/" ++ D.domain site ++ ".conf") ("/etc/apache2/sites-enabled/" ++ D.domain site ++ ".conf"))
+          (A.debInfo . D.atomSet) %= (Set.insert $ D.File b ("/etc/apache2/sites-available" </> D.domain site ++ ".conf") apacheConfig)
           (A.debInfo . D.atomSet) %= (Set.insert $ D.InstallDir b (apacheLogDirectory b))
           (A.debInfo . D.logrotateStanza) %= Map.insertWith mappend b
                               (singleton

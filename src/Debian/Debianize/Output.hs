@@ -61,7 +61,9 @@ runDebianizeScript args =
     case exists of
       False -> return False
       True -> do
-        let args' = ["debian/Debianize.hs"] ++ args
+        -- By default runhaskell looks for source in ., we will also look
+        -- in src.  Better would be to see where the cabal file looks.
+        let args' = ["-i.:src", "debian/Debianize.hs"] ++ args
         hPutStrLn stderr ("running external debianization script in " ++ show here ++ ":\n  " ++ showCommandForUser "runhaskell" args')
         result <- readProcessWithExitCode "runhaskell" args' ""
         case result of

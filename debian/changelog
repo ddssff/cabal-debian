@@ -1,3 +1,9 @@
+haskell-cabal-debian (4.30.2) unstable; urgency=low
+
+  * have runDebianizeScript look for source in src/ as well as ./
+
+ -- David Fox <dsf@seereason.com>  Sat, 08 Aug 2015 08:04:02 -0700
+
 haskell-cabal-debian (4.30.1) unstable; urgency=low
 
   * Make sure apache configuration files end with .conf

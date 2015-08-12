@@ -289,14 +289,15 @@ finalizeChangelog date currentUser =
     do finalizeMaintainer currentUser
        ver <- debianVersion
        src <- use (A.debInfo . D.sourcePackageName)
+       debianUploaders  <- use (A.debInfo . D.control . S.uploaders)
        debianMaintainer <- use (A.debInfo . D.control . S.maintainer)
+       let nameToUse | (n:_) <- debianUploaders = Right n
+                     | otherwise                = debianMaintainer
        -- pkgDesc <- use T.packageDescription >>= return . maybe Nothing (either Nothing Just . parseMaintainer . Cabal.maintainer)
        cmts <- use (A.debInfo . D.comments)
        (A.debInfo . D.changelog) %= fmap (dropFutureEntries ver)
-       official <- use (A.debInfo . D.official)
-       let msg | official  = "Initial release (Closes: #nnnn)"
-               | otherwise = "Initial release"
-       (A.debInfo . D.changelog) %= fixLog src ver cmts debianMaintainer msg
+       let msg = "Initial release"
+       (A.debInfo . D.changelog) %= fixLog src ver cmts nameToUse msg
     where
       fixLog :: Maybe SrcPkgName -> V.DebianVersion -> Maybe [[Text]] -> Either String NameAddr -> Text -> Maybe ChangeLog -> Maybe ChangeLog
       -- Ensure that the package name is correct in the first log entry.

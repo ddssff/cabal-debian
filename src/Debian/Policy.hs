@@ -333,8 +333,7 @@ data License
     | Zlib              -- ^ zlib/libpng license.
     | Zope              -- ^ Zope Public License 1.0, 1.1, 2.0, 2.1.
     | OtherLicense String
-                        -- ^ A license name associated with the subsequent text of the License: field or in
-                        -- a Files paragraph of the same debian/copyright file, or in a License: paragraph.
+                        -- ^ Any other license name
     deriving (Read, Show, Eq, Ord, Data, Typeable)
 
 -- We need a license parse function that converts these strings back

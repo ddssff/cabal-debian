@@ -16,8 +16,10 @@ module Debian.Debianize.CopyrightDescription
     , filesPattern
     , filesCopyright
     , filesLicense
+    , filesLicenseText
     , filesComment
     , license
+    , licenseText
     , comment
     -- * Builders
     , readCopyrightDescription
@@ -67,7 +69,7 @@ data CopyrightDescription
       , _upstreamSource :: Maybe Text
       , _disclaimer :: Maybe Text
       , _summaryComment :: Maybe Text
-      , _summaryLicense :: Maybe License
+      , _summaryLicense :: Maybe (License, Maybe Text)
       , _summaryCopyright :: Maybe Text
       , _filesAndLicenses :: [FilesOrLicenseDescription]
       } deriving (Eq, Ord, Show, Data, Typeable)
@@ -77,10 +79,12 @@ data FilesOrLicenseDescription
       { _filesPattern :: FilePath
       , _filesCopyright :: Text
       , _filesLicense :: License
+      , _filesLicenseText :: Maybe Text
       , _filesComment :: Maybe Text
       }
     | LicenseDescription
       { _license :: License
+      , _licenseText :: Maybe Text
       , _comment :: Maybe Text
       } deriving (Eq, Ord, Show, Data, Typeable)
 
@@ -124,12 +128,23 @@ parseCopyrightDescription (hd : tl) =
                    , _upstreamSource = fieldValue "Source" hd
                    , _disclaimer = fieldValue "Disclaimer" hd
                    , _summaryComment = fieldValue "Comment" hd
-                   , _summaryLicense = fmap readLicense (fieldValue "License" hd)
+                   , _summaryLicense = fmap readLicenseField (fieldValue "License" hd)
                    , _summaryCopyright = Nothing -- fieldValue "Copyright" hd
                    , _filesAndLicenses = rights fnls
                    }
       (_, fnls) -> trace ("Not a parsable copyright file: " ++ show (lefts [muri] ++ lefts fnls)) Nothing
 parseCopyrightDescription [] = Nothing
+
+readLicenseField :: Text -> (License, Maybe Text)
+readLicenseField v
+    | length lns > 1
+    = (readLicense firstLine, Just otherLines)
+    | otherwise
+    = (readLicense v, Nothing)
+  where
+    lns = Text.lines v
+    firstLine = head lns
+    otherLines = Text.unlines (tail lns)
 
 parseFilesOrLicense :: Paragraph' Text -> Either (Paragraph' Text) (FilesOrLicenseDescription)
 parseFilesOrLicense p =
@@ -137,16 +152,20 @@ parseFilesOrLicense p =
       (Just files,
        Just copyright,
        Just license) ->
-          Right $ FilesDescription
+          let (l,t) = readLicenseField license
+          in Right $ FilesDescription
                     { _filesPattern = unpack files
                     , _filesCopyright = copyright
-                    , _filesLicense = readLicense license
+                    , _filesLicense = l
+                    , _filesLicenseText = t
                     , _filesComment = fieldValue "Comment" p }
       (Nothing,
        Nothing,
        Just license) ->
-          Right $ LicenseDescription
-                    { _license = readLicense license
+          let (l,t) = readLicenseField license
+          in Right $ LicenseDescription
+                    { _license = l
+                    , _licenseText = t
                     , _comment = fieldValue "Comment" p }
       _ -> Left p
 
@@ -159,7 +178,7 @@ toControlFile d =
         maybe [] (\x -> [Field ("Upstream-Contact", " " <> x)]) (_upstreamContact d) ++
         maybe [] (\x -> [Field ("Source", " " <> x)]) (_upstreamSource d) ++
         maybe [] (\x -> [Field ("Disclaimer", " " <> x)]) (_disclaimer d) ++
-        maybe [] (\x -> [Field ("License", " " <> prettyText x)]) (_summaryLicense d) ++
+        maybe [] (\(x,t) -> [toLicenseField x t]) (_summaryLicense d) ++
         maybe [] (\x -> [Field ("Copyright", " " <> x)]) (_summaryCopyright d) ++
         maybe [] (\x -> [Field ("Comment", " " <> x)]) (_summaryComment d)) :
       map toParagraph (_filesAndLicenses d) )
@@ -169,12 +188,18 @@ toParagraph fd@FilesDescription {} =
     Paragraph $
       [ Field ("Files", " " <> pack (_filesPattern fd))
       , Field ("Copyright", " " <> _filesCopyright fd)
-      , Field ("License", " " <> prettyText (_filesLicense fd)) ] ++
+      , toLicenseField (_filesLicense fd) (_filesLicenseText fd)
+      ] ++
       maybe [] (\ t -> [Field ("Comment", " " <> t)]) (_filesComment fd)
 toParagraph ld@LicenseDescription {} =
     Paragraph $
-      [ Field ("License", " " <> prettyText (_license ld)) ] ++
+      [ toLicenseField (_license ld) (_licenseText ld)
+      ] ++
       maybe [] (\ t -> [Field ("Comment", " " <> t)]) (_comment ld)
+
+toLicenseField :: License -> Maybe Text -> Field' Text
+toLicenseField l t =
+    Field ("License", " " <> prettyText l <> maybe mempty (Text.pack "\n" <>) t)
 
 
 sourceDefaultFilesDescription :: Maybe Text -> License -> FilesOrLicenseDescription
@@ -183,6 +208,7 @@ sourceDefaultFilesDescription copyrt license =
     _filesPattern = "*"
   , _filesCopyright = fromMaybe "(No copyright field in cabal file)" copyrt
   , _filesLicense = license
+  , _filesLicenseText = mempty
   , _filesComment = mempty
   }
 
@@ -194,19 +220,22 @@ debianDefaultFilesDescription license =
     _filesPattern = "debian/*"
   , _filesCopyright = "held by the contributors mentioned in debian/changelog"
   , _filesLicense = license
+  , _filesLicenseText = mempty
   , _filesComment = mempty
   }
 
-defaultLicenseDescriptions :: License -> [(FilePath, Maybe Text)]
-                              -> [FilesOrLicenseDescription]
+defaultLicenseDescriptions ::
+    License -> [(FilePath, Maybe Text)] -> [FilesOrLicenseDescription]
 defaultLicenseDescriptions license = \case
-  []             -> []
-  [(_, comment)] -> [LicenseDescription license comment]
-  pairs          -> map mkLicenseDescription pairs where
-    mkLicenseDescription (path, comment) =
+    []         -> []
+    [(_, txt)] -> [LicenseDescription license txt Nothing]
+    pairs      -> map mkLicenseDescription pairs
+  where
+    mkLicenseDescription (path, txt) =
       LicenseDescription {
           _license = fromCabalLicense (Cabal.UnknownLicense path)
-        , _comment = comment
+        , _licenseText = txt
+        , _comment = mempty
         }
 
 -- | Infer a 'CopyrightDescription' from a Cabal package description.

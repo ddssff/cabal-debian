@@ -175,7 +175,7 @@ debianBuildDepsIndep pkgDesc =
        bDeps <- use (A.debInfo . D.control . S.buildDependsIndep)
        libDeps <- allBuildDepends (maybe [] (return . libBuildInfo) (Cabal.library pkgDesc))
        cDeps <- mapM docDependencies libDeps
-       let xs = nub $ if doc
+       let xs = nub $ if doc && isJust (Cabal.library pkgDesc)
                       then (if member GHC hcs then [anyrel' (compilerPackageName GHC B.Documentation)] else []) ++
 #if MIN_VERSION_Cabal(1,22,0)
                            (if member GHCJS hcs then [anyrel "ghcjs"] else []) ++

@@ -33,8 +33,8 @@ import Debian.Version (DebianVersion, parseDebianVersion)
 import Distribution.Compiler (CompilerFlavor(..))
 import Distribution.Package (Dependency(..), PackageName(PackageName))
 import Distribution.PackageDescription (PackageDescription)
-import Distribution.PackageDescription as Cabal (allBuildInfo, BuildInfo(..), BuildInfo(buildTools, extraLibs, pkgconfigDepends), Executable(..), TestSuite(..))
-import qualified Distribution.PackageDescription as Cabal (PackageDescription(buildDepends, executables, testSuites))
+import Distribution.PackageDescription as Cabal (BuildInfo(..), BuildInfo(buildTools, extraLibs, pkgconfigDepends), Library(..), Executable(..), TestSuite(..))
+import qualified Distribution.PackageDescription as Cabal (PackageDescription(library, executables, testSuites))
 import Distribution.Version (anyVersion, asVersionIntervals, earlierVersion, foldVersionRange', fromVersionIntervals, intersectVersionRanges, isNoVersion, laterVersion, orEarlierVersion, orLaterVersion, toVersionIntervals, unionVersionRanges, VersionRange, withinVersion)
 import Distribution.Version.Invert (invertVersionRange)
 import Prelude hiding (init, log, map, unlines, unlines, writeFile)
@@ -72,17 +72,18 @@ unboxDependency (ExtraLibs _) = Nothing -- Dependency (PackageName d) anyVersion
 
 -- |Debian packages don't have per binary package build dependencies,
 -- so we just gather them all up here.
-allBuildDepends :: Monad m => PackageDescription -> CabalT m [Dependency_]
-allBuildDepends pkgDesc =
-    use (A.debInfo . D.testsStatus) >>= \ testsStatus ->
+allBuildDepends :: Monad m => [BuildInfo] -> CabalT m [Dependency_]
+allBuildDepends buildInfos =
     allBuildDepends'
-      (mergeCabalDependencies $
+      (mergeCabalDependencies $ concatMap Cabal.targetBuildDepends buildInfos)
+{-
        Cabal.buildDepends pkgDesc ++
             concatMap (Cabal.targetBuildDepends . Cabal.buildInfo) (Cabal.executables pkgDesc) ++
             (if testsStatus /= D.TestsDisable then concatMap (Cabal.targetBuildDepends . Cabal.testBuildInfo) $ {-filter Cabal.testEnabled-} (Cabal.testSuites pkgDesc) else []))
-      (mergeCabalDependencies $ concatMap buildTools $ allBuildInfo pkgDesc)
-      (mergeCabalDependencies $ concatMap pkgconfigDepends $ allBuildInfo pkgDesc)
-      (concatMap extraLibs . allBuildInfo $ pkgDesc) >>=
+        -}
+      (mergeCabalDependencies $ concatMap buildTools buildInfos)
+      (mergeCabalDependencies $ concatMap pkgconfigDepends buildInfos)
+      (concatMap extraLibs buildInfos) >>=
     return {- . List.filter (not . selfDependency (Cabal.package pkgDesc)) -}
     where
       allBuildDepends' :: Monad m => [Dependency] -> [Dependency] -> [Dependency] -> [String] -> CabalT m [Dependency_]
@@ -111,10 +112,28 @@ debianBuildDeps :: (Monad m, Functor m) => PackageDescription -> CabalT m D.Rela
 debianBuildDeps pkgDesc =
     do hc <- use (A.debInfo . D.flags . compilerFlavor)
        let hcs = singleton hc -- vestigial
-       let hcTypePairs =
+       let hcTypePairsLibs =
                fold union empty $
-                  Set.map (\ hc' -> Set.map (hc',) $ hcPackageTypes hc') hcs
-       cDeps <- allBuildDepends pkgDesc >>= mapM (buildDependencies hcTypePairs) >>= return . {-nub .-} concat
+                  Set.map (\ hc' -> Set.map (hc',) $ hcPackageTypesLibs hc') hcs
+       let hcTypePairsBins =
+               fold union empty $
+                  Set.map (\ hc' -> Set.map (hc',) $ hcPackageTypesBins hc') hcs
+       let hcTypePairsTests =
+               fold union empty $
+                  Set.map (\ hc' -> Set.map (hc',) $ hcPackageTypesTests hc') hcs
+
+       libDeps <- allBuildDepends (maybe [] (return . libBuildInfo) (Cabal.library pkgDesc))
+       binDeps <- allBuildDepends (List.map buildInfo (Cabal.executables pkgDesc))
+       testDeps <- allBuildDepends (List.map testBuildInfo (Cabal.testSuites pkgDesc))
+
+       testsStatus <- use (A.debInfo . D.testsStatus)
+
+       cDeps <- nub . concat . concat <$> sequence
+            [ mapM (buildDependencies hcTypePairsLibs) libDeps
+            , mapM (buildDependencies hcTypePairsBins) binDeps
+            , mapM (buildDependencies hcTypePairsTests) (if testsStatus /= D.TestsDisable then testDeps else [])
+            ]
+
        bDeps <- use (A.debInfo . D.control . S.buildDepends)
        prof <- not <$> use (A.debInfo . D.noProfilingLibrary)
        official <- use (A.debInfo . D.official)
@@ -132,12 +151,20 @@ debianBuildDeps pkgDesc =
                        cDeps
        filterMissing xs
     where
-      hcPackageTypes :: CompilerFlavor -> Set B.PackageType
-      hcPackageTypes GHC = fromList [B.Development, B.Profiling]
+      hcPackageTypesLibs :: CompilerFlavor -> Set B.PackageType
+      hcPackageTypesLibs GHC = fromList [B.Development, B.Profiling]
 #if MIN_VERSION_Cabal(1,22,0)
-      hcPackageTypes GHCJS = fromList [B.Development]
+      hcPackageTypesLibs GHCJS = fromList [B.Development]
 #endif
-      hcPackageTypes hc = error $ "Unsupported compiler flavor: " ++ show hc
+      hcPackageTypesLibs hc = error $ "Unsupported compiler flavor: " ++ show hc
+
+      -- No point in installing profiling packages for the dependencies
+      -- of binaries and test suites
+      hcPackageTypesBins :: CompilerFlavor -> Set B.PackageType
+      hcPackageTypesBins _ = singleton B.Development
+
+      hcPackageTypesTests :: CompilerFlavor -> Set B.PackageType
+      hcPackageTypesTests _ = singleton B.Development
 
 
 debianBuildDepsIndep :: (Monad m, Functor m) => PackageDescription -> CabalT m D.Relations
@@ -146,7 +173,8 @@ debianBuildDepsIndep pkgDesc =
        let hcs = singleton hc -- vestigial
        doc <- not <$> use (A.debInfo . D.noDocumentationLibrary)
        bDeps <- use (A.debInfo . D.control . S.buildDependsIndep)
-       cDeps <- allBuildDepends pkgDesc >>= mapM docDependencies
+       libDeps <- allBuildDepends (maybe [] (return . libBuildInfo) (Cabal.library pkgDesc))
+       cDeps <- mapM docDependencies libDeps
        let xs = nub $ if doc
                       then (if member GHC hcs then [anyrel' (compilerPackageName GHC B.Documentation)] else []) ++
 #if MIN_VERSION_Cabal(1,22,0)

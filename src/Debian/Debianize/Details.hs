@@ -29,13 +29,13 @@ debianDefaults =
        (A.debInfo . D.execMap) %= Map.insert "hsx2hs" [[Rel (BinPkgName "hsx2hs") Nothing Nothing]]
        -- The parsec debs are suffixed with either "2" or "3"
        mapCabal (PackageName "parsec") (DebBase "parsec3")
-       splitCabal (PackageName "parsec") (DebBase "parsec2") (Version [3] [])
        -- Similar split for quickcheck
        mapCabal (PackageName "QuickCheck") (DebBase "quickcheck2")
-       splitCabal (PackageName "QuickCheck") (DebBase "quickcheck1") (Version [2] [])
        -- Something was required for this package at one time - it
        -- looks like a no-op now
        mapCabal (PackageName "gtk2hs-buildtools") (DebBase "gtk2hs-buildtools")
        -- Upgrade transformers to 0.4 - no don't!
        -- remapCabal (PackageName "transformers") (DebBase "transformers4")
        -- remapCabal (PackageName "haskeline") (DebBase "haskeline0713")
+       mapCabal (PackageName "haskell-src-exts") (DebBase "src-exts")
+       mapCabal (PackageName "haskell-src-meta") (DebBase "src-meta")

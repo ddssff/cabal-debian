@@ -76,11 +76,6 @@ allBuildDepends :: Monad m => [BuildInfo] -> CabalT m [Dependency_]
 allBuildDepends buildInfos =
     allBuildDepends'
       (mergeCabalDependencies $ concatMap Cabal.targetBuildDepends buildInfos)
-{-
-       Cabal.buildDepends pkgDesc ++
-            concatMap (Cabal.targetBuildDepends . Cabal.buildInfo) (Cabal.executables pkgDesc) ++
-            (if testsStatus /= D.TestsDisable then concatMap (Cabal.targetBuildDepends . Cabal.testBuildInfo) $ {-filter Cabal.testEnabled-} (Cabal.testSuites pkgDesc) else []))
-        -}
       (mergeCabalDependencies $ concatMap buildTools buildInfos)
       (mergeCabalDependencies $ concatMap pkgconfigDepends buildInfos)
       (concatMap extraLibs buildInfos) >>=

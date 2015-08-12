@@ -513,6 +513,7 @@ buildOnlyTestsP = O.flag TestsRun TestsBuild m where
 flagsP :: O.Parser Flags
 flagsP = Flags <$> verbosityP
                <*> dryRunP
+               <*> upgradeP
                <*> pure False     -- validate
                <*> ghcjsP         -- CompilerFlavor
                <*> (flagSet <$> cabalFlagsP)    -- cabalFlagAssignments
@@ -538,6 +539,15 @@ dryRunP = O.switch m where
   helpMsg = unlines [
     "Just compare the existing debianization",
     "to the one we would generate."
+    ]
+
+upgradeP :: O.Parser Bool
+upgradeP = O.switch m where
+  m = O.help helpMsg
+      <> O.long "upgrade"
+  helpMsg = unlines [
+    "Upgrade an existing debianization carefully",
+    "preserving fields that are commonly hand-edited."
     ]
 
 ghcjsP :: O.Parser CompilerFlavor

@@ -8,6 +8,7 @@ module Debian.Debianize.BasicInfo
       -- * Lenses
     , verbosity
     , dryRun
+    , upgrade
     , validate
     , compilerFlavor
     , cabalFlagAssignments
@@ -40,6 +41,8 @@ data Flags = Flags
     , _dryRun :: Bool
     -- ^ Don't write any files or create any directories, just explain
     -- what would have been done.
+    , _upgrade :: Bool
+    -- ^ Carefully upgrade the packaging
     , _validate :: Bool
     -- ^ Fail if the debianization already present doesn't match the
     -- one we are going to generate closely enough that it is safe to
@@ -86,6 +89,8 @@ flagOptions =
              "Change the amount of progress messages generated",
       Option "n" ["dry-run", "compare"] (NoArg (dryRun .= True))
              "Just compare the existing debianization to the one we would generate.",
+      Option "" ["upgrade"] (NoArg (upgrade .= True))
+             "Carefully upgrade an existing debianization",
       Option "" ["ghc"] (NoArg (compilerFlavor .= GHC)) "Generate packages for GHC - same as --with-compiler GHC",
 #if MIN_VERSION_Cabal(1,22,0)
       Option "" ["ghcjs"] (NoArg (compilerFlavor .= GHCJS)) "Generate packages for GHCJS - same as --with-compiler GHCJS",

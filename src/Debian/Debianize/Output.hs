@@ -2,7 +2,7 @@
 -- tasks - output, describe, validate a debianization, run an external
 -- script to produce a debianization.
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE FlexibleInstances, OverloadedStrings, ScopedTypeVariables, StandaloneDeriving, TupleSections, TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances, OverloadedStrings, ScopedTypeVariables, StandaloneDeriving, TupleSections, TypeSynonymInstances, RankNTypes #-}
 {-# OPTIONS -Wall -fno-warn-name-shadowing -fno-warn-orphans #-}
 
 module Debian.Debianize.Output
@@ -17,7 +17,7 @@ module Debian.Debianize.Output
 
 import Control.Exception as E (throw)
 import Control.Lens
-import Control.Monad.State (get, StateT)
+import Control.Monad.State (get, put, StateT)
 import Control.Monad.Trans (liftIO, MonadIO)
 import Data.Algorithm.DiffContext (getContextDiff, prettyContextDiff)
 import Data.Map as Map (elems, toList)
@@ -25,7 +25,7 @@ import Data.Maybe (fromMaybe)
 import Data.Text as Text (split, Text, unpack)
 import Debian.Debianize.CabalInfo (newCabalInfo)
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(..))
-import Debian.Debianize.BasicInfo (dryRun, validate)
+import Debian.Debianize.BasicInfo (dryRun, validate, upgrade)
 import Debian.Debianize.CabalInfo (CabalInfo, debInfo)
 import qualified Debian.Debianize.DebInfo as D
 import Debian.Debianize.Files (debianizationFileMap)
@@ -96,6 +96,12 @@ finishDebianization = zoom debInfo $
                   old <- get
                   let diff = compareDebianization old new
                   liftIO $ putStrLn ("Debianization (dry run):\n" ++ if null diff then "  No changes\n" else show diff)
+         _ | view (D.flags . upgrade) new ->
+               do inputDebianization
+                  old <- get
+                  let merged = mergeDebianization old new
+                  put merged
+                  writeDebianization
          _ -> writeDebianization
 
 
@@ -115,6 +121,20 @@ writeDebianization =
 describeDebianization :: (MonadIO m, Functor m) => DebianT m String
 describeDebianization =
     debianizationFileMap >>= return . concatMap (\ (path, text) -> path ++ ": " ++ indent " > " (unpack text)) . Map.toList
+
+-- | Do only the usual maintenance changes when upgrading to a new version
+-- and avoid changing anything that is usually manually maintained.
+mergeDebianization :: D.DebInfo -> D.DebInfo -> D.DebInfo
+mergeDebianization old new =
+    override (D.control . S.buildDepends) .
+    override (D.control . S.buildDependsIndep) .
+    override (D.control . S.homepage) .
+    override (D.control . S.vcsFields) $
+    old
+  where
+    override :: forall b. Lens' D.DebInfo b -> (D.DebInfo -> D.DebInfo)
+    override lens = set lens (new ^. lens)
+
 
 -- | Compare the old and new debianizations, returning a string
 -- describing the differences.

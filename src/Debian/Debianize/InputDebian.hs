@@ -31,7 +31,7 @@ import Debian.Debianize.BinaryDebDescription (BinaryDebDescription, newBinaryDeb
 import qualified Debian.Debianize.BinaryDebDescription as B (architecture, binaryPriority, binarySection, breaks, builtUsing, conflicts, depends, description, essential, package, preDepends, provides, recommends, relations, replaces, suggests)
 import Debian.Debianize.CopyrightDescription (readCopyrightDescription)
 import Debian.Debianize.Prelude (getDirectoryContents', read', readFileMaybe, (.?=))
-import qualified Debian.Debianize.SourceDebDescription as S (binaryPackages, buildConflicts, buildConflictsIndep, buildDepends, buildDependsIndep, dmUploadAllowed, homepage, newSourceDebDescription', priority, section, SourceDebDescription, standardsVersion, uploaders, vcsFields, VersionControlSpec(VCSArch, VCSBrowser, VCSBzr, VCSCvs, VCSDarcs, VCSGit, VCSHg, VCSMtn, VCSSvn), XField(XField), xFields)
+import qualified Debian.Debianize.SourceDebDescription as S (binaryPackages, buildConflicts, buildConflictsIndep, buildDepends, buildDependsIndep, dmUploadAllowed, homepage, newSourceDebDescription', priority, section, SourceDebDescription, standardsVersion, uploaders, xDescription, vcsFields, VersionControlSpec(VCSArch, VCSBrowser, VCSBzr, VCSCvs, VCSDarcs, VCSGit, VCSHg, VCSMtn, VCSSvn), XField(XField), xFields)
 import Debian.Orphans ()
 import Debian.Policy (parseMaintainer, parsePackageArchitectures, parseStandardsVersion, parseUploaders, readPriority, readSection, readSourceFormat, Section(..))
 import Debian.Relation (BinPkgName(..), parseRelations, Relations, SrcPkgName(..))
@@ -108,6 +108,7 @@ parseSourceDebDescription (Paragraph fields) binaryParagraphs =
       readField (Field ("Vcs-Hg", s)) (desc, unrecognized) = (over S.vcsFields (\ vcsFields -> Set.insert (S.VCSHg (pack s)) vcsFields) desc, unrecognized)
       readField (Field ("Vcs-Mtn", s)) (desc, unrecognized) = (over S.vcsFields (\ vcsFields -> Set.insert (S.VCSMtn (pack s)) vcsFields) desc, unrecognized)
       readField (Field ("Vcs-Svn", s)) (desc, unrecognized) = (over S.vcsFields (\ vcsFields -> Set.insert (S.VCSSvn (pack s)) vcsFields) desc, unrecognized)
+      readField (Field ("X-Description", value)) (desc, unrecognized) = (set S.xDescription (Just (pack value)) desc, unrecognized)
       readField field@(Field ('X' : fld, value)) (desc, unrecognized) =
           case span (`elem` "BCS") fld of
             (xs, '-' : more) -> (over S.xFields (\ xFields -> Set.insert (S.XField (fromList (map (read' (\ s -> error $ "parseSourceDebDescription: " ++ show s) . (: [])) xs)) (pack more) (pack value)) xFields) desc, unrecognized)

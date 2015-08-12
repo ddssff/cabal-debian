@@ -293,7 +293,9 @@ finalizeChangelog date currentUser =
        -- pkgDesc <- use T.packageDescription >>= return . maybe Nothing (either Nothing Just . parseMaintainer . Cabal.maintainer)
        cmts <- use (A.debInfo . D.comments)
        (A.debInfo . D.changelog) %= fmap (dropFutureEntries ver)
-       let msg = "Initial release (Closes: #nnnn)"
+       official <- use (A.debInfo . D.official)
+       let msg | official  = "Initial release (Closes: #nnnn)"
+               | otherwise = "Initial release"
        (A.debInfo . D.changelog) %= fixLog src ver cmts debianMaintainer msg
     where
       fixLog :: Maybe SrcPkgName -> V.DebianVersion -> Maybe [[Text]] -> Either String NameAddr -> Text -> Maybe ChangeLog -> Maybe ChangeLog

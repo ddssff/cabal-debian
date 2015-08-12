@@ -25,7 +25,7 @@ import Data.Maybe (fromMaybe)
 import Data.Text as Text (split, Text, unpack)
 import Debian.Debianize.CabalInfo (newCabalInfo)
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(..))
-import Debian.Debianize.BasicInfo (dryRun, validate, upgrade)
+import Debian.Debianize.BasicInfo (dryRun, validate, upgrade, roundtrip)
 import Debian.Debianize.CabalInfo (CabalInfo, debInfo)
 import qualified Debian.Debianize.DebInfo as D
 import Debian.Debianize.Files (debianizationFileMap)
@@ -101,6 +101,9 @@ finishDebianization = zoom debInfo $
                   old <- get
                   let merged = mergeDebianization old new
                   put merged
+                  writeDebianization
+         _ | view (D.flags . roundtrip) new ->
+               do inputDebianization
                   writeDebianization
          _ -> writeDebianization
 

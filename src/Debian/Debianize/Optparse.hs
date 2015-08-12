@@ -514,6 +514,7 @@ flagsP :: O.Parser Flags
 flagsP = Flags <$> verbosityP
                <*> dryRunP
                <*> upgradeP
+               <*> roundtripP
                <*> pure False     -- validate
                <*> ghcjsP         -- CompilerFlavor
                <*> (flagSet <$> cabalFlagsP)    -- cabalFlagAssignments
@@ -548,6 +549,14 @@ upgradeP = O.switch m where
   helpMsg = unlines [
     "Upgrade an existing debianization carefully",
     "preserving fields that are commonly hand-edited."
+    ]
+
+roundtripP :: O.Parser Bool
+roundtripP = O.switch m where
+  m = O.help helpMsg
+      <> O.long "roundtrip"
+  helpMsg = unlines [
+    "Roundtrip a debianization to normalize it."
     ]
 
 ghcjsP :: O.Parser CompilerFlavor

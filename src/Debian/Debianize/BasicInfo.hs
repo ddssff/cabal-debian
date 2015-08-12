@@ -9,6 +9,7 @@ module Debian.Debianize.BasicInfo
     , verbosity
     , dryRun
     , upgrade
+    , roundtrip
     , validate
     , compilerFlavor
     , cabalFlagAssignments
@@ -43,6 +44,8 @@ data Flags = Flags
     -- what would have been done.
     , _upgrade :: Bool
     -- ^ Carefully upgrade the packaging
+    , _roundtrip :: Bool
+    -- ^ Normalize a debianization (field order, whitespace) by round-tripping it.
     , _validate :: Bool
     -- ^ Fail if the debianization already present doesn't match the
     -- one we are going to generate closely enough that it is safe to
@@ -91,6 +94,8 @@ flagOptions =
              "Just compare the existing debianization to the one we would generate.",
       Option "" ["upgrade"] (NoArg (upgrade .= True))
              "Carefully upgrade an existing debianization",
+      Option "" ["roundtrip"] (NoArg (roundtrip .= True))
+             "Rountrip a debianization to normalize it",
       Option "" ["ghc"] (NoArg (compilerFlavor .= GHC)) "Generate packages for GHC - same as --with-compiler GHC",
 #if MIN_VERSION_Cabal(1,22,0)
       Option "" ["ghcjs"] (NoArg (compilerFlavor .= GHCJS)) "Generate packages for GHCJS - same as --with-compiler GHCJS",

@@ -5,6 +5,7 @@ module Debian.Debianize.BinaryDebDescription
     , BinaryDebDescription
     , newBinaryDebDescription
     , package
+    , multiArch
     , description
     , packageType
     , architecture
@@ -34,7 +35,7 @@ import Control.Lens.TH (makeLenses)
 import Data.List (sort, sortBy)
 import Data.Monoid (Monoid(..))
 import Data.Text (Text)
-import Debian.Policy (PackageArchitectures, PackagePriority, Section)
+import Debian.Policy (PackageArchitectures, PackagePriority, Section, MultiArch)
 import Debian.Relation (BinPkgName, Relations)
 import Prelude hiding ((.))
 
@@ -53,6 +54,7 @@ data BinaryDebDescription
       -- ^ <http://www.debian.org/doc/debian-policy/ch-controlfields.html#s-f-Architecture>
       , _binarySection :: Maybe Section
       , _binaryPriority :: Maybe PackagePriority
+      , _multiArch :: Maybe MultiArch
       , _essential :: Maybe Bool
       -- ^ <http://www.debian.org/doc/debian-policy/ch-controlfields.html#s-f-Essential>
       , _description :: Maybe Text
@@ -118,6 +120,7 @@ newBinaryDebDescription name =
       { _package = name
       , _packageType = Nothing
       , _architecture = Nothing
+      , _multiArch = Nothing
       , _binarySection = Nothing
       , _binaryPriority = Nothing
       , _essential = Nothing

@@ -29,6 +29,8 @@ module Debian.Policy
     , parsePackageArchitectures
     , Section(..)
     , readSection
+    , MultiArch(..)
+    , readMultiArch
     , Area(..)
     , parseUploaders
     , parseMaintainer
@@ -215,6 +217,24 @@ readSection s =
 instance Pretty (PP Section) where
     pPrint (PP (MainSection sec)) = text sec
     pPrint (PP (AreaSection area sec)) = pPrint (PP area) <> text "/" <> text sec
+
+data MultiArch = MANo | MASame | MAForeign | MAAllowed
+    deriving (Read, Eq, Ord, Show, Data, Typeable)
+
+readMultiArch :: String -> MultiArch
+readMultiArch s =
+    case unpack (strip (pack s)) of
+      "no" -> MANo
+      "same" -> MASame
+      "foreign" -> MAForeign
+      "allowed" -> MAAllowed
+      x -> error $ "Invalid Multi-Arch string: " ++ show x
+
+instance Pretty (PP MultiArch) where
+    pPrint (PP MANo) = text "no"
+    pPrint (PP MASame) = text "same"
+    pPrint (PP MAForeign) = text "foreign"
+    pPrint (PP MAAllowed) = text "allowed"
 
 -- Is this really all that is allowed here?  Doesn't Ubuntu have different areas?
 data Area

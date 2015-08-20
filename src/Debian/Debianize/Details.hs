@@ -41,3 +41,4 @@ debianDefaults =
        -- remapCabal (PackageName "haskeline") (DebBase "haskeline0713")
        mapCabal (PackageName "haskell-src-exts") (DebBase "src-exts")
        mapCabal (PackageName "haskell-src-meta") (DebBase "src-meta")
+       mapCabal (PackageName "Cabal") (DebBase "cabal")

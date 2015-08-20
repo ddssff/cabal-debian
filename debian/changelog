@@ -1,3 +1,24 @@
+haskell-cabal-debian (4.31.1) unstable; urgency=low
+
+  * Map the cabal library Cabal library to the debian library packages
+    libghc-cabal-dev et. al.
+
+ -- David Fox <dsf@seereason.com>  Thu, 20 Aug 2015 15:48:59 -0700
+
+haskell-cabal-debian (4.31) unstable; urgency=low
+
+  * Add some mappings from cabal build tools to debian package names:
+    ghc -> ghc, alex -> alex, happy -> happy
+  * Support Multi-Arch field in binaries (Joachim Breitner)
+  * Implement --roundtrip option (Joachim Breitner)
+  * Fixes for changelog entry formatting (Joachim Breitner)
+  * Fixes for License field of debian/copyright (Joachim Breitner)
+  * Only depend on ghc-doc if the package builds a library
+  * New mode of operation --upgrade
+  * No -prof and -doc package dependencies for binary and test suite packages
+
+ -- David Fox <dsf@seereason.com>  Thu, 20 Aug 2015 14:31:28 -0700
+
 haskell-cabal-debian (4.30.2) unstable; urgency=low
 
   * have runDebianizeScript look for source in src/ as well as ./

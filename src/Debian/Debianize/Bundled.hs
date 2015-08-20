@@ -1,5 +1,10 @@
 -- | Determine whether a specific version of a Haskell package is
 -- bundled with into this particular version of the given compiler.
+-- This is done by getting the "Provides" field from the output of
+-- "apt-cache showpkg ghc" (run in the appropriate changeroot) and
+-- converting the debian package names back to Cabal package names.
+-- *That* is done using the debianNameMap of CabalInfo, which is
+-- built using the mapCabal, splitCabal, and remapCabal functions.
 
 {-# LANGUAGE FlexibleContexts, ScopedTypeVariables, StandaloneDeriving, TemplateHaskell #-}
 module Debian.Debianize.Bundled

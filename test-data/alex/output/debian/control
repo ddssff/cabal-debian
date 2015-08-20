@@ -9,9 +9,6 @@ Build-Depends: debhelper (>= 9),
                ghc-prof,
                alex,
                libghc-quickcheck2-dev (>= 2),
-               libghc-quickcheck2-prof (>= 2),
-Build-Depends-Indep: ghc-doc
-                     , libghc-quickcheck2-doc (>= 2) | libghc-quickcheck1-doc (<< 2)
 Standards-Version: 3.9.6
 Homepage: http://www.haskell.org/alex/
 X-Description: Alex is a tool for generating lexical analysers in Haskell

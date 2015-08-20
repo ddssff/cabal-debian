@@ -1,5 +1,5 @@
 haskell-alex (3.0.2-1~hackage1) UNRELEASED; urgency=low
 
-  * Initial release (Closes: #nnnn)
+  * Initial release
 
  -- Simon Marlow <marlowsd@gmail.com>  Thu, 31 Jan 2013 10:51:47 -0800

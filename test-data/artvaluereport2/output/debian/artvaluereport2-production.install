@@ -2,7 +2,7 @@ Clouds.jpg usr/share/ArtValueReport/.
 DataTables-1.8.2 usr/share/ArtValueReport/.
 Udon.js usr/share/ArtValueReport/.
 blueprint usr/share/ArtValueReport/.
-debian/cabalInstall/7e4b5d8641f6fae99e9ae9b2d8893bc7/my.appraisalreportonline.com /etc/apache2/sites-available/
+debian/cabalInstall/7e4b5d8641f6fae99e9ae9b2d8893bc7/my.appraisalreportonline.com.conf /etc/apache2/sites-available/
 flexbox.css usr/share/ArtValueReport/.
 html5sortable usr/share/ArtValueReport/.
 jGFeed usr/share/ArtValueReport/.

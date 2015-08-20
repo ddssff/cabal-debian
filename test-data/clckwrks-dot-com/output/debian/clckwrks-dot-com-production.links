@@ -1,1 +1,1 @@
-/etc/apache2/sites-available/clckwrks.com /etc/apache2/sites-enabled/clckwrks.com
+/etc/apache2/sites-available/clckwrks.com.conf /etc/apache2/sites-enabled/clckwrks.com.conf

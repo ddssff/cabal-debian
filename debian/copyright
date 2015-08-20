@@ -12,7 +12,7 @@ Copyright: held by the contributors mentioned in debian/changelog
 License: BSD3
 
 License: BSD3
-Comment: The packageing was adjusted to Debian conventions by Joachim Breitner
+ The packageing was adjusted to Debian conventions by Joachim Breitner
  <nomeata@debian.org> on Sat, 01 May 2010 21:16:18 +0200, and is licenced under
  the same terms as the package itself.
  .

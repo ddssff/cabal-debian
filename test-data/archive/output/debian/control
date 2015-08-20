@@ -8,15 +8,8 @@ Build-Depends: debhelper (>= 9)
                , ghc
 	       , ghc-prof
                , libghc-extra-dev
-               , libghc-extra-prof
                , libghc-archive-dev (>= 1.7)
-               , libghc-archive-prof (>= 1.7)
                , libghc-network-dev
-               , libghc-network-prof
-Build-Depends-Indep: ghc-doc
-                     , libghc-extra-doc
-                     , libghc-archive-doc
-                     , libghc-network-doc
 Standards-Version: 3.8.1
 X-Description: Backups of the seereason darcs repositories
  Install this somewhere other than where the server is running get

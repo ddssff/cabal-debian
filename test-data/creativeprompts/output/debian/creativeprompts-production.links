@@ -1,1 +1,1 @@
-/etc/apache2/sites-available/creativeprompts.com /etc/apache2/sites-enabled/creativeprompts.com
+/etc/apache2/sites-available/creativeprompts.com.conf /etc/apache2/sites-enabled/creativeprompts.com.conf

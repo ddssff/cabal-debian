@@ -62,6 +62,8 @@ Build-Depends: debhelper (>= 9)
                , libghc-mtl-prof
                , libghc-network-dev (>= 2.4)
                , libghc-network-prof (>= 2.4)
+	       , libghc-old-time-dev
+	       , libghc-old-time-prof
                , libghc-pandoc-dev
                , libghc-pandoc-prof
                , libghc-pandoc-types-dev
@@ -118,6 +120,7 @@ Build-Depends-Indep: ghc-doc
                      , libghc-maccatcher-doc
                      , libghc-mtl-doc
                      , libghc-network-doc
+		     , libghc-old-time-doc
                      , libghc-pandoc-doc
                      , libghc-pandoc-types-doc
                      , libghc-parsec3-doc (>= 3) | libghc-parsec2-doc (<< 3)

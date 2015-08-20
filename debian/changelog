@@ -1,3 +1,9 @@
+haskell-cabal-debian (4.31.2) unstable; urgency=low
+
+  * Fix some names in Extra-Source-Files and add some missing ones.
+
+ -- David Fox <dsf@seereason.com>  Thu, 20 Aug 2015 16:01:40 -0700
+
 haskell-cabal-debian (4.31.1) unstable; urgency=low
 
   * Map the cabal library Cabal library to the debian library packages

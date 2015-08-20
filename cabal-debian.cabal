@@ -19,8 +19,17 @@ Description:
 Cabal-Version: >= 1.8
 Extra-Source-Files:
   changelog
+  debian/cabal-debian.1
+  debian/cabal-debian.install
+  debian/cabal-debian.manpages
   debian/changelog
+  debian/compat
+  debian/control
+  debian/copyright
   debian/Debianize.hs
+  debian/rules
+  debian/source/format
+  debian/watch
   test-data/creativeprompts/input/debian/changelog
   test-data/creativeprompts/input/debian/copyright
   test-data/creativeprompts/input/creativeprompts.cabal
@@ -29,7 +38,7 @@ Extra-Source-Files:
   test-data/creativeprompts/output/debian/watch
   test-data/creativeprompts/output/debian/creativeprompts-production.logrotate
   test-data/creativeprompts/output/debian/creativeprompts-production.install
-  test-data/creativeprompts/output/debian/cabalInstall/a1cb9e4b5241944a3da44e00220b5c31/creativeprompts.com
+  test-data/creativeprompts/output/debian/cabalInstall/a1cb9e4b5241944a3da44e00220b5c31/creativeprompts.com.conf
   test-data/creativeprompts/output/debian/creativeprompts-production.links
   test-data/creativeprompts/output/debian/changelog
   test-data/creativeprompts/output/debian/creativeprompts-production.postinst
@@ -50,7 +59,7 @@ Extra-Source-Files:
   test-data/clckwrks-dot-com/input/clckwrks-dot-com.cabal
   test-data/clckwrks-dot-com/output/debian/clckwrks-dot-com-production.postinst
   test-data/clckwrks-dot-com/output/debian/watch
-  test-data/clckwrks-dot-com/output/debian/cabalInstall/6cb4323c6b76525f567919adaf912663/clckwrks.com
+  test-data/clckwrks-dot-com/output/debian/cabalInstall/6cb4323c6b76525f567919adaf912663/clckwrks.com.conf
   test-data/clckwrks-dot-com/output/debian/changelog
   test-data/clckwrks-dot-com/output/debian/clckwrks-dot-com-production.links
   test-data/clckwrks-dot-com/output/debian/clckwrks-dot-com-backups.postinst
@@ -107,6 +116,7 @@ Extra-Source-Files:
   test-data/archive/output/debian/control
   test-data/archive/output/debian/seereason-darcs-backups.install
   test-data/archive/output/debian/copyright
+  test-data/archive/output/debian/source/format
   test-data/artvaluereport2/input/artvaluereport2.cabal
   test-data/artvaluereport2/input/debian/changelog
   test-data/artvaluereport2/input/debian/Debianize.hs
@@ -114,7 +124,7 @@ Extra-Source-Files:
   test-data/artvaluereport2/output/debian/artvaluereport2-staging.postinst
   test-data/artvaluereport2/output/debian/artvaluereport2-production.postinst
   test-data/artvaluereport2/output/debian/watch
-  test-data/artvaluereport2/output/debian/cabalInstall/7e4b5d8641f6fae99e9ae9b2d8893bc7/my.appraisalreportonline.com
+  test-data/artvaluereport2/output/debian/cabalInstall/7e4b5d8641f6fae99e9ae9b2d8893bc7/my.appraisalreportonline.com.conf
   test-data/artvaluereport2/output/debian/artvaluereport2-staging.install
   test-data/artvaluereport2/output/debian/artvaluereport2-staging.init
   test-data/artvaluereport2/output/debian/artvaluereport2-production.install
@@ -134,6 +144,7 @@ Extra-Source-Files:
   test-data/artvaluereport2/output/debian/control
   test-data/artvaluereport2/output/debian/artvaluereport2-backups.install
   test-data/artvaluereport2/output/debian/copyright
+  test-data/artvaluereport2/output/debian/source/format
 
 Flag tests
   Description: enable the unit test executable (disabled by default because it has a lot of wacky dependencies.)

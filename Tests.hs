@@ -41,7 +41,7 @@ import Debian.Version (parseDebianVersion, buildDebianVersion)
 import Distribution.Compiler (CompilerFlavor(GHC))
 import Distribution.Package (PackageName(PackageName))
 import Prelude hiding (log)
-import System.Exit (ExitCode(ExitSuccess))
+import System.Exit (exitWith, ExitCode(..))
 import System.FilePath ((</>))
 import System.Process (readProcessWithExitCode)
 import Test.HUnit
@@ -722,7 +722,11 @@ sortBinaryDebs :: DebianT IO ()
 sortBinaryDebs = (D.control . S.binaryPackages) %= sortBy (compare `on` view B.package)
 
 main :: IO ()
-main = runTestTT tests >>= putStrLn . show
+main = do
+ counts <- runTestTT tests
+ exitWith $ if errors counts + failures counts > 0
+            then ExitFailure 1
+            else ExitSuccess
 
 
 -- Cusstom HUnit assertion, which prints the diffs without using 'show'

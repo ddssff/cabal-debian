@@ -181,7 +181,7 @@ test2 label =
                               finalizeDebianization)
                           atoms
                  diff <- diffDebianizations (view debInfo (expect atoms)) (view debInfo deb)
-                 assertEqual label [] diff)
+                 assertEmptyDiff label diff)
     where
       expect atoms =
           execCabalM
@@ -234,7 +234,7 @@ test3 label =
               do atoms <- testAtoms
                  deb <- (execCabalT (liftCabal inputDebianization) atoms)
                  diff <- diffDebianizations (view debInfo (testDeb2 atoms)) (view debInfo deb)
-                 assertEqual label [] diff)
+                 assertEmptyDiff label diff)
     where
       testDeb2 :: CabalInfo -> CabalInfo
       testDeb2 atoms =
@@ -400,7 +400,7 @@ test4 label =
                  new <- withCurrentDirectory inTop $ do
                           execCabalT (debianize (defaultAtoms >> customize log)) atoms
                  diff <- diffDebianizations (view debInfo old) (view debInfo ({-copyFirstLogEntry old-} new))
-                 assertEqual label [] diff)
+                 assertEmptyDiff label diff)
     where
       customize :: Maybe ChangeLog -> CabalT IO ()
       customize log =
@@ -507,7 +507,7 @@ test5 label =
                      level = view D.compat old
                  new <- withCurrentDirectory inTop (execCabalT (debianize (defaultAtoms >> customize old level standards)) atoms)
                  diff <- diffDebianizations old (view debInfo new)
-                 assertEqual label [] diff)
+                 assertEmptyDiff label diff)
     where
       customize old level standards =
           do (A.debInfo . D.utilsPackageNameBase) .= Just "creativeprompts-data"
@@ -604,7 +604,7 @@ test8 label =
                   let log = view D.changelog old
                   new <- withCurrentDirectory inTop $ newFlags >>= newCabalInfo >>= execCabalT (debianize (defaultAtoms >> customize log))
                   diff <- diffDebianizations old (view debInfo new)
-                  assertEqual label [] diff
+                  assertEmptyDiff label diff
              )
     where
       customize Nothing = error "Missing changelog"
@@ -624,7 +624,7 @@ test9 label =
                  let Just (ChangeLog (entry : _)) = view (debInfo . D.changelog) new
                  old <- withCurrentDirectory outTop $ newFlags >>= execDebianT (inputDebianization >> copyChangelogDate (logDate entry)) . D.makeDebInfo
                  diff <- diffDebianizations old (view debInfo new)
-                 assertEqual label [] diff)
+                 assertEmptyDiff label diff)
     where
       customize =
           do newDebianization' (Just 9) (Just (StandardsVersion 3 9 6 Nothing))
@@ -661,7 +661,7 @@ test10 label =
                  let Just (ChangeLog (entry : _)) = view D.changelog old
                  new <- withCurrentDirectory inTop $ newFlags >>= newCabalInfo >>= execCabalT (debianize (defaultAtoms >> customize >> (liftCabal $ copyChangelogDate $ logDate entry)))
                  diff <- diffDebianizations old (view debInfo new)
-                 assertEqual label [] diff)
+                 assertEmptyDiff label diff)
     where
       customize :: CabalT IO ()
       customize =
@@ -724,3 +724,13 @@ sortBinaryDebs = (D.control . S.binaryPackages) %= sortBy (compare `on` view B.p
 main :: IO ()
 main = runTestTT tests >>= putStrLn . show
 
+
+-- Cusstom HUnit assertion, which prints the diffs without using 'show'
+assertEmptyDiff :: String -- ^ The message prefix
+                -> String -- ^ The actual diff
+                -> Assertion
+assertEmptyDiff preface "" = return ()
+assertEmptyDiff preface diff = assertFailure $
+ (if null preface then "" else preface ++ "\n") ++
+ "diff not empty:\n" ++
+ diff

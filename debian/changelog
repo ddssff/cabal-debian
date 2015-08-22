@@ -1,3 +1,10 @@
+haskell-cabal-debian (4.31.3) unstable; urgency=low
+
+  * Fix error message formatting (Joachim Breitner)
+  * Fix test suite result code (Joachim Breitner)
+
+ -- David Fox <dsf@seereason.com>  Fri, 21 Aug 2015 17:29:57 -0700
+
 haskell-cabal-debian (4.31.2) unstable; urgency=low
 
   * Fix some names in Extra-Source-Files and add some missing ones.

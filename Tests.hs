@@ -9,6 +9,7 @@ import Control.Applicative ((<$>))
 import Debian.Debianize.Optparse(_flags, parseProgramArguments)
 import Control.Lens
 import Data.Algorithm.DiffContext (getContextDiff, prettyContextDiff)
+import Data.Bool (bool)
 import Data.Function (on)
 import Data.List (sortBy)
 import Data.Map as Map (differenceWithKey, insert, intersectionWithKey)
@@ -41,6 +42,7 @@ import Debian.Version (parseDebianVersion, buildDebianVersion)
 import Distribution.Compiler (CompilerFlavor(GHC))
 import Distribution.Package (PackageName(PackageName))
 import Prelude hiding (log)
+import System.Directory (doesDirectoryExist)
 import System.Exit (exitWith, ExitCode(..))
 import System.FilePath ((</>))
 import System.Process (readProcessWithExitCode)
@@ -582,16 +584,23 @@ test5 label =
       jstreePath = "/usr/share/clckwrks-0.13.2/jstree"
       json2Path = "/usr/share/clckwrks-0.13.2/json2"
 
+-- | Obviously this is a hack, but the builddir is set to "dist-ghc"
+-- by haskell-devscripts, while by default cabal sets it to "dist".
+findBuildDir :: IO FilePath
+findBuildDir = doesDirectoryExist "dist-ghc" >>= return . bool "dist" "dist-ghc"
+
 test6 :: String -> Test
 test6 label =
     TestLabel label $
-    TestCase (do result <- readProcessWithExitCode "runhaskell" ["--ghc-arg=-package-db=dist/package.conf.inplace", "test-data/artvaluereport2/input/debian/Debianize.hs", "--dry-run"] ""
+    TestCase (do dist <- findBuildDir
+                 result <- readProcessWithExitCode "runhaskell" ["--ghc-arg=-package-db=" ++ dist ++ "/package.conf.inplace", "test-data/artvaluereport2/input/debian/Debianize.hs", "--dry-run"] ""
                  assertEqual label (ExitSuccess, "", "") result)
 
 test7 :: String -> Test
 test7 label =
     TestLabel label $
-    TestCase (do new <- readProcessWithExitCode "runhaskell" ["--ghc-arg=-package-db=dist/package.conf.inplace", "debian/Debianize.hs", "--dry-run", "--native"] ""
+    TestCase (do dist <- findBuildDir
+                 new <- readProcessWithExitCode "runhaskell" ["--ghc-arg=-package-db=" ++ dist ++ "/package.conf.inplace", "debian/Debianize.hs", "--dry-run", "--native"] ""
                  assertBool label (elem new [(ExitSuccess, "Ignored debianization file: debian/cabal-debian.1\nIgnored debianization file: debian/cabal-debian.manpages\nDebianization (dry run):\n  No changes\n\n", ""),
                                              (ExitSuccess, "Ignored debianization file: debian/cabal-debian.manpages\nIgnored debianization file: debian/cabal-debian.1\nDebianization (dry run):\n  No changes\n\n", "")]))
 

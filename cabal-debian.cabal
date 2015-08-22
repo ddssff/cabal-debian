@@ -1,5 +1,5 @@
 Name:           cabal-debian
-Version:        4.31.3
+Version:        4.31.4
 Copyright:      Copyright (c) 2007-2014, David Fox, Jeremy Shaw
 License:        BSD3
 License-File:   LICENSE
@@ -305,7 +305,7 @@ Test-Suite cabal-debian-tests
   Hs-Source-Dirs: .
   Main-is: Tests.hs
   ghc-options: -threaded -Wall -O2
-  Build-Depends: base, cabal-debian, Cabal >= 1.18, containers, Diff >= 0.3.1, filepath, hsemail, HUnit, lens, process, text
+  Build-Depends: base >= 4.7.0.0, cabal-debian, Cabal >= 1.18, containers, Diff >= 0.3.1, directory, filepath, hsemail, HUnit, lens, process, text
   if flag(pretty-112)
     Build-Depends: pretty >= 1.1.2
   else

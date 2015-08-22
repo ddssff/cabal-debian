@@ -1,3 +1,10 @@
+haskell-cabal-debian (4.31.4) unstable; urgency=low
+
+  * The test suite was failing during the debian package build because
+    it assumes the buildDir is in dist/, look for it in dist-ghc/ first.
+
+ -- David Fox <dsf@seereason.com>  Sat, 22 Aug 2015 07:56:04 -0700
+
 haskell-cabal-debian (4.31.3) unstable; urgency=low
 
   * Fix error message formatting (Joachim Breitner)

@@ -148,8 +148,7 @@ Extra-Source-Files:
 
 Flag tests
   Description: enable the unit test executable (disabled by default because it has a lot of wacky dependencies.)
-  Default: False
-  Manual: True
+  Default: True
 
 flag local-debian
   Description: Link directly to the source of the debian library
@@ -301,11 +300,13 @@ Executable cabal-debian
     Build-Depends: debian >= 3.87
 
 Test-Suite cabal-debian-tests
+  if !flag(tests)
+    Buildable: False
   Type: exitcode-stdio-1.0
   Hs-Source-Dirs: .
   Main-is: Tests.hs
   ghc-options: -threaded -Wall -O2
-  Build-Depends: base >= 4.7.0.0, cabal-debian, Cabal >= 1.18, containers, Diff >= 0.3.1, directory, filepath, hsemail, HUnit, lens, process, text
+  Build-Depends: base >= 4.8.1.0, cabal-debian, Cabal >= 1.18, containers, Diff >= 0.3.1, directory, filepath, hsemail, HUnit, lens, process, text
   if flag(pretty-112)
     Build-Depends: pretty >= 1.1.2
   else

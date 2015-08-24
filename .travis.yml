@@ -1,15 +1,12 @@
 language: haskell
 before_install:
 env:
- - GHCVER=7.6.3 CABALVER=1.18
- - GHCVER=7.8.4 CABALVER=1.18
- - GHCVER=7.8.4 CABALVER=1.22
- - GHCVER=7.10.2 CABALVER=1.22
- - GHCVER=head  CABALVER=1.22
+ - GHCVER=7.6.3 CABALVER=1.18 TESTS=
+ - GHCVER=7.8.4 CABALVER=1.18 TESTS=
+ - GHCVER=7.8.4 CABALVER=1.22 TESTS=
+ - GHCVER=7.10.2 CABALVER=1.22 TESTS=--enable-tests
 
 matrix:
-  allow_failures:
-   - env: GHCVER=head  CABALVER=head
 
 before_install:
  - travis_retry sudo add-apt-repository -y ppa:hvr/ghc
@@ -20,11 +17,11 @@ before_install:
 
 install:
  - travis_retry cabal update
- - cabal install --only-dependencies --enable-tests --constraint="Cabal==$CABALVER.*" --constraint="primitive<0.6"
+ - cabal install --only-dependencies "$TESTS" --constraint="Cabal==$CABALVER.*" --constraint="primitive<0.6"
 
 script:
- - cabal configure --enable-tests
-#--enable-library-coverage || cabal configure --enable-tests --enable-coverage
+ - cabal configure "$TESTS"
+#--enable-library-coverage || cabal configure "$TESTS" --enable-coverage
  - cabal build
  - cabal test
 

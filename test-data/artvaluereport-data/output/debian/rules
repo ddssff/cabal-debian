@@ -1,5 +1,6 @@
 #!/usr/bin/make -f
 
+DEB_SETUP_BIN_NAME = cabal
 DEB_CABAL_PACKAGE = artvaluereport-data
 DEB_DEFAULT_COMPILER = ghc
 

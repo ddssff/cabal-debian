@@ -53,6 +53,7 @@ import Distribution.Package (Dependency(..), PackageIdentifier(..), PackageName(
 import Distribution.PackageDescription as Cabal (allBuildInfo, author, BuildInfo(buildable, extraLibs), Executable(buildInfo, exeName), FlagName(FlagName), maintainer, PackageDescription(testSuites))
 import qualified Distribution.PackageDescription as Cabal (PackageDescription(dataFiles, executables, library, package))
 import Prelude hiding (init, log, map, unlines, unlines, writeFile)
+import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>), makeRelative, splitFileName, takeDirectory, takeFileName)
 import System.IO (hPutStrLn, stderr)
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr(..))
@@ -75,7 +76,8 @@ finalizeDebianization =
     do date <- liftIO getCurrentLocalRFC822Time
        currentUser <- liftIO getCurrentDebianUser
        debhelperCompat <- liftIO getDebhelperCompatLevel
-       finalizeDebianization' date currentUser debhelperCompat
+       setupExists <- or <$> mapM (liftIO . doesFileExist) ["Setup.hs", "Setup.lhs"]
+       finalizeDebianization' date currentUser debhelperCompat setupExists
        vb <- use (A.debInfo . D.flags . verbosity)
        when (vb >= 3) (get >>= \ x -> liftIO (putStrLn ("\nFinalized Cabal Info: " ++ show x ++ "\n")))
        either (\e -> liftIO $ hPutStrLn stderr ("WARNING: " ++ e)) (\_ -> return ()) =<< use (A.debInfo . D.control . S.maintainer)
@@ -88,8 +90,8 @@ finalizeDebianization =
 -- this function is not idempotent.  (Exported for use in unit tests.)
 -- FIXME: we should be able to run this without a PackageDescription, change
 --        paramter type to Maybe PackageDescription and propagate down thru code
-finalizeDebianization'  :: (Monad m, Functor m) => String -> Maybe NameAddr -> Maybe Int -> CabalT m ()
-finalizeDebianization' date currentUser debhelperCompat =
+finalizeDebianization'  :: (Monad m, Functor m) => String -> Maybe NameAddr -> Maybe Int -> Bool -> CabalT m ()
+finalizeDebianization' date currentUser debhelperCompat setupExists =
     do -- In reality, hcs must be a singleton or many things won't work.  But some day...
        hc <- use (A.debInfo . D.flags . compilerFlavor)
        pkgDesc <- use A.packageDescription
@@ -99,6 +101,9 @@ finalizeDebianization' date currentUser debhelperCompat =
        case (testsExist, testsStatus) of
          (True, D.TestsRun) -> (A.debInfo . D.rulesSettings) %= (++ ["DEB_ENABLE_TESTS = yes"])
          (True, D.TestsBuild) -> (A.debInfo . D.rulesSettings) %= (++ ["DEB_ENABLE_TESTS = yes", "DEB_BUILD_OPTIONS += nocheck"])
+         _ -> return ()
+       case setupExists of
+         False -> (A.debInfo . D.rulesSettings) %= (++ ["DEB_SETUP_BIN_NAME = cabal"])
          _ -> return ()
 
        finalizeSourceName B.HaskellSource

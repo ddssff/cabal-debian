@@ -1,3 +1,11 @@
+haskell-cabal-debian (4.31.5) unstable; urgency=low
+
+  * If there is no Setup.hs or Setup.lhs file we cannot build
+    debian/hlibrary.setup, therefore we should set DEB_SETUP_BIN_NAME to
+    "cabal".
+
+ -- David Fox <dsf@seereason.com>  Thu, 17 Sep 2015 08:21:46 -0700
+
 haskell-cabal-debian (4.31.4) unstable; urgency=low
 
   * The test suite was failing during the debian package build because

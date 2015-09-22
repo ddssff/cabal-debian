@@ -13,7 +13,7 @@ import Debian.Debianize.Optparse (parseProgramArguments, CommandLineOptions(..))
 import Debian.Pretty (ppShow)
 import Debian.Policy (databaseDirectory, PackageArchitectures(All), StandardsVersion(StandardsVersion))
 import Debian.Relation (BinPkgName(BinPkgName), Relation(Rel), SrcPkgName(..), VersionReq(SLT))
-import Debian.Version (parseDebianVersion)
+import Debian.Version (parseDebianVersion')
 
 -- This looks somewhat like a "real" Debianize.hs file except that (1) it
 -- expects to be run from the cabal-debian source directory and (2) it returns
@@ -51,7 +51,7 @@ main =
              addServerData
              addServerDeps
              (debInfo . binaryDebDescription (BinPkgName "appraisalscope") . description) .= Just "Offline manipulation of appraisal database"
-             (debInfo . control . buildDependsIndep) %= (++ [[Rel (BinPkgName "libjs-jquery-ui") (Just (SLT (parseDebianVersion ("1.10" :: String)))) Nothing]])
+             (debInfo . control . buildDependsIndep) %= (++ [[Rel (BinPkgName "libjs-jquery-ui") (Just (SLT (parseDebianVersion' ("1.10" :: String)))) Nothing]])
              (debInfo . control . buildDependsIndep) %= (++ [[Rel (BinPkgName "libjs-jquery") Nothing Nothing]])
              (debInfo . control . buildDependsIndep) %= (++ [[Rel (BinPkgName "libjs-jcrop") Nothing Nothing]])
              (debInfo . binaryDebDescription (BinPkgName "artvaluereport2-staging") . architecture) .= Just All

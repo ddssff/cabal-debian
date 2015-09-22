@@ -29,7 +29,7 @@ import Debian.GHC (compilerPackageName)
 import Debian.Orphans ()
 import Debian.Relation (BinPkgName(..), checkVersionReq, Relation(..), Relations)
 import qualified Debian.Relation as D (BinPkgName(BinPkgName), Relation(..), Relations, VersionReq(EEQ, GRE, LTE, SGR, SLT))
-import Debian.Version (DebianVersion, parseDebianVersion)
+import Debian.Version (DebianVersion, parseDebianVersion')
 import Distribution.Compiler (CompilerFlavor(..))
 import Distribution.Package (Dependency(..), PackageName(PackageName))
 import Distribution.PackageDescription (PackageDescription)
@@ -133,8 +133,8 @@ debianBuildDeps pkgDesc =
        prof <- not <$> use (A.debInfo . D.noProfilingLibrary)
        official <- use (A.debInfo . D.official)
        compat <- use (A.debInfo . D.compat)
-       let xs = nub $ [maybe [] (\ n -> [D.Rel (D.BinPkgName "debhelper") (Just (D.GRE (parseDebianVersion (show n)))) Nothing]) compat,
-                       [D.Rel (D.BinPkgName "haskell-devscripts") (Just $ D.GRE $ parseDebianVersion $ if official then "0.9" else "0.8" :: String) Nothing],
+       let xs = nub $ [maybe [] (\ n -> [D.Rel (D.BinPkgName "debhelper") (Just (D.GRE (parseDebianVersion' (show n)))) Nothing]) compat,
+                       [D.Rel (D.BinPkgName "haskell-devscripts") (Just $ D.GRE $ parseDebianVersion' $ if official then "0.9" else "0.8" :: String) Nothing],
                        anyrel "cdbs"] ++
                       (if member GHC hcs
                        then [anyrel' (compilerPackageName GHC B.Development)] ++ if prof then [anyrel' (compilerPackageName GHC B.Profiling)] else []
@@ -385,10 +385,10 @@ doBundled hc typ name rels =
 debianVersion' :: Monad m => PackageName -> Version -> CabalT m DebianVersion
 debianVersion' name v =
     do atoms <- get
-       return $ parseDebianVersion (maybe "" (\ n -> show n ++ ":") (Map.lookup name (view A.epochMap atoms)) ++ showVersion v)
+       return $ parseDebianVersion' (maybe "" (\ n -> show n ++ ":") (Map.lookup name (view A.epochMap atoms)) ++ showVersion v)
 
 debianVersion'' :: CabalInfo -> PackageName -> Version -> DebianVersion
-debianVersion'' atoms name v = parseDebianVersion (maybe "" (\ n -> show n ++ ":") (Map.lookup name (view A.epochMap atoms)) ++ showVersion v)
+debianVersion'' atoms name v = parseDebianVersion' (maybe "" (\ n -> show n ++ ":") (Map.lookup name (view A.epochMap atoms)) ++ showVersion v)
 
 data Rels a = And {unAnd :: [Rels a]} | Or {unOr :: [Rels a]} | Rel' {unRel :: a} deriving Show
 

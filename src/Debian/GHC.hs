@@ -25,7 +25,7 @@ import Data.Maybe (fromMaybe)
 import Data.Version (showVersion, Version(Version), parseVersion)
 import Debian.Debianize.BinaryDebDescription (PackageType(..))
 import Debian.Relation (BinPkgName(BinPkgName))
-import Debian.Version (DebianVersion, parseDebianVersion)
+import Debian.Version (DebianVersion, parseDebianVersion')
 import Distribution.Compiler (CompilerFlavor(..), CompilerId(CompilerId))
 #if MIN_VERSION_Cabal(1,22,0)
 import Distribution.Compiler (CompilerInfo(..), unknownCompilerInfo, AbiTag(NoAbiTag))
@@ -64,7 +64,7 @@ newestAvailable' root (BinPkgName name) = do
                 return . dropWhile (/= "Versions: ") . lines) :: IO (Either SomeException [String])
   case versions of
     Left e -> error $ "newestAvailable failed in " ++ show root ++ ": " ++ show e
-    Right (_ : versionLine : _) -> return . Just . parseDebianVersion . takeWhile (/= ' ') $ versionLine
+    Right (_ : versionLine : _) -> return . Just . parseDebianVersion' . takeWhile (/= ' ') $ versionLine
     _ -> return Nothing
     where
       chroot "/" = id
@@ -120,7 +120,7 @@ compilerIdFromDebianVersion hc debVersion =
     CompilerId hc (greatestLowerBound debVersion (map (\ d -> Version (ds ++ [d]) ts) [0..]))
     where
       greatestLowerBound :: DebianVersion -> [Version] -> Version
-      greatestLowerBound b xs = last $ takeWhile (\ v -> parseDebianVersion (showVersion v) < b) xs
+      greatestLowerBound b xs = last $ takeWhile (\ v -> parseDebianVersion' (showVersion v) < b) xs
 
 -- | General function to build a command line option that reads most
 -- of the possible values for CompilerFlavor.

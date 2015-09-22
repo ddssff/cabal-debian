@@ -38,7 +38,7 @@ import Debian.Pretty (ppShow)
 import Debian.Policy (databaseDirectory, PackageArchitectures(All), PackagePriority(Extra), parseMaintainer, Section(MainSection), SourceFormat(Native3), StandardsVersion(..), getDebhelperCompatLevel, getDebianStandardsVersion, License(..))
 import Debian.Relation (BinPkgName(..), Relation(..), SrcPkgName(..), VersionReq(..))
 import Debian.Release (ReleaseName(ReleaseName, relName))
-import Debian.Version (parseDebianVersion, buildDebianVersion)
+import Debian.Version (parseDebianVersion', buildDebianVersion)
 import Distribution.Compiler (CompilerFlavor(GHC))
 import Distribution.Package (PackageName(PackageName))
 import Prelude hiding (log)
@@ -296,7 +296,7 @@ test3 label =
                 (debInfo . D.control . S.uploaders) .= [NameAddr {nameAddr_name = Just "Marco Silva", nameAddr_addr = "marcot@debian.org"},NameAddr {nameAddr_name = Just "Joachim Breitner", nameAddr_addr = "nomeata@debian.org"}]
                 (debInfo . D.control . S.priority) .= Just Extra
                 (debInfo . D.control . S.section) .= Just (MainSection "haskell")
-                (debInfo . D.control . S.buildDepends) %= (++ [[Rel (BinPkgName {unBinPkgName = "debhelper"}) (Just (GRE (Debian.Version.parseDebianVersion ("7" :: String)))) Nothing]])
+                (debInfo . D.control . S.buildDepends) %= (++ [[Rel (BinPkgName {unBinPkgName = "debhelper"}) (Just (GRE (Debian.Version.parseDebianVersion' ("7" :: String)))) Nothing]])
                 (debInfo . D.control . S.buildDependsIndep) %=  (++ [[Rel (BinPkgName {unBinPkgName = "perl"}) Nothing Nothing]])
                 (debInfo . D.control . S.standardsVersion) .= Just (StandardsVersion 3 9 4 Nothing)
                 (debInfo . D.control . S.vcsFields) %= Set.union (Set.fromList [ S.VCSBrowser "http://darcs.debian.org/cgi-bin/darcsweb.cgi?r=pkg-haskell/haskell-devscripts"
@@ -318,19 +318,19 @@ test3 label =
                      [ [Rel (BinPkgName {unBinPkgName = "dctrl-tools"}) Nothing Nothing]
                      , [Rel (BinPkgName {unBinPkgName = "debhelper"}) Nothing Nothing]
                      , [Rel (BinPkgName {unBinPkgName = "dh-buildinfo"}) Nothing Nothing]
-                     , [Rel (BinPkgName {unBinPkgName = "ghc"}) (Just (GRE (Debian.Version.parseDebianVersion ("7.6" :: String)))) Nothing]
+                     , [Rel (BinPkgName {unBinPkgName = "ghc"}) (Just (GRE (Debian.Version.parseDebianVersion'("7.6" :: String)))) Nothing]
                      , [Rel (BinPkgName {unBinPkgName = "cdbs"}) Nothing Nothing]
                      , [Rel (BinPkgName {unBinPkgName = "${misc:Depends}"}) Nothing Nothing]
                      , [Rel (BinPkgName {unBinPkgName = "html-xml-utils"}) Nothing Nothing]
-                     , [Rel (BinPkgName {unBinPkgName = "hscolour"}) (Just (GRE (Debian.Version.parseDebianVersion ("1.8" :: String)))) Nothing]
-                     , [Rel (BinPkgName {unBinPkgName = "ghc-haddock"}) (Just (GRE (Debian.Version.parseDebianVersion ("7.4" :: String)))) Nothing] ]
+                     , [Rel (BinPkgName {unBinPkgName = "hscolour"}) (Just (GRE (Debian.Version.parseDebianVersion'("1.8" :: String)))) Nothing]
+                     , [Rel (BinPkgName {unBinPkgName = "ghc-haddock"}) (Just (GRE (Debian.Version.parseDebianVersion'("7.4" :: String)))) Nothing] ]
 {-
                 control %= (\ y -> y { S.source = 
                                      , S.maintainer = Just (NameAddr {nameAddr_name = Just "Debian Haskell Group", nameAddr_addr = "pkg-haskell-maintainers@lists.alioth.debian.org"})
                                      , S.uploaders = [NameAddr {nameAddr_name = Just "Marco Silva", nameAddr_addr = "marcot@debian.org"},NameAddr {nameAddr_name = Just "Joachim Breitner", nameAddr_addr = "nomeata@debian.org"}]
                                      , S.priority = Just Extra
                                      , S.section = Just (MainSection "haskell")
-                                     , S.buildDepends = (S.buildDepends y) ++ [[Rel (BinPkgName {unBinPkgName = "debhelper"}) (Just (GRE (Debian.Version.parseDebianVersion ("7" :: String)))) Nothing]]
+                                     , S.buildDepends = (S.buildDepends y) ++ [[Rel (BinPkgName {unBinPkgName = "debhelper"}) (Just (GRE (Debian.Version.parseDebianVersion'("7" :: String)))) Nothing]]
                                      , S.buildDependsIndep = (S.buildDependsIndep y) ++ [[Rel (BinPkgName {unBinPkgName = "perl"}) Nothing Nothing]]
                                      , S.standardsVersion = Just (StandardsVersion 3 9 4 Nothing)
                                      , S.vcsFields = Set.union (S.vcsFields y) (Set.fromList [ S.VCSBrowser "http://darcs.debian.org/cgi-bin/darcsweb.cgi?r=pkg-haskell/haskell-devscripts"
@@ -358,12 +358,12 @@ test3 label =
                                                                                               [ [Rel (BinPkgName {unBinPkgName = "dctrl-tools"}) Nothing Nothing]
                                                                                               , [Rel (BinPkgName {unBinPkgName = "debhelper"}) Nothing Nothing]
                                                                                               , [Rel (BinPkgName {unBinPkgName = "dh-buildinfo"}) Nothing Nothing]
-                                                                                              , [Rel (BinPkgName {unBinPkgName = "ghc"}) (Just (GRE (Debian.Version.parseDebianVersion ("7.6" :: String)))) Nothing]
+                                                                                              , [Rel (BinPkgName {unBinPkgName = "ghc"}) (Just (GRE (Debian.Version.parseDebianVersion'("7.6" :: String)))) Nothing]
                                                                                               , [Rel (BinPkgName {unBinPkgName = "cdbs"}) Nothing Nothing]
                                                                                               , [Rel (BinPkgName {unBinPkgName = "${misc:Depends}"}) Nothing Nothing]
                                                                                               , [Rel (BinPkgName {unBinPkgName = "html-xml-utils"}) Nothing Nothing]
-                                                                                              , [Rel (BinPkgName {unBinPkgName = "hscolour"}) (Just (GRE (Debian.Version.parseDebianVersion ("1.8" :: String)))) Nothing]
-                                                                                              , [Rel (BinPkgName {unBinPkgName = "ghc-haddock"}) (Just (GRE (Debian.Version.parseDebianVersion ("7.4" :: String)))) Nothing] ]
+                                                                                              , [Rel (BinPkgName {unBinPkgName = "hscolour"}) (Just (GRE (Debian.Version.parseDebianVersion'("1.8" :: String)))) Nothing]
+                                                                                              , [Rel (BinPkgName {unBinPkgName = "ghc-haddock"}) (Just (GRE (Debian.Version.parseDebianVersion'("7.4" :: String)))) Nothing] ]
                                                                                             , B.recommends = []
                                                                                             , B.suggests = []
                                                                                             , B.preDepends = []
@@ -376,14 +376,14 @@ test3 label =
                                                                                             )
             atoms
       log = ChangeLog [Entry { logPackage = "haskell-devscripts"
-                             , logVersion = Debian.Version.parseDebianVersion ("0.8.13" :: String)
+                             , logVersion = Debian.Version.parseDebianVersion'("0.8.13" :: String)
                              , logDists = [ReleaseName {relName = "experimental"}]
                              , logUrgency = "low"
                              , logComments = "  [ Joachim Breitner ]\n  * Improve parsing of \"Setup register\" output, patch by David Fox\n  * Enable creation of hoogle files, thanks to Kiwamu Okabe for the\n    suggestion. \n\n  [ Kiwamu Okabe ]\n  * Need --html option to fix bug that --hoogle option don't output html file.\n  * Support to create /usr/lib/ghc-doc/hoogle/*.txt for hoogle package.\n\n  [ Joachim Breitner ]\n  * Symlink hoogle\8217s txt files to /usr/lib/ghc-doc/hoogle/\n  * Bump ghc dependency to 7.6 \n  * Bump standards version\n"
                              , logWho = "Joachim Breitner <nomeata@debian.org>"
                              , logDate = "Mon, 08 Oct 2012 21:14:50 +0200" },
                        Entry { logPackage = "haskell-devscripts"
-                             , logVersion = Debian.Version.parseDebianVersion ("0.8.12" :: String)
+                             , logVersion = Debian.Version.parseDebianVersion'("0.8.12" :: String)
                              , logDists = [ReleaseName {relName = "unstable"}]
                              , logUrgency = "low"
                              , logComments = "  * Depend on ghc >= 7.4, adjusting to its haddock --interface-version\n    behaviour.\n"
@@ -654,7 +654,7 @@ test9 label =
                    , "AlexWrapper-strict-bytestring"]
              (debInfo . D.control . S.homepage) .= Just "http://www.haskell.org/alex/"
              (debInfo . D.sourceFormat) .= Native3
-             (debInfo . D.debVersion) .= Just (parseDebianVersion ("3.0.2-1~hackage1" :: String))
+             (debInfo . D.debVersion) .= Just (parseDebianVersion'("3.0.2-1~hackage1" :: String))
              doExecutable (BinPkgName "alex")
                           (D.InstallFile {D.execName = "alex", D.destName = "alex", D.sourceDir = Nothing, D.destDir = Nothing})
              -- Bootstrap self-dependency

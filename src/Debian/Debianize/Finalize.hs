@@ -44,7 +44,7 @@ import Debian.Relation (BinPkgName, BinPkgName(BinPkgName), Relation(Rel), Relat
 import qualified Debian.Relation as D (BinPkgName(BinPkgName), Relation(..))
 import Debian.Release (parseReleaseName)
 import Debian.Time (getCurrentLocalRFC822Time)
-import qualified Debian.Version as V (buildDebianVersion, DebianVersion, parseDebianVersion, epoch, version, revision)
+import qualified Debian.Version as V (buildDebianVersion, DebianVersion, parseDebianVersion', epoch, version, revision)
 import Distribution.Compiler (CompilerFlavor(GHC))
 #if MIN_VERSION_Cabal(1,22,0)
 import Distribution.Compiler (CompilerFlavor(GHCJS))
@@ -162,7 +162,7 @@ finalizeDescription bdd =
 debianVersion :: (Monad m, Functor m) => CabalT m V.DebianVersion
 debianVersion =
     do cabalName <- (pkgName . Cabal.package) <$> use A.packageDescription
-       (cabalVersion :: V.DebianVersion) <- (V.parseDebianVersion . ppShow . pkgVersion . Cabal.package) <$> use A.packageDescription
+       (cabalVersion :: V.DebianVersion) <- (V.parseDebianVersion' . ppShow . pkgVersion . Cabal.package) <$> use A.packageDescription
        cabalEpoch <- debianEpoch cabalName
        fmt <- use (A.debInfo . D.sourceFormat)
        cabalRevision <-
@@ -187,12 +187,12 @@ debianVersion =
          _ | isJust versionArg -> return $ fromJust versionArg
          _ | isJust debVersion ->
                case (V.epoch (fromJust debVersion),
-                     V.parseDebianVersion (V.version (fromJust debVersion)),
+                     V.parseDebianVersion' (V.version (fromJust debVersion)),
                      V.revision (fromJust debVersion)) of
                  (debEpoch, debianVersion', (debianRevision :: Maybe String)) ->
                      let finalEpoch = max debEpoch cabalEpoch
                          finalVersion = max debianVersion' cabalVersion
-                         (finalRevision :: Maybe String) = maximumBy (compare `on` fmap V.parseDebianVersion) [debianRevision, cabalRevision] in
+                         (finalRevision :: Maybe String) = maximumBy (compare `on` fmap V.parseDebianVersion') [debianRevision, cabalRevision] in
                      return $ V.buildDebianVersion finalEpoch (ppShow finalVersion) finalRevision
          _ -> return $ V.buildDebianVersion cabalEpoch (ppShow cabalVersion) cabalRevision
 

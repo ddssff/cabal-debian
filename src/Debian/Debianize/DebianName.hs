@@ -25,7 +25,7 @@ import Debian.Debianize.VersionSplits (DebBase(DebBase, unDebBase), doSplits, in
 import Debian.Orphans ()
 import Debian.Relation (PkgName(..), Relations)
 import qualified Debian.Relation as D (VersionReq(EEQ))
-import Debian.Version (parseDebianVersion)
+import Debian.Version (parseDebianVersion')
 import Distribution.Compiler (CompilerFlavor(..))
 import Distribution.Package (Dependency(..), PackageIdentifier(..), PackageName(PackageName))
 import qualified Distribution.PackageDescription as Cabal (PackageDescription(package))
@@ -59,7 +59,7 @@ debianNameBase =
        let pkgId = Cabal.package pkgDesc
        nameMap <- use A.debianNameMap
        let pname@(PackageName _) = pkgName pkgId
-           version = (Just (D.EEQ (parseDebianVersion (showVersion (pkgVersion pkgId)))))
+           version = (Just (D.EEQ (parseDebianVersion' (showVersion (pkgVersion pkgId)))))
        case (nameBase, Map.lookup (pkgName pkgId) nameMap) of
          (Just base, _) -> return base
          (Nothing, Nothing) -> return $ debianBaseName pname

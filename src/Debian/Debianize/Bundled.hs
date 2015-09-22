@@ -30,7 +30,7 @@ import Debian.Debianize.VersionSplits (cabalFromDebian', DebBase(DebBase), Versi
 import Debian.GHC ()
 import Debian.Relation (BinPkgName(..))
 import Debian.Relation.ByteString ()
-import Debian.Version (DebianVersion, parseDebianVersion, prettyDebianVersion)
+import Debian.Version (DebianVersion, parseDebianVersion', prettyDebianVersion)
 import Distribution.Package (PackageIdentifier(..), PackageName(..))
 import Distribution.Simple.Compiler (CompilerFlavor(..))
 import System.IO.Unsafe (unsafePerformIO)
@@ -95,7 +95,7 @@ aptCacheProvides root hcname =
     hcs'
     where
       doHCVersion :: [String] -> (DebianVersion, [BinPkgName])
-      doHCVersion (versionString : "-" : deps) = (parseDebianVersion versionString, map BinPkgName deps)
+      doHCVersion (versionString : "-" : deps) = (parseDebianVersion' versionString, map BinPkgName deps)
       doHCVersion x = error $ "Unexpected output from apt-cache: " ++ show x
 
 aptCacheDepends :: FilePath -> String -> String -> Either SomeException String
@@ -115,7 +115,7 @@ aptCacheConflicts root hcname ver =
 
 aptVersions :: FilePath -> String -> [DebianVersion]
 aptVersions root hcname =
-    either (\ _ -> []) (map parseDebianVersion . filter (/= "") . map (takeWhile (/= ' ')) . takeWhile (not . isPrefixOf "Reverse Depends:") . drop 1 . dropWhile (not . isPrefixOf "Versions:") . lines) (aptCacheShowPkg root hcname)
+    either (\ _ -> []) (map parseDebianVersion' . filter (/= "") . map (takeWhile (/= ' ')) . takeWhile (not . isPrefixOf "Reverse Depends:") . drop 1 . dropWhile (not . isPrefixOf "Versions:") . lines) (aptCacheShowPkg root hcname)
 
 takeBetween :: (a -> Bool) -> (a -> Bool) -> [a] -> [a]
 takeBetween startPred endPred = takeWhile (not . endPred) . dropWhile startPred . dropWhile (not . startPred)

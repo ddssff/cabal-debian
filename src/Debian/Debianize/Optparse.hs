@@ -31,7 +31,7 @@ import Debian.Debianize.Prelude (maybeRead)
 import Debian.Debianize.VersionSplits
 import Debian.Policy
 import Debian.Relation
-import Debian.Version.Common (DebianVersion, parseDebianVersion)
+import Debian.Version (DebianVersion, parseDebianVersion')
 import Distribution.Compiler (CompilerFlavor(..))
 import Distribution.Package (PackageName(..))
 import Distribution.PackageDescription (FlagName(FlagName))
@@ -302,7 +302,7 @@ debianNameBaseP = O.option (Just . DebBase <$> O.str) m where
     ]
 
 debianVersionP :: O.Parser (Maybe DebianVersion)
-debianVersionP = O.option (Just . parseDebianVersion <$> O.str) m where
+debianVersionP = O.option (Just . parseDebianVersion' <$> O.str) m where
   m = O.help helpMsg
       <> O.long "deb-version"
       <> O.metavar "DEBIANVERSION"

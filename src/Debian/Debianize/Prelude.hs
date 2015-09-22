@@ -61,8 +61,7 @@ import Debian.Orphans ()
 import Debian.Pretty (PP(PP))
 import qualified Debian.Relation as D (BinPkgName(BinPkgName), Relations)
 import Debian.Relation.Common ()
-import Debian.Version (DebianVersion, prettyDebianVersion)
-import Debian.Version.String (parseDebianVersion)
+import Debian.Version (DebianVersion, parseDebianVersion', prettyDebianVersion)
 import Distribution.Package (PackageIdentifier(..), PackageName(..))
 import Distribution.Verbosity (intToVerbosity, Verbosity)
 import GHC.IO.Exception (ExitCode(ExitFailure, ExitSuccess), IOErrorType(InappropriateType, NoSuchThing), IOException(IOError, ioe_description, ioe_type))
@@ -86,7 +85,7 @@ buildDebVersionMap =
     return . either (const []) unControl . parseControl "/var/lib/dpkg/status" >>=
     mapM (\ p -> case (lookupP "Package" p, lookupP "Version" p) of
                    (Just (Field (_, name)), Just (Field (_, version))) ->
-                       return (Just (D.BinPkgName (stripWS name), Just (parseDebianVersion (stripWS version))))
+                       return (Just (D.BinPkgName (stripWS name), Just (parseDebianVersion' (stripWS version))))
                    _ -> return Nothing) >>=
     return . Map.fromList . catMaybes
 

@@ -55,7 +55,7 @@ import Data.Text (pack, strip, Text, unpack)
 import Debian.Debianize.Prelude (read')
 import Debian.Pretty (PP(..))
 import Debian.Relation (BinPkgName)
-import Debian.Version (DebianVersion, parseDebianVersion, version)
+import Debian.Version (DebianVersion, parseDebianVersion', version)
 import qualified Distribution.License as Cabal (License(..))
 import Distribution.Package (PackageIdentifier(pkgName))
 import Distribution.PackageDescription (PackageDescription(package))
@@ -109,11 +109,11 @@ accessLogBaseName = "access.log"
 debianPackageVersion :: String -> IO (Maybe DebianVersion)
 debianPackageVersion name =
     readProcess "dpkg-query" ["--show", "--showformat=${version}", name] "" >>=
-    return . parseDebianVersion'
+    return . parseDebianVersion''
     where
       -- This should maybe be the real parseDebianVersion
-      parseDebianVersion' "" = Nothing
-      parseDebianVersion' s = Just (parseDebianVersion s)
+      parseDebianVersion'' "" = Nothing
+      parseDebianVersion'' s = Just (parseDebianVersion' s)
 
 -- | The version number of the installed debhelper package is the
 -- highest acceptable value for compat in a debian/control file.  If

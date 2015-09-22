@@ -1,3 +1,9 @@
+haskell-cabal-debian (4.31.6) unstable; urgency=low
+
+  * Signature change in Debian.Version.parseDebianVersion
+
+ -- David Fox <dsf@seereason.com>  Tue, 22 Sep 2015 06:56:28 -0700
+
 haskell-cabal-debian (4.31.5) unstable; urgency=low
 
   * If there is no Setup.hs or Setup.lhs file we cannot build

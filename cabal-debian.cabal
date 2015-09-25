@@ -1,5 +1,5 @@
 Name:           cabal-debian
-Version:        4.31.6
+Version:        4.31.7
 Copyright:      Copyright (c) 2007-2014, David Fox, Jeremy Shaw
 License:        BSD3
 License-File:   LICENSE
@@ -194,7 +194,7 @@ Library
     unix,
     Unixutils >= 1.53,
     utf8-string,
-    optparse-applicative == 0.11.*,
+    optparse-applicative >= 0.11,
     ansi-wl-pprint == 0.6.*
   Exposed-Modules:
     Data.Maybe.Extended

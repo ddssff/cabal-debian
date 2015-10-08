@@ -9,3 +9,5 @@ and the equivalent lens to use in the debian/Debianize.hs script.
 | --debian-name-base | debInfo . overrideDebianNameBase |
 | --executable | debInfo . executable |
 | --cabal-flags | debinfo . flags . cabalFlagAssignments |
+
+more to come...

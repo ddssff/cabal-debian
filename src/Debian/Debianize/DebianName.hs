@@ -21,7 +21,7 @@ import Debian.Debianize.Monad (CabalT)
 import Debian.Debianize.CabalInfo as A (debianNameMap, packageDescription, debInfo)
 import Debian.Debianize.BinaryDebDescription as Debian (PackageType(..))
 import Debian.Debianize.DebInfo as D (overrideDebianNameBase, utilsPackageNameBase)
-import Debian.Debianize.VersionSplits (DebBase(DebBase, unDebBase), doSplits, insertSplit, makePackage, VersionSplits)
+import Debian.Debianize.VersionSplits (DebBase(DebBase, unDebBase), doSplits, insertSplit, makePackage, VersionSplits(oldestPackage, splits))
 import Debian.Orphans ()
 import Debian.Relation (PkgName(..), Relations)
 import qualified Debian.Relation as D (VersionReq(EEQ))
@@ -107,7 +107,7 @@ mapCabal pname dname =
     where
       f :: Maybe VersionSplits -> Maybe VersionSplits
       f Nothing = Just (makePackage dname)
-      f (Just sp) | sp == makePackage dname = Just sp
+      f (Just sp) | any (== dname) (oldestPackage sp : map snd (splits sp)) = Just sp
       f (Just sp) = error $ "mapCabal " ++ show pname ++ " " ++ show dname ++ ": - already mapped: " ++ show sp
 
 -- | Map versions less than ver of Cabal Package pname to Debian package ltname

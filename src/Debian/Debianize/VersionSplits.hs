@@ -4,7 +4,7 @@
 module Debian.Debianize.VersionSplits
     ( DebBase(DebBase, unDebBase)
     -- * Combinators for VersionSplits
-    , VersionSplits
+    , VersionSplits(..)
     , makePackage
     , insertSplit
     -- * Operators on VersionSplits

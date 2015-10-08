@@ -112,7 +112,7 @@ Architecture: any
 Depends: ${haskell:Depends},
  ${misc:Depends},
  ${shlibs:Depends},
- debian-policy
+ debian-policy,
 Recommends: ${haskell:Recommends},
 Suggests: ${haskell:Suggests},
 Conflicts: ${haskell:Conflicts},

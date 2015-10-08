@@ -1,5 +1,5 @@
 Name:           cabal-debian
-Version:        4.31.7
+Version:        4.31.8
 Copyright:      Copyright (c) 2007-2014, David Fox, Jeremy Shaw
 License:        BSD3
 License-File:   LICENSE
@@ -16,7 +16,7 @@ Description:
  For documentation of the executable, run
  @cabal-debian --help@, for documentation of the library API follow
  the link to the @Debian.Debianize@ module below.
-Cabal-Version: >= 1.8
+Cabal-Version: >= 1.10
 Extra-Source-Files:
   changelog
   debian/cabal-debian.1

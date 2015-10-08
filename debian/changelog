@@ -1,3 +1,10 @@
+haskell-cabal-debian (4.31.8) unstable; urgency=low
+
+  * Handle some idempotent cases in mapCabal and splitCabal
+  * Add version split for happstack-authenticate package
+
+ -- David Fox <dsf@seereason.com>  Thu, 08 Oct 2015 11:42:13 -0400
+
 haskell-cabal-debian (4.31.7) unstable; urgency=low
 
   * Allow optparse-applicative-0.12.

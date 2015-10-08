@@ -107,6 +107,7 @@ mapCabal pname dname =
     where
       f :: Maybe VersionSplits -> Maybe VersionSplits
       f Nothing = Just (makePackage dname)
+      f (Just sp) | sp == makePackage dname = Just sp
       f (Just sp) = error $ "mapCabal " ++ show pname ++ " " ++ show dname ++ ": - already mapped: " ++ show sp
 
 -- | Map versions less than ver of Cabal Package pname to Debian package ltname

@@ -30,7 +30,7 @@ Build-Depends: debhelper (>= 9)
                , libghc-fb-dev
                , libghc-groom-dev
                , libghc-happstack-dev
-               , libghc-happstack-authenticate-dev
+               , libghc-happstack-authenticate-dev (>= 2) | libghc-happstack-authenticate-0-dev (<< 2),
                , libghc-happstack-extra-dev
                , libghc-happstack-hsp-dev
                , libghc-happstack-scaffolding-dev (>= 0.23)

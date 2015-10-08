@@ -42,3 +42,6 @@ debianDefaults =
        mapCabal (PackageName "haskell-src-exts") (DebBase "src-exts")
        mapCabal (PackageName "haskell-src-meta") (DebBase "src-meta")
        mapCabal (PackageName "Cabal") (DebBase "cabal")
+
+       mapCabal (PackageName "happstack-authenticate") (DebBase "happstack-authenticate")
+       splitCabal (PackageName "happstack-authenticate") (DebBase "happstack-authenticate-0") (Version [2] [])

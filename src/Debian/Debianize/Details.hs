@@ -27,7 +27,7 @@ debianDefaults =
        A.epochMap %= Map.insert (PackageName "HTTP") 1
        -- Associate some build tools and their corresponding
        -- (eponymous) debian package names
-       mapM (\name -> (A.debInfo . D.execMap) %= Map.insert name [[Rel (BinPkgName name) Nothing Nothing]])
+       mapM_ (\name -> (A.debInfo . D.execMap) %= Map.insert name [[Rel (BinPkgName name) Nothing Nothing]])
             ["ghc", "happy", "alex", "hsx2hs"]
        -- The parsec debs are suffixed with either "2" or "3"
        mapCabal (PackageName "parsec") (DebBase "parsec3")

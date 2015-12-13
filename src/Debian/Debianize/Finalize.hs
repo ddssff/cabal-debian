@@ -361,8 +361,8 @@ officialSettings =
        SrcPkgName src <- use (A.debInfo . D.sourcePackageName) >>= maybe (error "officialSettings: no sourcePackageName") return
 
        (A.debInfo . D.control . S.vcsFields) %= Set.union (Set.fromList
-          [ S.VCSBrowser $ "http://darcs.debian.org/cgi-bin/darcsweb.cgi?r=pkg-haskell/" <> pack src
-          , S.VCSDarcs  $ "http://darcs.debian.org/pkg-haskell/" <> pack src
+          [ S.VCSBrowser $ "https://anonscm.debian.org/cgit/pkg-haskell/DHG_packages.git/tree/p/" <> pack src
+          , S.VCSDarcs  $ "git://git.debian.org/git/pkg-haskell/DHG_packages.git"
           ])
 
 putBuildDeps :: (Monad m, Functor m) => (Relations -> Relations) -> PackageDescription -> CabalT m ()

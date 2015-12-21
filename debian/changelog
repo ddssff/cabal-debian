@@ -1,3 +1,9 @@
+haskell-cabal-debian (4.31.9) unstable; urgency=low
+
+  * Fix official haskell packages repository URI
+
+ -- David Fox <dsf@seereason.com>  Mon, 21 Dec 2015 09:14:14 -0800
+
 haskell-cabal-debian (4.31.8) unstable; urgency=low
 
   * Handle some idempotent cases in mapCabal and splitCabal

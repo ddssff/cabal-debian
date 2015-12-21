@@ -362,7 +362,7 @@ officialSettings =
 
        (A.debInfo . D.control . S.vcsFields) %= Set.union (Set.fromList
           [ S.VCSBrowser $ "https://anonscm.debian.org/cgit/pkg-haskell/DHG_packages.git/tree/p/" <> pack src
-          , S.VCSDarcs  $ "git://git.debian.org/git/pkg-haskell/DHG_packages.git"
+          , S.VCSGit  $ "git://git.debian.org/git/pkg-haskell/DHG_packages.git"
           ])
 
 putBuildDeps :: (Monad m, Functor m) => (Relations -> Relations) -> PackageDescription -> CabalT m ()

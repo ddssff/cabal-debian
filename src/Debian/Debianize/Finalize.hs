@@ -351,19 +351,23 @@ checkOfficialSettings flavor =
                   _ -> error $ "There is no official packaging for " ++ show flavor
 
 officialSettings :: (Monad m, Functor m) => CabalT m ()
-officialSettings =
-    do pkgDesc <- use A.packageDescription
-       let PackageName cabal = pkgName (Cabal.package pkgDesc)
+officialSettings = do
+    pkgDesc <- use A.packageDescription
+    let PackageName cabal = pkgName (Cabal.package pkgDesc)
+    zoom A.debInfo $ do
+        let officialError = error "officialSettings: no sourcePackageName"
 
-       (A.debInfo . D.control . S.standardsVersion) .?= Just (parseStandardsVersion "3.9.6")
-       (A.debInfo . D.control . S.homepage) .?= Just ("http://hackage.haskell.org/package/" <> pack cabal)
-       (A.debInfo . D.omitProfVersionDeps) .= True
-       SrcPkgName src <- use (A.debInfo . D.sourcePackageName) >>= maybe (error "officialSettings: no sourcePackageName") return
+        D.omitProfVersionDeps .= True
+        SrcPkgName src <- fromMaybe officialError <$> use D.sourcePackageName
 
-       (A.debInfo . D.control . S.vcsFields) %= Set.union (Set.fromList
-          [ S.VCSBrowser $ "https://anonscm.debian.org/cgit/pkg-haskell/DHG_packages.git/tree/p/" <> pack src
-          , S.VCSGit  $ "git://git.debian.org/git/pkg-haskell/DHG_packages.git"
-          ])
+        let packagesURI = "https://anonscm.debian.org/cgit/pkg-haskell/DHG_packages.git/tree/p/" <> pack src
+        zoom D.control $ do
+           S.standardsVersion .?= Just (parseStandardsVersion "3.9.6")
+           S.homepage .?= Just ("http://hackage.haskell.org/package/" <> pack cabal)
+           S.vcsFields %= Set.union (Set.fromList
+              [ S.VCSBrowser packagesURI
+              , S.VCSGit  "git://git.debian.org/git/pkg-haskell/DHG_packages.git"
+              ])
 
 putBuildDeps :: (Monad m, Functor m) => (Relations -> Relations) -> PackageDescription -> CabalT m ()
 putBuildDeps finalizeRelations pkgDesc =

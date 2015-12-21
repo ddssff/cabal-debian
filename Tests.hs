@@ -600,9 +600,11 @@ test7 :: String -> Test
 test7 label =
     TestLabel label $
     TestCase (do dist <- findBuildDir
-                 new <- readProcessWithExitCode "runhaskell" ["--ghc-arg=-package-db=" ++ dist ++ "/package.conf.inplace", "debian/Debianize.hs", "--dry-run", "--native"] ""
+                 result <- readProcessWithExitCode "runhaskell" ["--ghc-arg=-package-db=" ++ dist ++ "/package.conf.inplace", "debian/Debianize.hs", "--dry-run", "--native"] ""
+                 assertEqual label (ExitSuccess, "Ignored debianization file: debian/cabal-debian.1\nIgnored debianization file: debian/cabal-debian.manpages\nDebianization (dry run):\n  No changes\n\n", "") result
+{-
                  assertBool label (elem new [(ExitSuccess, "Ignored debianization file: debian/cabal-debian.1\nIgnored debianization file: debian/cabal-debian.manpages\nDebianization (dry run):\n  No changes\n\n", ""),
-                                             (ExitSuccess, "Ignored debianization file: debian/cabal-debian.manpages\nIgnored debianization file: debian/cabal-debian.1\nDebianization (dry run):\n  No changes\n\n", "")]))
+                                             (ExitSuccess, "Ignored debianization file: debian/cabal-debian.manpages\nIgnored debianization file: debian/cabal-debian.1\nDebianization (dry run):\n  No changes\n\n", "")]) -})
 
 test8 :: String -> Test
 test8 label =

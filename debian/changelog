@@ -1,6 +1,7 @@
 haskell-cabal-debian (4.31.9) unstable; urgency=low
 
   * Fix official haskell packages repository URI
+  * Update expected test results
 
  -- David Fox <dsf@seereason.com>  Mon, 21 Dec 2015 09:14:14 -0800
 

@@ -144,6 +144,7 @@ Extra-Source-Files:
   test-data/artvaluereport2/output/debian/artvaluereport2-backups.install
   test-data/artvaluereport2/output/debian/copyright
   test-data/artvaluereport2/output/debian/source/format
+tested-with: GHC == 7.8.4, GHC == 7.10.3, GHC == 7.11.*
 
 Flag tests
   Description: enable the unit test executable (disabled by default because it has a lot of wacky dependencies.)

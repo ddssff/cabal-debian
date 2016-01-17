@@ -20,7 +20,7 @@ import Data.Set as Set (fromList, union, insert)
 import Data.Text as Text (intercalate, split, Text, unlines, unpack)
 import Data.Version (Version(Version))
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(..), parseEntry)
-import Debian.Debianize.BasicInfo (compilerFlavor, Flags)
+import Debian.Debianize.BasicInfo (compilerFlavor, Flags, verbosity)
 import qualified Debian.Debianize.BinaryDebDescription as B
 import Debian.Debianize.CabalInfo as A
 import Debian.Debianize.CopyrightDescription
@@ -406,7 +406,8 @@ test4 label =
     where
       customize :: Maybe ChangeLog -> CabalT IO ()
       customize log =
-          do (debInfo . D.changelog) .= log
+          do (debInfo . D.flags . verbosity) .= 1
+             (debInfo . D.changelog) .= log
              liftCabal tight
              fixRules
              doBackups (BinPkgName "clckwrks-dot-com-backups") "clckwrks-dot-com-backups"
@@ -512,7 +513,8 @@ test5 label =
                  assertEmptyDiff label diff)
     where
       customize old level standards =
-          do (A.debInfo . D.utilsPackageNameBase) .= Just "creativeprompts-data"
+          do (debInfo . D.flags . verbosity) .= 1
+             (A.debInfo . D.utilsPackageNameBase) .= Just "creativeprompts-data"
              newDebianization' level standards
              (debInfo . D.changelog) .= (view D.changelog old)
              doWebsite (BinPkgName "creativeprompts-production") (theSite (BinPkgName "creativeprompts-production"))
@@ -593,14 +595,14 @@ test6 :: String -> Test
 test6 label =
     TestLabel label $
     TestCase (do dist <- findBuildDir
-                 result <- readProcessWithExitCode "runhaskell" ["--ghc-arg=-package-db=" ++ dist ++ "/package.conf.inplace", "test-data/artvaluereport2/input/debian/Debianize.hs", "--dry-run"] ""
+                 result <- readProcessWithExitCode "runhaskell" ["--ghc-arg=-package-db=" ++ dist ++ "/package.conf.inplace", "test-data/artvaluereport2/input/debian/Debianize.hs", "--dry-run", "--verbose"] ""
                  assertEqual label (ExitSuccess, "", "") result)
 
 test7 :: String -> Test
 test7 label =
     TestLabel label $
     TestCase (do dist <- findBuildDir
-                 result <- readProcessWithExitCode "runhaskell" ["--ghc-arg=-package-db=" ++ dist ++ "/package.conf.inplace", "debian/Debianize.hs", "--dry-run", "--native"] ""
+                 result <- readProcessWithExitCode "runhaskell" ["--ghc-arg=-package-db=" ++ dist ++ "/package.conf.inplace", "debian/Debianize.hs", "--dry-run", "--native", "--verbose"] ""
                  assertEqual label (ExitSuccess, "Ignored debianization file: debian/cabal-debian.1\nIgnored debianization file: debian/cabal-debian.manpages\nDebianization (dry run):\n  No changes\n\n", "") result
 {-
                  assertBool label (elem new [(ExitSuccess, "Ignored debianization file: debian/cabal-debian.1\nIgnored debianization file: debian/cabal-debian.manpages\nDebianization (dry run):\n  No changes\n\n", ""),
@@ -620,7 +622,8 @@ test8 label =
     where
       customize Nothing = error "Missing changelog"
       customize (Just log) =
-          do (debInfo . D.control . S.buildDepends) %= (++ [[Rel (BinPkgName "haskell-hsx-utils") Nothing Nothing]])
+          do (debInfo . D.flags . verbosity) .= 1
+             (debInfo . D.control . S.buildDepends) %= (++ [[Rel (BinPkgName "haskell-hsx-utils") Nothing Nothing]])
              (debInfo . D.control . S.homepage) .= Just "http://artvaluereportonline.com"
              (debInfo . D.sourceFormat) .= Native3
              (debInfo . D.changelog) .= Just log
@@ -654,6 +657,7 @@ test9 label =
                    , "AlexWrapper-posn"
                    , "AlexWrapper-posn-bytestring"
                    , "AlexWrapper-strict-bytestring"]
+             (debInfo . D.flags . verbosity) .= 1
              (debInfo . D.control . S.homepage) .= Just "http://www.haskell.org/alex/"
              (debInfo . D.sourceFormat) .= Native3
              (debInfo . D.debVersion) .= Just (parseDebianVersion'("3.0.2-1~hackage1" :: String))
@@ -676,7 +680,8 @@ test10 label =
     where
       customize :: CabalT IO ()
       customize =
-          do (A.debInfo . D.sourceFormat) .= Native3
+          do (A.debInfo . D.flags . verbosity) .= 1
+             (A.debInfo . D.sourceFormat) .= Native3
              (A.debInfo . D.sourcePackageName) .= Just (SrcPkgName "seereason-darcs-backups")
              (A.debInfo . D.compat) .= Just 9
              (A.debInfo . D.control . S.standardsVersion) .= Just (StandardsVersion 3 8 1 Nothing)

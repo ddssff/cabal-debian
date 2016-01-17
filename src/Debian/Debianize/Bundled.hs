@@ -25,7 +25,7 @@ import Data.Function.Memoize (memoize2, memoize3)
 import Data.List (isPrefixOf, sortBy)
 import Data.Map as Map (Map)
 import Data.Maybe (listToMaybe, mapMaybe)
-import Data.Version (parseVersion, Version(..))
+import Data.Version (parseVersion)
 import Debian.Debianize.VersionSplits (cabalFromDebian', DebBase(DebBase), VersionSplits)
 import Debian.GHC ()
 import Debian.Relation (BinPkgName(..))
@@ -33,6 +33,7 @@ import Debian.Relation.ByteString ()
 import Debian.Version (DebianVersion, parseDebianVersion', prettyDebianVersion)
 import Distribution.Package (PackageIdentifier(..), PackageName(..))
 import Distribution.Simple.Compiler (CompilerFlavor(..))
+import Distribution.Text (display)
 import System.IO.Unsafe (unsafePerformIO)
 import System.Process (readProcess)
 import System.Unix.Chroot (useEnv)
@@ -45,15 +46,15 @@ import Text.Regex.TDFA ((=~))
 -- provides.  I have modified the ghcjs packaging to generate the
 -- required virtual packages in the Provides line.  For other
 -- compilers it maybe be unimplemented.
-builtIn :: Map PackageName VersionSplits -> CompilerFlavor -> FilePath -> PackageName -> Maybe Version
+builtIn :: Map PackageName VersionSplits -> CompilerFlavor -> FilePath -> PackageName -> (DebianVersion, Maybe PackageIdentifier)
 builtIn splits hc root lib = do
   f $ builtIn' splits hc root
     where
-      f :: (DebianVersion, [PackageIdentifier]) -> Maybe Version
-      f (hcv, ids) = case map pkgVersion (filter (\ i -> pkgName i == lib) ids) of
-                [] -> Nothing
-                [v] -> Just v
-                vs -> error $ show hc ++ "-" ++ show hcv ++ " in " ++ show root ++ " provides multiple versions of " ++ show lib ++ ": " ++ show vs
+      f :: (DebianVersion, [PackageIdentifier]) -> (DebianVersion, Maybe PackageIdentifier)
+      f (hcv, ids) = case filter (\ i -> pkgName i == lib) ids of
+                [] -> (hcv, Nothing)
+                [i] -> (hcv, Just i)
+                vs -> error $ show hc ++ "-" ++ show (prettyDebianVersion hcv) ++ " in " ++ root ++ " provides multiple versions of " ++ display lib ++ ": " ++ show (map display vs)
 
 -- | Ok, lets see if we can infer the built in packages from the
 -- Provides field returned by apt-cache.

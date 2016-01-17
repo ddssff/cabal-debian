@@ -16,7 +16,7 @@ import Data.Map as Map (lookup, Map)
 import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing)
 import Data.Set as Set (empty, fold, fromList, map, member, Set, singleton, toList, union)
 import Data.Version (showVersion, Version)
-import Debian.Debianize.BasicInfo (buildEnv, compilerFlavor, EnvSet(dependOS))
+import Debian.Debianize.BasicInfo (buildEnv, compilerFlavor, EnvSet(dependOS), verbosity)
 import Debian.Debianize.Bundled (builtIn)
 import qualified Debian.Debianize.DebInfo as D
 import Debian.Debianize.DebianName (mkPkgName, mkPkgName')
@@ -29,12 +29,14 @@ import Debian.GHC (compilerPackageName)
 import Debian.Orphans ()
 import Debian.Relation (BinPkgName(..), checkVersionReq, Relation(..), Relations)
 import qualified Debian.Relation as D (BinPkgName(BinPkgName), Relation(..), Relations, VersionReq(EEQ, GRE, LTE, SGR, SLT))
-import Debian.Version (DebianVersion, parseDebianVersion')
+import Debian.Version (DebianVersion, parseDebianVersion', prettyDebianVersion)
+import Debug.Trace (trace)
 import Distribution.Compiler (CompilerFlavor(..))
-import Distribution.Package (Dependency(..), PackageName(PackageName))
+import Distribution.Package (Dependency(..), PackageIdentifier(pkgName, pkgVersion), PackageName(PackageName))
 import Distribution.PackageDescription (PackageDescription)
 import Distribution.PackageDescription as Cabal (BuildInfo(..), BuildInfo(buildTools, extraLibs, pkgconfigDepends), Library(..), Executable(..), TestSuite(..))
 import qualified Distribution.PackageDescription as Cabal (PackageDescription(library, executables, testSuites))
+import Distribution.Text (display)
 import Distribution.Version (anyVersion, asVersionIntervals, earlierVersion, foldVersionRange', fromVersionIntervals, intersectVersionRanges, isNoVersion, laterVersion, orEarlierVersion, orLaterVersion, toVersionIntervals, unionVersionRanges, VersionRange, withinVersion)
 import Distribution.Version.Invert (invertVersionRange)
 import Prelude hiding (init, log, map, unlines, unlines, writeFile)
@@ -335,7 +337,15 @@ doBundled typ name hc rels =
         -- Look at what version of the package is provided by the compiler.
         atoms <- get
         -- What version of this package (if any) does the compiler provide?
-        let pver = maybe Nothing (Just . debianVersion'' atoms name) (builtIn splits hc root name)
+        let relInfo = builtIn splits hc root name
+        let pver = fmap (debianVersion'' atoms) (snd relInfo)
+            v = view (A.debInfo . D.flags . verbosity) atoms
+        case (v > 0, relInfo) of
+          (True, (hcv, Just i)) ->
+              trace ("  " ++ show hc ++ "-" ++ show (prettyDebianVersion hcv) ++ " in " ++ root ++ " provides " ++ display (pkgName i) ++ "-" ++ display (pkgVersion i)) (return ())
+          (True, (hcv, Nothing)) ->
+              trace ("  " ++ show hc ++ "-" ++ show (prettyDebianVersion hcv) ++ " in " ++ root ++ " does not provide " ++ display name) (return ())
+          _ -> return ()
         -- The name this library would have if it was in the compiler conflicts list.
         let naiveDebianName = mkPkgName hc name typ
         -- The compiler should appear in the build dependency
@@ -387,8 +397,8 @@ debianVersion' name v =
     do atoms <- get
        return $ parseDebianVersion' (maybe "" (\ n -> show n ++ ":") (Map.lookup name (view A.epochMap atoms)) ++ showVersion v)
 
-debianVersion'' :: CabalInfo -> PackageName -> Version -> DebianVersion
-debianVersion'' atoms name v = parseDebianVersion' (maybe "" (\ n -> show n ++ ":") (Map.lookup name (view A.epochMap atoms)) ++ showVersion v)
+debianVersion'' :: CabalInfo -> PackageIdentifier -> DebianVersion
+debianVersion'' atoms i = parseDebianVersion' (maybe "" (\ n -> show n ++ ":") (Map.lookup (pkgName i) (view A.epochMap atoms)) ++ showVersion (pkgVersion i))
 
 data Rels a = And {unAnd :: [Rels a]} | Or {unOr :: [Rels a]} | Rel' {unRel :: a} deriving Show
 

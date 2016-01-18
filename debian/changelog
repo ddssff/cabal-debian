@@ -1,3 +1,10 @@
+haskell-cabal-debian (4.32.2) unstable; urgency=low
+
+  * Ifdef a use of GHCJS
+  * Add (failing) tests for ghc-8.0.1
+
+ -- David Fox <dsf@seereason.com>  Mon, 18 Jan 2016 06:21:08 -0800
+
 haskell-cabal-debian (4.32) unstable; urgency=low
 
   * Compute bundled dependencies by looking for library .conf files

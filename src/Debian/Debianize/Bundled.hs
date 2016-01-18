@@ -74,7 +74,9 @@ hcVersion root hc =
      unsafePerformIO . chroot root $
      readProcess hcpath
                  [case hc of
+#if MIN_VERSION_Cabal(1,22,0)
                     GHCJS -> "--numeric-ghc-version"
+#endif
                     _ -> "--numeric-version"]
                  ""
 

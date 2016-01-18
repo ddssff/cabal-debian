@@ -1,3 +1,11 @@
+haskell-cabal-debian (4.32) unstable; urgency=low
+
+  * Compute bundled dependencies by looking for library .conf files
+    included in the debian package, rather than by looking at the
+    deb's "Provides" attribute.  Some ghc debs do not have Provides.
+
+ -- David Fox <dsf@seereason.com>  Mon, 18 Jan 2016 05:49:55 -0800
+
 haskell-cabal-debian (4.31.9) unstable; urgency=low
 
   * Fix official haskell packages repository URI

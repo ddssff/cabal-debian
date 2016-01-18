@@ -22,6 +22,7 @@ Build-Depends: debhelper (>= 9)
                , libghc-digestive-functors-dev (>= 0.2)
                , libghc-digestive-functors-happstack-dev (>= 0.1)
                , libghc-digestive-functors-hsp-dev (>= 0.3.1)
+               , libghc-extensible-exceptions-dev
                , libghc-happstack-authenticate-dev (>= 0.6)
                , libghc-happstack-hsp-dev (>= 7.1)
                , libghc-happstack-hsp-dev (<< 7.2)
@@ -37,6 +38,8 @@ Build-Depends: debhelper (>= 9)
                , libghc-json-dev
                , libghc-mtl-dev
                , libghc-network-dev
+               , libghc-old-locale-dev
+               , libghc-old-time-dev
                , libghc-parsec3-dev (>= 3) | libghc-parsec2-dev (<< 3)
                , libghc-random-dev
                , libghc-safecopy-dev (>= 0.6.0)

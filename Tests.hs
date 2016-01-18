@@ -595,15 +595,15 @@ test6 :: String -> Test
 test6 label =
     TestLabel label $
     TestCase (do dist <- findBuildDir
-                 result <- readProcessWithExitCode "runhaskell" ["--ghc-arg=-package-db=" ++ dist ++ "/package.conf.inplace", "test-data/artvaluereport2/input/debian/Debianize.hs", "--dry-run", "--verbose"] ""
-                 assertEqual label (ExitSuccess, "", "") result)
+                 (code, out, _err) <- readProcessWithExitCode "runhaskell" ["--ghc-arg=-package-db=" ++ dist ++ "/package.conf.inplace", "test-data/artvaluereport2/input/debian/Debianize.hs", "--dry-run", "--verbose"] ""
+                 assertEqual label (ExitSuccess, "") (code, out))
 
 test7 :: String -> Test
 test7 label =
     TestLabel label $
     TestCase (do dist <- findBuildDir
-                 result <- readProcessWithExitCode "runhaskell" ["--ghc-arg=-package-db=" ++ dist ++ "/package.conf.inplace", "debian/Debianize.hs", "--dry-run", "--native", "--verbose"] ""
-                 assertEqual label (ExitSuccess, "Ignored debianization file: debian/cabal-debian.1\nIgnored debianization file: debian/cabal-debian.manpages\nDebianization (dry run):\n  No changes\n\n", "") result
+                 (code, out, _err) <- readProcessWithExitCode "runhaskell" ["--ghc-arg=-package-db=" ++ dist ++ "/package.conf.inplace", "debian/Debianize.hs", "--dry-run", "--native", "--verbose"] ""
+                 assertEqual label (ExitSuccess, "Ignored debianization file: debian/cabal-debian.1\nIgnored debianization file: debian/cabal-debian.manpages\nDebianization (dry run):\n  No changes\n\n") (code, out)
 {-
                  assertBool label (elem new [(ExitSuccess, "Ignored debianization file: debian/cabal-debian.1\nIgnored debianization file: debian/cabal-debian.manpages\nDebianization (dry run):\n  No changes\n\n", ""),
                                              (ExitSuccess, "Ignored debianization file: debian/cabal-debian.manpages\nIgnored debianization file: debian/cabal-debian.1\nDebianization (dry run):\n  No changes\n\n", "")]) -})

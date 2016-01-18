@@ -49,6 +49,8 @@ Build-Depends: debhelper (>= 9)
                , libghc-lifted-base-dev
                , libghc-mtl-dev
                , libghc-network-dev (>= 2.4)
+               , libghc-old-locale-dev
+               , libghc-old-time-dev
                , libghc-pandoc-dev
 	       , libghc-parsec3-dev
                , libghc-process-extras-dev (>= 0.5)
@@ -62,14 +64,12 @@ Build-Depends: debhelper (>= 9)
                , libghc-syb-with-class-dev
                , libghc-tagged-dev
                , libghc-text-dev
-               , libghc-transformers-dev
                , libghc-uniplate-dev
                , libghc-utf8-string-dev
                , libghc-web-routes-dev
                , libghc-web-routes-happstack-dev
                , libghc-web-routes-hsp-dev
                , libghc-web-routes-th-dev
-               , libghc-xhtml-dev
 Standards-Version: 3.9.6
 Homepage: http://appraisalreportonline.com
 X-Description: Haskell modules for fine art appraisal applications

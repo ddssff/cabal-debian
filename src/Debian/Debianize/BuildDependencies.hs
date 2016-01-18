@@ -13,11 +13,11 @@ import Data.Char (isSpace, toLower)
 import Data.Function (on)
 import Data.List as List (filter, groupBy, map, minimumBy, nub, sortBy)
 import Data.Map as Map (lookup, Map)
-import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing)
+import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, listToMaybe)
 import Data.Set as Set (empty, fold, fromList, map, member, Set, singleton, toList, union)
 import Data.Version (showVersion, Version)
 import Debian.Debianize.BasicInfo (buildEnv, compilerFlavor, EnvSet(dependOS), verbosity)
-import Debian.Debianize.Bundled (builtIn)
+import Debian.Debianize.Bundled (builtIn, hcVersion)
 import qualified Debian.Debianize.DebInfo as D
 import Debian.Debianize.DebianName (mkPkgName, mkPkgName')
 import Debian.Debianize.Monad as Monad (CabalInfo, CabalT)
@@ -29,7 +29,7 @@ import Debian.GHC (compilerPackageName)
 import Debian.Orphans ()
 import Debian.Relation (BinPkgName(..), checkVersionReq, Relation(..), Relations)
 import qualified Debian.Relation as D (BinPkgName(BinPkgName), Relation(..), Relations, VersionReq(EEQ, GRE, LTE, SGR, SLT))
-import Debian.Version (DebianVersion, parseDebianVersion', prettyDebianVersion)
+import Debian.Version (DebianVersion, parseDebianVersion')
 import Debug.Trace (trace)
 import Distribution.Compiler (CompilerFlavor(..))
 import Distribution.Package (Dependency(..), PackageIdentifier(pkgName, pkgVersion), PackageName(PackageName))
@@ -332,19 +332,19 @@ doBundled typ name hc rels =
       doRel :: Monad m => D.Relation -> CabalT m [D.Relation]
       doRel rel@(D.Rel dname req _) = do
         -- gver <- use ghcVersion
-        splits <- use A.debianNameMap
         root <- use (A.debInfo . D.flags . buildEnv) >>= return . dependOS
         -- Look at what version of the package is provided by the compiler.
         atoms <- get
         -- What version of this package (if any) does the compiler provide?
-        let relInfo = builtIn splits hc root name
-        let pver = fmap (debianVersion'' atoms) (snd relInfo)
+        let Just hcv = hcVersion root hc
+            relInfo = builtIn hc root
+            pver = listToMaybe $ fmap (debianVersion'' atoms) (filter ((== name) . pkgName) relInfo)
             v = view (A.debInfo . D.flags . verbosity) atoms
-        case (v > 0, relInfo) of
-          (True, (hcv, Just i)) ->
-              trace ("  " ++ show hc ++ "-" ++ show (prettyDebianVersion hcv) ++ " in " ++ root ++ " provides " ++ display (pkgName i) ++ "-" ++ display (pkgVersion i)) (return ())
-          (True, (hcv, Nothing)) ->
-              trace ("  " ++ show hc ++ "-" ++ show (prettyDebianVersion hcv) ++ " in " ++ root ++ " does not provide " ++ display name) (return ())
+        case (v > 0, filter ((== name) . pkgName) relInfo) of
+          (True, [i]) ->
+              trace ("  " ++ show hc ++ "-" ++ show (showVersion hcv) ++ " in " ++ root ++ " provides " ++ display (pkgName i) ++ "-" ++ display (pkgVersion i)) (return ())
+          (True, _) ->
+              trace ("  " ++ show hc ++ "-" ++ show (showVersion hcv) ++ " in " ++ root ++ " does not provide " ++ display name) (return ())
           _ -> return ()
         -- The name this library would have if it was in the compiler conflicts list.
         let naiveDebianName = mkPkgName hc name typ
@@ -378,7 +378,7 @@ doBundled typ name hc rels =
       conflictsWithHC _ = True
 
 {-
-doBundled :: MonadIO m =>
+doBundled :: Monad m =>
              B.PackageType  -- Documentation, Profiling, Development...
           -> PackageName    -- Cabal package name
           -> [D.Relation]   -- Original set of debian dependencies
@@ -386,7 +386,7 @@ doBundled :: MonadIO m =>
 doBundled hc typ name rels =
     concat <$> mapM doRel rels
     where
-      doRel :: MonadIO m => D.Relation -> CabalT m [D.Relation]
+      doRel :: Monad m => D.Relation -> CabalT m [D.Relation]
       doRel rel@(D.Rel dname req _) = do
         hc <- use
 -}

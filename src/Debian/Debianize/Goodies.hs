@@ -157,12 +157,12 @@ oldClckwrksSiteFlags :: D.Site -> [String]
 oldClckwrksSiteFlags x =
     [ -- According to the happstack-server documentation this needs a trailing slash.
       "--base-uri", "http://" ++ D.domain x ++ "/"
-    , "--http-port", show D.port]
+    , "--http-port", show (D.port (D.server x))]
 oldClckwrksServerFlags :: D.Server -> [String]
 oldClckwrksServerFlags x =
     [ -- According to the happstack-server documentation this needs a trailing slash.
       "--base-uri", "http://" ++ D.hostname x ++ ":" ++ show (D.port x) ++ "/"
-    , "--http-port", show D.port]
+    , "--http-port", show (D.port x)]
 
 watchAtom :: PackageName -> Text
 watchAtom (PackageName pkgname) =

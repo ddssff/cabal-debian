@@ -362,11 +362,11 @@ officialSettings = do
 
         let packagesURI = "https://anonscm.debian.org/cgit/pkg-haskell/DHG_packages.git/tree/p/" <> pack src
         zoom D.control $ do
-           S.standardsVersion .?= Just (parseStandardsVersion "3.9.6")
+           S.standardsVersion .?= Just (parseStandardsVersion "3.9.8")
            S.homepage .?= Just ("http://hackage.haskell.org/package/" <> pack cabal)
            S.vcsFields %= Set.union (Set.fromList
               [ S.VCSBrowser packagesURI
-              , S.VCSGit  "git://git.debian.org/git/pkg-haskell/DHG_packages.git"
+              , S.VCSGit  "https://anonscm.debian.org/cgit/pkg-haskell/DHG_packages.git"
               ])
 
 putBuildDeps :: (Monad m, Functor m) => (Relations -> Relations) -> PackageDescription -> CabalT m ()

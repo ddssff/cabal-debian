@@ -236,7 +236,7 @@ aptFile pkg = unsafePerformIO $
                   (ExitSuccess, out, _) ->
                       case takeWhile (not . isSpace) out of
                         "" -> error $ "Unable to locate a debian package containing the build tool " ++ pkg ++
-                                      ", try using --exec-map " ++ pkg ++ "=<debname> or execMap " ++ show pkg ++
+                                      ", try using --exec-map " ++ pkg ++ ":<debname> or execMap " ++ show pkg ++
                                       " [[Rel (BinPkgName \"<debname>\") Nothing Nothing]]"
                         s -> [[[D.Rel (D.BinPkgName s) Nothing Nothing]]]
                   _ -> []

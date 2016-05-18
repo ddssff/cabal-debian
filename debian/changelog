@@ -1,3 +1,12 @@
+haskell-cabal-debian (4.32.4) unstable; urgency=low
+
+  * Merge pull request #55 from neongreen/master
+  * Bump standards version to 3.9.8 (Dmitry Bogatov)
+  * Use secure (https) URI in Vcs-Git field in debian/control (Dmitry Bogatov)
+  * Fix misleading error message (Dmitry Bogatov)
+
+ -- David Fox <dsf@seereason.com>  Wed, 18 May 2016 11:46:45 -0700
+
 haskell-cabal-debian (4.32.2) unstable; urgency=low
 
   * Ifdef a use of GHCJS

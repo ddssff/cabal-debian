@@ -36,7 +36,9 @@ deriving instance Typeable CompilerId
 #if MIN_VERSION_Cabal(1,22,0)
 deriving instance Typeable AbiTag
 deriving instance Data AbiTag
+#if !MIN_VERSION_Cabal(1,24,0)
 deriving instance Eq AbiTag
+#endif
 deriving instance Ord AbiTag
 #endif
 
@@ -44,7 +46,9 @@ deriving instance Data Compiler
 deriving instance Data CompilerId
 
 deriving instance Ord Language
+#if !MIN_VERSION_Cabal(1,24,0)
 deriving instance Eq Compiler
+#endif
 deriving instance Ord Compiler
 deriving instance Ord NameAddr
 deriving instance Ord License

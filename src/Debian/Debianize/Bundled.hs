@@ -106,7 +106,7 @@ aptCacheProvides = memoize2 aptCacheProvides'
                 lns = lines $ unsafePerformIO (chroot root (readProcess "dpkg" ["-L", unBinPkgName hcname] ""))
                 parseLib :: String -> Maybe PackageIdentifier
                 parseLib s =
-                    case s =~ ("(.*)-([0-9.]*)-([a-f0-9]*).conf$") :: (String, String, String, [String]) of
+                    case s =~ ("(.*)-([0-9.]*)-(.*).conf$") :: (String, String, String, [String]) of
                       (_, _, _, [cabalName, ver, _sum]) ->
                           case parseVersion' ver of
                             Just v -> Just (PackageIdentifier (PackageName cabalName) v)

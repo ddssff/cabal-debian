@@ -653,4 +653,12 @@ parseProgramArguments' args =  O.handleParseResult result where
   result = O.execParserPure prefs (commandLineOptionsParserInfo args) args
 
 parseProgramArguments :: IO CommandLineOptions
-parseProgramArguments = getArgs >>= parseProgramArguments'
+parseProgramArguments = getArgs >>= parseProgramArguments' . leaveOne "--disable-haddock"
+    where
+      leaveOne :: String -> [String] -> [String]
+      leaveOne s xs = go s False xs
+          where
+            go _ _ [] = []
+            go s False (x : xs) | x == s = x : go s True xs
+            go s True (x : xs) | x == s = go s True xs
+            go s flag (x : xs) = x : go s flag xs

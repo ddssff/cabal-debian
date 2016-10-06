@@ -18,10 +18,10 @@ Description:
  the link to the @Debian.Debianize@ module below.
 Cabal-Version: >= 1.10
 Extra-Source-Files:
+  changelog
   debian/cabal-debian.1
   debian/cabal-debian.install
   debian/cabal-debian.manpages
-  debian/changelog
   debian/compat
   debian/control
   debian/copyright

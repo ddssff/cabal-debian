@@ -95,9 +95,8 @@ aptCacheProvides :: BinPkgName -> FilePath -> [PackageIdentifier]
 aptCacheProvides = memoize2 aptCacheProvides'
     where
       aptCacheProvides' hcname root =
-          trace ("aptCacheProvides " ++ show hcname ++ " in " ++ root ++ " -> " ++ show pis) pis
-              where
-                pis = (catMaybes .
+        {-trace ("aptCacheProvides " ++ show hcname ++ " in " ++ root ++ " -> " ++ show pis)-} pis
+          where pis = (catMaybes .
                        map parseLib .
                        filter (isSuffixOf ".conf") .
                        map last .
@@ -138,7 +137,7 @@ aptCacheShowPkg :: FilePath -> BinPkgName -> Either SomeException String
 aptCacheShowPkg =
     memoize2 (\ root hcname -> tr root hcname $ unsafePerformIO (try (chroot root (readProcess "apt-cache" ["showpkg", unBinPkgName hcname] ""))))
     where
-      tr root hcname x  = trace ("aptCacheShowPkg " ++ show hcname ++ " in " ++ show root ++ " -> " ++ show x) x
+      tr root hcname x  = {-trace ("aptCacheShowPkg " ++ show hcname ++ " in " ++ show root ++ " -> " ++ show x)-} x
 
 
 chroot :: (NFData a, MonadIO m, MonadMask m) => String -> m a -> m a

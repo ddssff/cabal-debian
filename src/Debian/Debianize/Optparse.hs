@@ -21,6 +21,7 @@ import Control.Newtype
 import Data.Bifunctor (first)
 import Data.Char(toUpper)
 import Data.Foldable (forM_)
+import Data.List (nub)
 import Data.Maybe.Extended (fromMaybe)
 import Data.Maybe.Extended (nothingIf)
 import Data.Monoid ((<>))
@@ -39,6 +40,7 @@ import GHC.Generics
 import System.Environment (getArgs)
 import System.FilePath(splitFileName, (</>))
 import System.Posix.Env (getEnv)
+import System.Process (showCommandForUser)
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr(..))
 import Text.PrettyPrint.ANSI.Leijen (linebreak, (<+>), string, indent)
 import qualified  Debian.Debianize.DebInfo as D
@@ -126,7 +128,7 @@ data BehaviorAdjustment = BehaviorAdjustment {
   _cabalEpochMapping :: [CabalEpochMapping],
   _execDebMapping    :: [ExecDebMapping],
   _profiling         :: ProfilingStatus,
-  _haddock           :: HaddockStatus,
+  _haddock           :: [HaddockStatus],
   _official          :: OfficialStatus,
   _sourceFormat      :: SourceFormat,
   _tests             :: TestsStatus
@@ -472,11 +474,11 @@ profilingP = O.flag ProfilingEnabled ProfilingDisabled m where
       <> O.long "disable-profiling"
   helpMsg = "Do not generate profiling (-prof) library package."
 
-haddockP :: O.Parser HaddockStatus
-haddockP = O.flag HaddockEnabled HaddockDisabled m where
+haddockP :: O.Parser [HaddockStatus]
+haddockP = (: []) <$> (O.flag HaddockEnabled HaddockDisabled m) where
   m = O.help helpMsg
       <> O.long "disable-haddock"
-  helpMsg = "Do not build haddoc documentation"
+  helpMsg = "Do not create a -doc package"
 
 officialP :: O.Parser OfficialStatus
 officialP = O.flag NonOfficial Official m where
@@ -599,7 +601,7 @@ commandLineOptionsParserInfo args = O.info (O.helper <*> commandLineOptionsP) im
      "reason it is recommended either using a pristine unpacked directory each time, or else",
      "using a revision control system to revert the package to a known state before running.",
      "",
-     "Arguments: " ++ show args
+     "Arguments: " ++ showCommandForUser "cabal-debian" args
      ])
 
 -- FIXME: Separation of parsing of `BehaviorAdjustment' and performing
@@ -614,7 +616,7 @@ handleBehaviorAdjustment (BehaviorAdjustment {..}) = do
   forM_ _execDebMapping $ (D.execMap %=) . uncurry Map.insert . unpack
   forM_ _missingDependency $ (D.missingDependencies %=) . Set.insert
   D.utilsPackageNameBase .= _defaultPackage
-  D.noDocumentationLibrary .= (_haddock == HaddockDisabled)
+  D.noDocumentationLibrary .= (HaddockDisabled `elem` _haddock)
   D.noProfilingLibrary .= (_profiling == ProfilingDisabled)
   D.overrideDebianNameBase .= _debianNameBase
   D.sourcePackageName .= _sourcePackageName

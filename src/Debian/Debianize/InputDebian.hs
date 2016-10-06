@@ -5,23 +5,24 @@ module Debian.Debianize.InputDebian
     ( inputDebianization
     , inputDebianizationFile
     , inputChangeLog
+    , loadChangeLog
     , dataDest
     , dataTop
     ) where
 
-
+import Debug.Trace
 import Control.Lens
-import Control.Monad (filterM)
+import Control.Monad (filterM, msum)
 import Control.Monad.State (put)
 import Control.Monad.Trans (liftIO, MonadIO)
 import Data.Char (isSpace)
 import Data.Map as Map (insert, insertWith)
 import Data.Maybe (fromMaybe)
-import Data.Monoid ((<>), mappend)
+import Data.Monoid ((<>))
 import Data.Set as Set (fromList, insert, singleton)
 import Data.Text (break, lines, null, pack, strip, Text, unpack, words)
 import Data.Text.IO (readFile)
-import Debian.Changes (parseChangeLog)
+import Debian.Changes (ChangeLog, parseChangeLog)
 import Debian.Control (Control'(unControl), ControlFunctions, Field, Field'(..), Paragraph'(..), parseControlFromFile, stripWS)
 import Debian.Debianize.DebInfo (changelog, compat, control, copyright, install, installDir, installInit, intermediateFiles, link, logrotateStanza, postInst, postRm, preInst, preRm, rulesHead, sourceFormat, warning, watch)
 import qualified Debian.Debianize.DebInfo as T (flags, makeDebInfo)
@@ -41,7 +42,7 @@ import qualified Distribution.PackageDescription as Cabal (dataDir, PackageDescr
 import Prelude hiding (break, lines, log, null, readFile, sum, words)
 import System.Directory (doesFileExist)
 import System.FilePath ((</>), dropExtension, takeExtension)
-import System.IO.Error (catchIOError, tryIOError)
+import System.IO.Error (catchIOError, isDoesNotExistError, tryIOError)
 -- import System.Unix.Chroot (useEnv)
 -- import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr)
 
@@ -171,10 +172,23 @@ yes "yes" = True
 yes "no" = False
 yes x = error $ "Expecting yes or no: " ++ x
 
+-- | Look in several places for a debian changelog
 inputChangeLog :: MonadIO m => DebianT m ()
 inputChangeLog =
-    do log <- liftIO $ tryIOError (readFile "debian/changelog" >>= return . parseChangeLog . unpack)
-       changelog .?= either (\ _ -> Nothing) Just log
+    do log <- liftIO loadChangeLog
+       changelog .?= log
+
+-- | Look in several places for a debian changelog
+loadChangeLog :: IO (Maybe ChangeLog)
+loadChangeLog =
+    do msum (map doPath ["CHANGELOG", "ChangeLog", "changelog", "debian/changelog"])
+    where
+      doPath :: FilePath -> IO (Maybe ChangeLog)
+      doPath p = putStrLn p >>
+                 tryIOError (readFile p) >>= either doExn (\t -> pure (either (const Nothing) Just (parseChangeLog (unpack t))))
+      doExn :: IOError -> IO (Maybe ChangeLog)
+      doExn e | isDoesNotExistError e = pure Nothing
+      doExn e = error ("inputChangelog: " ++ show e)
 
 inputCabalInfoFromDirectory :: MonadIO m => DebianT m () -- .install files, .init files, etc.
 inputCabalInfoFromDirectory =
@@ -208,8 +222,9 @@ inputCabalInfo debian name@"watch" = liftIO (readFile (debian </> name)) >>= \ t
 inputCabalInfo debian name@"rules" = liftIO (readFile (debian </> name)) >>= \ text -> rulesHead .= (Just $ strip text <> pack "\n")
 inputCabalInfo debian name@"compat" = liftIO (readFile (debian </> name)) >>= \ text -> compat .= Just (read' (\ s -> error $ "compat: " ++ show s) (unpack text))
 inputCabalInfo debian name@"copyright" = liftIO (readFile (debian </> name)) >>= \ text -> copyright .= Just (readCopyrightDescription text)
-inputCabalInfo debian name@"changelog" =
-    liftIO (readFile (debian </> name)) >>= return . parseChangeLog . unpack >>= \ log -> changelog .= Just log
+inputCabalInfo debian name@"changelog" = do
+  log <- liftIO (readFile (debian </> name)) >>= return . either (const Nothing) Just . parseChangeLog . unpack
+  changelog .= log
 inputCabalInfo debian name =
     case (BinPkgName (dropExtension name), takeExtension name) of
       (p, ".install") ->   liftIO (readFile (debian </> name)) >>= \ text -> mapM_ (readInstall p) (lines text)

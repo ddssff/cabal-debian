@@ -1,3 +1,12 @@
+haskell-cabal-debian (4.32.7) unstable; urgency=low
+
+  * Look for changelog in several places rather than just debian/changelog:
+    ./changelog, ./ChangeLog, ./CHANGELOG.  These are the places where
+    hackage looks, so cabal-debian should add its entry and deposit the new
+    changelog in debian/changelog.
+
+ -- David Fox <dsf@seereason.com>  Thu, 06 Oct 2016 10:07:17 -0700
+
 haskell-cabal-debian (4.32.4) unstable; urgency=low
 
   * Merge pull request #55 from neongreen/master

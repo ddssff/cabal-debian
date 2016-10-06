@@ -1,5 +1,5 @@
 Name:           cabal-debian
-Version:        4.32.6
+Version:        4.32.7
 Copyright:      Copyright (c) 2007-2014, David Fox, Jeremy Shaw
 License:        BSD3
 License-File:   LICENSE
@@ -164,7 +164,7 @@ Library
     Cabal >= 1.18,
     containers,
     data-default,
-    debian >= 3.89,
+    debian >= 3.91,
     deepseq,
     Diff >= 0.3.1,
     directory,
@@ -234,7 +234,7 @@ Executable cabal-debian
     base,
     cabal-debian,
     Cabal >= 1.18,
-    debian >= 3.89,
+    debian >= 3.91,
     lens,
     mtl,
     pretty,
@@ -256,7 +256,7 @@ Test-Suite cabal-debian-tests
     cabal-debian,
     Cabal >= 1.16,
     containers,
-    debian >= 3.89,
+    debian >= 3.91,
     Diff >= 0.3.1,
     directory,
     filepath,

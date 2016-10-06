@@ -12,7 +12,7 @@ module Debian.Debianize.InputDebian
 
 import Debug.Trace
 import Control.Lens
-import Control.Monad (filterM, msum)
+import Control.Monad (filterM)
 import Control.Monad.State (put)
 import Control.Monad.Trans (liftIO, MonadIO)
 import Data.Char (isSpace)
@@ -36,7 +36,7 @@ import qualified Debian.Debianize.SourceDebDescription as S (binaryPackages, bui
 import Debian.Orphans ()
 import Debian.Policy (parseMaintainer, parsePackageArchitectures, parseStandardsVersion, parseUploaders, readPriority, readSection, readMultiArch, readSourceFormat, Section(..))
 import Debian.Relation (BinPkgName(..), parseRelations, Relations, SrcPkgName(..))
-import Debug.Trace (trace)
+--import Debug.Trace (trace)
 import Distribution.Package (PackageIdentifier(..), PackageName(..))
 import qualified Distribution.PackageDescription as Cabal (dataDir, PackageDescription(package))
 import Prelude hiding (break, lines, log, null, readFile, sum, words)
@@ -181,18 +181,27 @@ inputChangeLog =
 -- | Look in several places for a debian changelog
 loadChangeLog :: IO (Maybe ChangeLog)
 loadChangeLog =
-    do msum (map doPath ["CHANGELOG", "ChangeLog", "changelog", "debian/changelog"])
+    doPaths ["CHANGELOG", "ChangeLog", "changelog", "debian/changelog"]
     where
+      doPaths :: [FilePath] -> IO (Maybe ChangeLog)
+      doPaths (p : ps) = doPath p >>= maybe (doPaths ps) (\log -> putStrLn ("Found valid changelog at " ++ p) >> return (Just log))
+      doPaths [] = pure Nothing
       doPath :: FilePath -> IO (Maybe ChangeLog)
-      doPath p = putStrLn p >>
-                 tryIOError (readFile p) >>= either doExn (\t -> pure (either (const Nothing) Just (parseChangeLog (unpack t))))
-      doExn :: IOError -> IO (Maybe ChangeLog)
-      doExn e | isDoesNotExistError e = pure Nothing
-      doExn e = error ("inputChangelog: " ++ show e)
+      doPath p = do
+        t <- tryIOError (readFile p)
+        either doExn doParse t
+          where
+            doParse :: Text -> IO (Maybe ChangeLog)
+            doParse t = do
+              pure $ either (const Nothing) Just (parseChangeLog (unpack t))
+            doExn :: IOError -> IO (Maybe ChangeLog)
+            doExn e | isDoesNotExistError e = pure Nothing
+            doExn e = error ("inputChangelog: " ++ show e)
 
 inputCabalInfoFromDirectory :: MonadIO m => DebianT m () -- .install files, .init files, etc.
 inputCabalInfoFromDirectory =
-    do findFiles
+    do findChangeLog -- Look for changelog in unconventional locations
+       findFiles     -- If debian/changelog is found it will replace what we found above
        doFiles ("./debian/cabalInstall")
     where
       -- Find regular files in the debian/ or in debian/source/format/ and
@@ -203,6 +212,10 @@ inputCabalInfoFromDirectory =
           return . (++ ["source/format"]) >>=
           liftIO . filterM (doesFileExist . (("debian") </>)) >>= \ names ->
           mapM_ (inputCabalInfo ("debian")) names
+      findChangeLog :: MonadIO m => DebianT m ()
+      findChangeLog =
+          filterM (liftIO . doesFileExist) ["changelog", "ChangeLog", "CHANGELOG"] >>= \names ->
+          mapM_ (inputCabalInfo ".") names
       doFiles :: MonadIO m => FilePath -> DebianT m ()
       doFiles tmp =
           do sums <- liftIO $ getDirectoryContents' tmp `catchIOError` (\ _ -> return [])
@@ -222,6 +235,10 @@ inputCabalInfo debian name@"watch" = liftIO (readFile (debian </> name)) >>= \ t
 inputCabalInfo debian name@"rules" = liftIO (readFile (debian </> name)) >>= \ text -> rulesHead .= (Just $ strip text <> pack "\n")
 inputCabalInfo debian name@"compat" = liftIO (readFile (debian </> name)) >>= \ text -> compat .= Just (read' (\ s -> error $ "compat: " ++ show s) (unpack text))
 inputCabalInfo debian name@"copyright" = liftIO (readFile (debian </> name)) >>= \ text -> copyright .= Just (readCopyrightDescription text)
+-- The normal position for a debian changelog is debian/changelog, but
+-- we also look for it in changelog, ChangeLog, and CHANGELOG because
+-- hackage looks for it in those places and the debianization is
+-- better off with those entries than without.
 inputCabalInfo debian name@"changelog" = do
   log <- liftIO (readFile (debian </> name)) >>= return . either (const Nothing) Just . parseChangeLog . unpack
   changelog .= log

@@ -1,3 +1,10 @@
+haskell-cabal-debian (4.33) unstable; urgency=low
+
+  * Remove code that tried to copy the changelog from debian/changelog
+    to ./changelog, and delete other obsolete code from Setup.hs.
+
+ -- David Fox <dsf@seereason.com>  Thu, 06 Oct 2016 12:11:36 -0700
+
 haskell-cabal-debian (4.32.7) unstable; urgency=low
 
   * Look for changelog in several places rather than just debian/changelog:

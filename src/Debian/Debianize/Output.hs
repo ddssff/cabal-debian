@@ -76,7 +76,9 @@ runDebianizeScript args =
 performDebianization :: CabalT IO () -> IO ()
 performDebianization custom =
   parseProgramArguments >>= \CommandLineOptions {..} ->
-    newCabalInfo _flags >>= (evalCabalT $ do
+    newCabalInfo _flags >>= either
+                               (error . ("peformDebianization - " ++))
+                               (evalCabalT $ do
                                 handleBehaviorAdjustment _adjustment
                                 debianize custom
                                 finishDebianization)

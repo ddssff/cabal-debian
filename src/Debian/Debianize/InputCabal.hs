@@ -37,29 +37,34 @@ import System.Unix.Mount (WithProcAndSys)
 -- in particular, using the dependency environment in the EnvSet, find
 -- the newest available compiler of the requested compiler flavor and
 -- use that information load the configured PackageDescription.
-inputCabalization :: MonadIO m => Flags -> WithProcAndSys m PackageDescription
+inputCabalization :: MonadIO m => Flags -> WithProcAndSys m (Either String PackageDescription)
 inputCabalization flags =
-    do let root = dependOS $ view buildEnv flags
-       let vb = intToVerbosity' $ view verbosity flags
-           fs = view cabalFlagAssignments flags
-       --  Load a GenericPackageDescription from the current directory and
-       -- from that create a finalized PackageDescription for the given
-       -- CompilerId.
-       genPkgDesc <- liftIO $ defaultPackageDesc vb >>= readPackageDescription vb
+    getCompInfo >>= either (return . Left) (\cinfo -> Right <$> doCompInfo cinfo)
+    where
+      doCompInfo cinfo = do
+        -- Load a GenericPackageDescription from the current directory
+        -- and from that create a finalized PackageDescription for the
+        -- given CompilerId.
+        genPkgDesc <- liftIO $ defaultPackageDesc vb >>= readPackageDescription vb
+        let finalized = finalizePackageDescription (toList fs) (const True) (Platform buildArch Cabal.buildOS) cinfo [] genPkgDesc
+        ePkgDesc <- either (return . Left)
+                           (\ (pkgDesc, _) -> do liftIO $ bracket (setFileCreationMask 0o022) setFileCreationMask $ \ _ -> autoreconf vb pkgDesc
+                                                 return (Right pkgDesc))
+                           finalized
+        either (\ deps -> liftIO getCurrentDirectory >>= \ here ->
+                          error $ "Missing dependencies in cabal package at " ++ here ++ ": " ++ show deps)
+               return
+               ePkgDesc
+
+      getCompInfo =
 #if MIN_VERSION_Cabal(1,22,0)
-       cinfo <- getCompilerInfo root (view compilerFlavor flags)
+              getCompilerInfo root (view compilerFlavor flags)
 #else
-       let cinfo = newestAvailableCompilerId root (view compilerFlavor flags)
+              return $ newestAvailableCompilerId root (view compilerFlavor flags)
 #endif
-       let finalized = finalizePackageDescription (toList fs) (const True) (Platform buildArch Cabal.buildOS) cinfo [] genPkgDesc
-       ePkgDesc <- either (return . Left)
-                          (\ (pkgDesc, _) -> do liftIO $ bracket (setFileCreationMask 0o022) setFileCreationMask $ \ _ -> autoreconf vb pkgDesc
-                                                return (Right pkgDesc))
-                          finalized
-       either (\ deps -> liftIO getCurrentDirectory >>= \ here ->
-                         error $ "Missing dependencies in cabal package at " ++ here ++ ": " ++ show deps)
-              return
-              ePkgDesc
+      root = dependOS $ view buildEnv flags
+      vb = intToVerbosity' $ view verbosity flags
+      fs = view cabalFlagAssignments flags
 
 -- | Run the package's configuration script.
 autoreconf :: Verbosity -> Cabal.PackageDescription -> IO ()

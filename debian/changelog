@@ -1,3 +1,9 @@
+haskell-cabal-debian (4.34.1) unstable; urgency=low
+
+  * That was a a terrible idea.
+
+ -- David Fox <dsf@foxthompson.net>  Sat, 12 Nov 2016 05:33:58 -0800
+
 haskell-cabal-debian (4.34) unstable; urgency=low
 
   * Make sure the appropriate compiler package is installed before

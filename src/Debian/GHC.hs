@@ -16,12 +16,12 @@ module Debian.GHC
     ) where
 
 import Control.DeepSeq (force)
-import Control.Exception (SomeException, try)
+import Control.Exception (SomeException, throw, try)
 import Control.Monad (when)
 import Control.Monad.Trans (MonadIO, liftIO)
-import Data.Char ({-isSpace, toLower,-} toUpper)
+import Data.Char (isSpace, {-toLower,-} toUpper)
 import Data.Function.Memoize (deriveMemoizable, memoize2)
-import Data.Maybe (fromMaybe)
+import Data.List (intercalate)
 import Data.Version (showVersion, Version(Version), parseVersion)
 import Debian.Debianize.BinaryDebDescription (PackageType(..))
 import Debian.Relation (BinPkgName(BinPkgName))
@@ -33,6 +33,7 @@ import Distribution.Compiler (CompilerInfo(..), unknownCompilerInfo, AbiTag(NoAb
 import System.Console.GetOpt (ArgDescr(ReqArg), OptDescr(..))
 import System.Directory (doesDirectoryExist)
 import System.Exit (ExitCode(ExitFailure, ExitSuccess))
+import System.IO.Error (isDoesNotExistError)
 import System.IO.Unsafe (unsafePerformIO)
 import System.Process (readProcess, showCommandForUser, readProcessWithExitCode)
 import System.Unix.Chroot (useEnv, fchroot)
@@ -43,7 +44,7 @@ import Text.Read (readMaybe)
 $(deriveMemoizable ''CompilerFlavor)
 $(deriveMemoizable ''BinPkgName)
 
-withCompilerVersion :: FilePath -> CompilerFlavor -> (DebianVersion -> a) -> a
+withCompilerVersion :: FilePath -> CompilerFlavor -> (Maybe DebianVersion -> a) -> a
 withCompilerVersion root hc f = f (newestAvailableCompiler root hc)
 
 -- | Memoized version of newestAvailable'
@@ -70,13 +71,11 @@ newestAvailable' root (BinPkgName name) = do
       chroot "/" = id
       chroot _ = useEnv root (return . force)
 
-newestAvailableCompiler :: FilePath -> CompilerFlavor -> DebianVersion
-newestAvailableCompiler root hc =
-    fromMaybe (error $ "newestAvailableCompiler - No versions of " ++ show hc ++ " available in " ++ show root)
-              (newestAvailable root (compilerPackageName hc Development))
+newestAvailableCompiler :: FilePath -> CompilerFlavor -> Maybe DebianVersion
+newestAvailableCompiler root hc = newestAvailable root (compilerPackageName hc Development)
 
-newestAvailableCompilerId :: FilePath -> CompilerFlavor -> CompilerId
-newestAvailableCompilerId root hc = compilerIdFromDebianVersion hc (newestAvailableCompiler root hc)
+newestAvailableCompilerId :: FilePath -> CompilerFlavor -> Maybe CompilerId
+newestAvailableCompilerId root hc = fmap (compilerIdFromDebianVersion hc) (newestAvailableCompiler root hc)
 
 {-
 -- | The IO portion of ghcVersion.  For there to be no version of ghc
@@ -161,43 +160,44 @@ compilerPackageName x _ = error $ "Unsupported compiler flavor: " ++ show x
 -- compiler into the chroot if necessary and ask it for its version
 -- number.  This has the benefit of working for ghcjs, which doesn't
 -- make the base ghc version available in the version number.
---
--- Assumes the compiler executable is already installed in the root
--- environment.
-getCompilerInfo :: MonadIO m => FilePath -> CompilerFlavor -> WithProcAndSys m CompilerInfo
+getCompilerInfo :: MonadIO m => FilePath -> CompilerFlavor -> WithProcAndSys m (Either String CompilerInfo)
 getCompilerInfo "/" flavor = liftIO $ getCompilerInfo' flavor
 getCompilerInfo root flavor = liftIO $ fchroot root $ getCompilerInfo' flavor
 
-getCompilerInfo' :: CompilerFlavor -> IO CompilerInfo
+getCompilerInfo' :: CompilerFlavor -> IO (Either String CompilerInfo)
 getCompilerInfo' flavor = do
-    compilerId <- runVersionCommand >>= toCompilerId flavor
-    compilerCompat <- case flavor of
-                        GHCJS -> readProcessWithExitCode "ghcjs" ["--numeric-ghc-version"] "" >>= toCompilerId GHC >>= return . Just . (: [])
-                        _ -> return Nothing
-    return $ (unknownCompilerInfo compilerId NoAbiTag) {compilerInfoCompat = compilerCompat}
-    where
-      runVersionCommand :: IO (ExitCode, String, String)
-      runVersionCommand = do
-        (code, out, err) <- readProcessWithExitCode "apt-get" ["install", "-y", "--force-yes", hcDeb flavor] ""
-        case code of
-          ExitFailure _ -> error $ "Could not install " ++ hcCommand flavor ++ ":\n stdout: " ++ out ++ "\n stderr: " ++ err
-          ExitSuccess -> readProcessWithExitCode (hcCommand flavor) ["--numeric-version"] ""
+  r <- try $ readProcessWithExitCode (hcCommand flavor) ["--numeric-version"] ""
+  case r of
+    Left e | isDoesNotExistError e -> return $ Left $ "getCompilerInfo - " ++ show e
+    Left e -> throw e
+    Right r'@(ExitFailure _, _, _) ->
+        error $ processErrorMessage "getCompilerInfo" (hcCommand flavor) ["--numeric-version"] r'
+    Right (_, out, _) -> do
+      let compilerId = maybe (error $ "Parse error in version string: " ++ show out) (CompilerId flavor) (toVersion out)
+      compilerCompat <- case flavor of
+                          GHCJS -> do
+                            (r' :: Either IOError (ExitCode, String, String)) <- try $ readProcessWithExitCode (hcCommand flavor) ["--numeric-ghc-version"] ""
+                            case r' of
+                              Right (ExitSuccess, out', _) ->
+                                  maybe (error $ "getCompilerInfo - parse error in version string: " ++ show out') (return . Just . (: []) . CompilerId GHC) (toVersion out')
+                              _ -> error "getCompilerInfo - failure computing compilerCompat"
+                          _ -> return Nothing
+      return $ Right $ (unknownCompilerInfo compilerId NoAbiTag) {compilerInfoCompat = compilerCompat}
 
-      toCompilerId :: CompilerFlavor -> (ExitCode, String, String) -> IO CompilerId
-      toCompilerId _ (ExitFailure n, _, err) =
-          error $ showCommandForUser (hcCommand flavor) ["--numeric-version"] ++ " -> " ++ show n ++ ", stderr: " ++ show err
-      toCompilerId flavor' (_, out, _) =
-          case filter ((== "\n") . snd) (readP_to_S parseVersion out) of
-            [(v, _)] -> return $ CompilerId flavor' v
-            _ -> error $ "Parse failure for version string: " ++ show out
-#endif
+toVersion :: String -> Maybe Version
+toVersion s = case filter (all isSpace . snd) (readP_to_S parseVersion s) of
+                [(v, _)] -> Just v
+                _ -> Nothing
+
+processErrorMessage :: String -> String -> [String] -> (ExitCode, String, String) -> String
+processErrorMessage msg cmd args (ExitFailure n, out, err) =
+    msg ++ " - " ++ showCommandForUser cmd args ++ " -> " ++ show n ++ "\n stdout: " ++ indent out ++ "\n stderr: " ++ indent err
+    where
+      indent :: String -> String
+      indent = intercalate "\n         " . lines
 
 hcCommand :: CompilerFlavor -> String
 hcCommand GHC = "ghc"
 hcCommand GHCJS = "ghcjs"
 hcCommand flavor = error $ "hcCommand - unexpected CompilerFlavor: " ++ show flavor
-
-hcDeb :: CompilerFlavor -> String
-hcDeb GHC = "ghc"
-hcDeb GHCJS = "ghcjs"
-hcDeb flavor = error $ "hcDeb - unexpected CompilerFlavor: " ++ show flavor
+#endif

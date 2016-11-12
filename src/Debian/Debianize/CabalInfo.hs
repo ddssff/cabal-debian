@@ -72,16 +72,18 @@ instance Canonical CabalInfo where
 
 -- | Given the 'Flags' value read the cabalization and build a new
 -- 'CabalInfo' record.
-newCabalInfo :: (MonadIO m, MonadMask m) => Flags -> m CabalInfo
-newCabalInfo flags' = withProcAndSys "/" $ do
-  pkgDesc <- inputCabalization flags'
-  copyrt <- liftIO $ defaultCopyrightDescription pkgDesc
-  execStateT
-    (do (debInfo . copyright) .= Just copyrt
-        (debInfo . control . S.homepage) .= case strip (pack (Cabal.homepage pkgDesc)) of
-                                              x | Text.null x -> Nothing
-                                              x -> Just x)
-    (makeCabalInfo flags' pkgDesc)
+newCabalInfo :: (MonadIO m, MonadMask m) => Flags -> m (Either String CabalInfo)
+newCabalInfo flags' =
+    withProcAndSys "/" $ inputCabalization flags' >>= either (return . Left) (\p -> Right <$> doPkgDesc p)
+    where
+      doPkgDesc pkgDesc = do
+        copyrt <- liftIO $ defaultCopyrightDescription pkgDesc
+        execStateT
+          (do (debInfo . copyright) .= Just copyrt
+              (debInfo . control . S.homepage) .= case strip (pack (Cabal.homepage pkgDesc)) of
+                                                    x | Text.null x -> Nothing
+                                                    x -> Just x)
+          (makeCabalInfo flags' pkgDesc)
 
 makeCabalInfo :: Flags -> PackageDescription -> CabalInfo
 makeCabalInfo fs pkgDesc =

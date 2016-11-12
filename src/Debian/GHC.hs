@@ -32,7 +32,7 @@ import Distribution.Compiler (CompilerInfo(..), unknownCompilerInfo, AbiTag(NoAb
 #endif
 import System.Console.GetOpt (ArgDescr(ReqArg), OptDescr(..))
 import System.Directory (doesDirectoryExist)
-import System.Exit (ExitCode(ExitFailure))
+import System.Exit (ExitCode(ExitFailure, ExitSuccess))
 import System.IO.Unsafe (unsafePerformIO)
 import System.Process (readProcess, showCommandForUser, readProcessWithExitCode)
 import System.Unix.Chroot (useEnv, fchroot)
@@ -177,14 +177,27 @@ getCompilerInfo' flavor = do
     return $ (unknownCompilerInfo compilerId NoAbiTag) {compilerInfoCompat = compilerCompat}
     where
       runVersionCommand :: IO (ExitCode, String, String)
-      runVersionCommand = readProcessWithExitCode versionCommand ["--numeric-version"] ""
-      versionCommand = case flavor of GHC -> "ghc"; GHCJS -> "ghcjs"; _ -> error $ "Flavor " ++ show flavor
+      runVersionCommand = do
+        (code, out, err) <- readProcessWithExitCode "apt-get" ["install", "-y", "--force-yes", hcDeb flavor] ""
+        case code of
+          ExitFailure _ -> error $ "Could not install " ++ hcCommand flavor ++ ":\n stdout: " ++ out ++ "\n stderr: " ++ err
+          ExitSuccess -> readProcessWithExitCode (hcCommand flavor) ["--numeric-version"] ""
 
       toCompilerId :: CompilerFlavor -> (ExitCode, String, String) -> IO CompilerId
       toCompilerId _ (ExitFailure n, _, err) =
-          error $ showCommandForUser versionCommand ["--numeric-version"] ++ " -> " ++ show n ++ ", stderr: " ++ show err
+          error $ showCommandForUser (hcCommand flavor) ["--numeric-version"] ++ " -> " ++ show n ++ ", stderr: " ++ show err
       toCompilerId flavor' (_, out, _) =
           case filter ((== "\n") . snd) (readP_to_S parseVersion out) of
             [(v, _)] -> return $ CompilerId flavor' v
             _ -> error $ "Parse failure for version string: " ++ show out
 #endif
+
+hcCommand :: CompilerFlavor -> String
+hcCommand GHC = "ghc"
+hcCommand GHCJS = "ghcjs"
+hcCommand flavor = error $ "hcCommand - unexpected CompilerFlavor: " ++ show flavor
+
+hcDeb :: CompilerFlavor -> String
+hcDeb GHC = "ghc"
+hcDeb GHCJS = "ghcjs"
+hcDeb flavor = error $ "hcDeb - unexpected CompilerFlavor: " ++ show flavor

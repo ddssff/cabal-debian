@@ -1,1 +1,3 @@
-:set -isrc -DMIN_VERSION_Cabal(a,b,c)=1
+:set -isrc
+:set -DMIN_VERSION_Cabal(major1,major2,minor)=((major1)<1||(major1)==1&&(major2)<22||(major1)==1&&(major2)==22&&(minor)<=8)
+

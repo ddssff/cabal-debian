@@ -1,15 +1,22 @@
+haskell-cabal-debian (4.35) unstable; urgency=low
+
+  * Add support for the packages in hvr's compiler repository.
+  * Revive the test suite
+
+ -- David Fox <dsf@seereason.com>  Sat, 19 Nov 2016 07:35:29 -0800
+
 haskell-cabal-debian (4.34.1) unstable; urgency=low
 
   * That was a a terrible idea.
 
- -- David Fox <dsf@foxthompson.net>  Sat, 12 Nov 2016 05:33:58 -0800
+ -- David Fox <dsf@seereason.com>  Sat, 12 Nov 2016 05:33:58 -0800
 
 haskell-cabal-debian (4.34) unstable; urgency=low
 
   * Make sure the appropriate compiler package is installed before
     asking it what its version number is.
 
- -- David Fox <dsf@foxthompson.net>  Fri, 11 Nov 2016 16:35:17 -0800
+ -- David Fox <dsf@seereason.com>  Fri, 11 Nov 2016 16:35:17 -0800
 
 haskell-cabal-debian (4.33) unstable; urgency=low
 

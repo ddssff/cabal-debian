@@ -17,6 +17,7 @@ module Debian.Debianize.Bundled
     , aptVersions
     , hcVersion
     , parseVersion'
+    , tests
     ) where
 
 import Control.Applicative ((<$>))
@@ -26,21 +27,21 @@ import Control.Monad.Catch (MonadMask)
 import Control.Monad.Trans (MonadIO)
 import Data.Char (isAlphaNum, toLower)
 import Data.Function.Memoize (memoize2, memoize3)
-import Data.List (groupBy, intercalate, isPrefixOf, isSuffixOf)
-import Data.Maybe (catMaybes, listToMaybe, mapMaybe)
-import Data.Version (makeVersion, parseVersion, Version)
-import Debian.GHC (CompilerChoice(..))
+import Data.List (groupBy, intercalate, isPrefixOf, stripPrefix)
+import Data.Maybe (listToMaybe, mapMaybe)
+import Data.Set as Set (difference, fromList)
+import Data.Version (makeVersion, parseVersion, Version(..))
+import Debian.GHC (CompilerChoice(..), CompilerVendor(..))
 import Debian.Relation (BinPkgName(..))
 import Debian.Relation.ByteString ()
 import Debian.Version (DebianVersion, parseDebianVersion', prettyDebianVersion)
-import Debug.Trace (trace)
 import Distribution.Package (PackageIdentifier(..), PackageName(..))
 import Distribution.Simple.Compiler (CompilerFlavor(..))
 import System.IO.Unsafe (unsafePerformIO)
 import System.Process (readProcess, showCommandForUser)
 import System.Unix.Chroot (useEnv)
-import Test.HUnit
-import Text.ParserCombinators.ReadP (char, choice, endBy1, many1, munch1, ReadP, readP_to_S)
+import Test.HUnit (assertEqual, Test(TestList, TestCase))
+import Text.ParserCombinators.ReadP (char, endBy1, munch1, ReadP, readP_to_S)
 import Text.Regex.TDFA ((=~))
 
 -- | Find out what version, if any, of a cabal library is built into
@@ -94,22 +95,23 @@ aptCacheProvides :: BinPkgName -> FilePath -> [PackageIdentifier]
 aptCacheProvides = memoize2 aptCacheProvides'
     where
       aptCacheProvides' hcname root =
-        {-trace ("aptCacheProvides " ++ show hcname ++ " in " ++ root ++ " -> " ++ show pis)-} pis
-          where pis = (catMaybes .
-                       map parseLib .
-                       filter (isSuffixOf ".conf") .
-                       map last .
-                       filter (elem "package.conf.d") .
-                       map (groupBy (\a b -> (a == '/') == (b == '/')))) lns
-                lns = lines $ unsafePerformIO (chroot root (readProcess "dpkg" ["-L", unBinPkgName hcname] ""))
-                parseLib :: String -> Maybe PackageIdentifier
-                parseLib s =
-                    case s =~ ("(.*)-([0-9.]*)-(.*).conf$") :: (String, String, String, [String]) of
-                      (_, _, _, [cabalName, ver, _sum]) ->
-                          case parseVersion' ver of
-                            Just v -> Just (PackageIdentifier (PackageName cabalName) v)
-                            _ -> Nothing
-                      _ -> Nothing
+        {-trace ("aptCacheProvides " ++ show hcname ++ " in " ++ root ++ " -> " ++ show pis)-}
+          packageIdentifiers root hcname
+
+packageIdentifiers :: String -> BinPkgName -> [PackageIdentifier]
+packageIdentifiers root hcname =
+    (mapMaybe parsePackageIdentifier' .
+     mapMaybe (dropRequiredSuffix ".conf") .
+     map last .
+     filter (elem "package.conf.d") .
+     map (groupBy (\a b -> (a == '/') == (b == '/')))) (binPkgFiles root hcname)
+
+dropRequiredSuffix :: String -> String -> Maybe String
+dropRequiredSuffix suff x =
+    let (x', suff') = splitAt (length x - length suff) x in if suff == suff' then Just x' else Nothing
+
+binPkgFiles :: String -> BinPkgName -> [FilePath]
+binPkgFiles root hcname = lines $ unsafePerformIO (chroot root (readProcess "dpkg" ["-L", unBinPkgName hcname] ""))
 
 {-
 takeBetween :: (a -> Bool) -> (a -> Bool) -> [a] -> [a]
@@ -134,9 +136,7 @@ aptVersions root hcname =
 
 aptCacheShowPkg :: FilePath -> BinPkgName -> Either SomeException String
 aptCacheShowPkg =
-    memoize2 (\ root hcname -> tr root hcname $ unsafePerformIO (try (chroot root (readProcess "apt-cache" ["showpkg", unBinPkgName hcname] ""))))
-    where
-      tr root hcname x  = {-trace ("aptCacheShowPkg " ++ show hcname ++ " in " ++ show root ++ " -> " ++ show x)-} x
+    memoize2 (\ root hcname -> unsafePerformIO (try (chroot root (readProcess "apt-cache" ["showpkg", unBinPkgName hcname] ""))))
 
 
 chroot :: (NFData a, MonadIO m, MonadMask m) => String -> m a -> m a
@@ -170,7 +170,18 @@ tests = TestList [ TestCase (assertEqual "Bundled1"
                  , TestCase (assertEqual "Bundled2"
                                Nothing
                                (parseMaybe parsePackageIdentifier "HUnit-1.2.3 "))
-                 , TestCase (assertEqual "Bundled3"
-                               (Just "/opt")
-                               (hcExecutablePath "/" (CompilerChoice (HVR (makeVersion [7,10,3])) GHC))
+                 , TestCase $ do
+                     ghc <- (head . lines) <$> readProcess "which" ["ghc"] ""
+                     let ver = fmap (takeWhile (/= '/')) (stripPrefix "/opt/ghc/" ghc)
+                     case ver of
+                       Just s -> do
+                           let expected =
+                                   (Set.fromList
+                                           -- This is the package list for ghc-7.10.3
+                                           ["array", "base", "binary", "bin-package-db", "bytestring", "Cabal",
+                                            "containers", "deepseq", "directory", "filepath", "ghc", "ghc-prim",
+                                            "haskeline", "hoopl", "hpc", "integer-gmp", "pretty", "process",
+                                            "template-haskell", "terminfo", "time", "transformers", "unix", "xhtml"])
+                               actual = Set.fromList (map (unPackageName . pkgName) (aptCacheProvides (BinPkgName ("ghc-" ++ s)) "/"))
+                           assertEqual "Bundled4" (mempty, mempty) (Set.difference expected actual, Set.difference actual expected)
                  ]

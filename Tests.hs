@@ -21,6 +21,7 @@ import Data.Text as Text (intercalate, split, Text, unlines, unpack)
 import Data.Version (makeVersion, Version(Version))
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(..), parseEntry)
 import Debian.Debianize.BasicInfo (compilerChoice, Flags, verbosity)
+import qualified Debian.Debianize.Bundled as Bundled (tests)
 import qualified Debian.Debianize.BinaryDebDescription as B
 import Debian.Debianize.CabalInfo as A (CabalInfo, debInfo, epochMap, newCabalInfo)
 import Debian.Debianize.CopyrightDescription
@@ -96,7 +97,8 @@ newDebianization' level standards =
        (A.debInfo . D.control . S.standardsVersion) .= standards
 
 tests :: Test
-tests = TestLabel "Debianization Tests" (TestList [-- 1 and 2 do not input a cabal package - we're not ready to
+tests = TestLabel "Debianization Tests" (TestList [Bundled.tests,
+                                                   -- 1 and 2 do not input a cabal package - we're not ready to
                                                    -- debianize without a cabal package.
                                                    {- test1 "test1",
                                                    test2 "test2", -}

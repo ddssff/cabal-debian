@@ -18,11 +18,11 @@ import Data.Maybe (fromMaybe)
 import Data.Monoid ((<>), mconcat, mempty)
 import Data.Set as Set (fromList, union, insert)
 import Data.Text as Text (intercalate, split, Text, unlines, unpack)
-import Data.Version (Version(Version))
+import Data.Version (makeVersion, Version(Version))
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(..), parseEntry)
-import Debian.Debianize.BasicInfo (compilerFlavor, Flags, verbosity)
+import Debian.Debianize.BasicInfo (compilerChoice, Flags, verbosity)
 import qualified Debian.Debianize.BinaryDebDescription as B
-import Debian.Debianize.CabalInfo as A
+import Debian.Debianize.CabalInfo as A (CabalInfo, debInfo, epochMap, newCabalInfo)
 import Debian.Debianize.CopyrightDescription
 import Debian.Debianize.DebianName (mapCabal, splitCabal)
 import qualified Debian.Debianize.DebInfo as D
@@ -34,6 +34,7 @@ import Debian.Debianize.Monad (CabalT, evalCabalT, execCabalM, execCabalT, liftC
 import Debian.Debianize.Prelude (withCurrentDirectory)
 import qualified Debian.Debianize.SourceDebDescription as S
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
+import Debian.GHC (CompilerChoice(..), CompilerVendor(..))
 import Debian.Pretty (ppShow)
 import Debian.Policy (databaseDirectory, PackageArchitectures(All), PackagePriority(Extra), parseMaintainer, Section(MainSection), SourceFormat(Native3), StandardsVersion(..), getDebhelperCompatLevel, getDebianStandardsVersion, License(..))
 import Debian.Relation (BinPkgName(..), Relation(..), SrcPkgName(..), VersionReq(..))
@@ -68,10 +69,13 @@ defaultAtoms =
 
 -- | Force the compiler version to 7.6 to get predictable outputs
 testAtoms :: IO CabalInfo
-testAtoms = newFlags >>= newCabalInfo >>= return . ghc763
+testAtoms = ghc763 <$> (newFlags >>= newCabalInfo)
     where
-      ghc763 :: CabalInfo -> CabalInfo
-      ghc763 atoms = set (A.debInfo . D.flags . compilerFlavor) GHC atoms
+      ghc763 :: Either String CabalInfo -> CabalInfo
+      ghc763 (Left s) = error $ "testAtoms - failed to build CabalInfo: " ++ s
+      ghc763 (Right atoms) =
+          set (A.debInfo . D.flags . compilerChoice)
+              (CompilerChoice {_hcVendor = HVR (makeVersion [7,6,3]), _hcFlavor = GHC}) atoms
 
 -- | Create a Debianization based on a changelog entry and a license
 -- value.  Uses the currently installed versions of debhelper and
@@ -595,8 +599,8 @@ test6 :: String -> Test
 test6 label =
     TestLabel label $
     TestCase (do dist <- findBuildDir
-                 (code, out, _err) <- readProcessWithExitCode "runhaskell" ["--ghc-arg=-package-db=" ++ dist ++ "/package.conf.inplace", "test-data/artvaluereport2/input/debian/Debianize.hs", "--dry-run", "--verbose"] ""
-                 assertEqual label (ExitSuccess, "") (code, out))
+                 (code, out, err) <- readProcessWithExitCode "runhaskell" ["--ghc-arg=-package-db=" ++ dist ++ "/package.conf.inplace", "test-data/artvaluereport2/input/debian/Debianize.hs", "--dry-run", "--verbose"] ""
+                 assertEqual label (ExitSuccess, "", err) (code, out, err))
 
 test7 :: String -> Test
 test7 label =
@@ -615,7 +619,9 @@ test8 label =
                       outTop = "test-data/artvaluereport-data/output"
                   (old :: D.DebInfo) <- withCurrentDirectory outTop $ newFlags >>= execDebianT inputDebianization . D.makeDebInfo
                   let log = view D.changelog old
-                  new <- withCurrentDirectory inTop $ newFlags >>= newCabalInfo >>= execCabalT (debianize (defaultAtoms >> customize log))
+                  new <- withCurrentDirectory inTop $
+                         newFlags >>= newCabalInfo >>=
+                         either (error "test8 - newCabalInfo failed") (execCabalT (debianize (defaultAtoms >> customize log)))
                   diff <- diffDebianizations old (view debInfo new)
                   assertEmptyDiff label diff
              )
@@ -634,7 +640,9 @@ test9 label =
     TestLabel label $
     TestCase (do let inTop = "test-data/alex/input"
                      outTop = "test-data/alex/output"
-                 new <- withCurrentDirectory inTop $ newFlags >>= newCabalInfo >>= execCabalT (debianize (defaultAtoms >> customize))
+                 new <- withCurrentDirectory inTop $
+                        newFlags >>= newCabalInfo >>=
+                        either (error "test9 - newCabalInfo failed") (execCabalT (debianize (defaultAtoms >> customize)))
                  let Just (ChangeLog (entry : _)) = view (debInfo . D.changelog) new
                  old <- withCurrentDirectory outTop $ newFlags >>= execDebianT (inputDebianization >> copyChangelogDate (logDate entry)) . D.makeDebInfo
                  diff <- diffDebianizations old (view debInfo new)
@@ -674,7 +682,9 @@ test10 label =
                      outTop = "test-data/archive/output"
                  old <- withCurrentDirectory outTop $ newFlags >>= execDebianT inputDebianization . D.makeDebInfo
                  let Just (ChangeLog (entry : _)) = view D.changelog old
-                 new <- withCurrentDirectory inTop $ newFlags >>= newCabalInfo >>= execCabalT (debianize (defaultAtoms >> customize >> (liftCabal $ copyChangelogDate $ logDate entry)))
+                 new <- withCurrentDirectory inTop $
+                        newFlags >>= newCabalInfo >>=
+                        either (error "test10 - newCabalInfo failed") (execCabalT (debianize (defaultAtoms >> customize >> (liftCabal $ copyChangelogDate $ logDate entry))))
                  diff <- diffDebianizations old (view debInfo new)
                  assertEmptyDiff label diff)
     where

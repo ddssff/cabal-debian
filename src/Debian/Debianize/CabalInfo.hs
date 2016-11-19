@@ -14,6 +14,9 @@ module Debian.Debianize.CabalInfo
     , newCabalInfo
     ) where
 
+#if !MIN_VERSION_base(4,8,0)
+import Control.Applicative ((<$>))
+#endif
 import Control.Lens
 import Control.Monad.Catch (MonadMask)
 import Control.Monad.State (execStateT)
@@ -72,7 +75,7 @@ instance Canonical CabalInfo where
 
 -- | Given the 'Flags' value read the cabalization and build a new
 -- 'CabalInfo' record.
-newCabalInfo :: (MonadIO m, MonadMask m) => Flags -> m (Either String CabalInfo)
+newCabalInfo :: (MonadIO m, MonadMask m, Functor m) => Flags -> m (Either String CabalInfo)
 newCabalInfo flags' =
     withProcAndSys "/" $ inputCabalization flags' >>= either (return . Left) (\p -> Right <$> doPkgDesc p)
     where

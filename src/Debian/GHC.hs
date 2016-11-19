@@ -49,6 +49,7 @@ $(deriveMemoizable ''CompilerFlavor)
 $(deriveMemoizable ''Version)
 $(deriveMemoizable ''BinPkgName)
 deriving instance Data CompilerVendor
+deriving instance Typeable CompilerVendor
 
 -- | Up until now this system only worked with Debian's or Ubuntu's
 -- ghc source package, which has binary package names ghc, ghc-prof,
@@ -65,37 +66,39 @@ data CompilerChoice =
                    } deriving (Eq, Ord, Show, Data, Typeable)
 data CompilerVendor = Debian | HVR Version deriving (Eq, Ord, Show)
 
-withCompilerVersion :: FilePath -> CompilerChoice -> (Maybe DebianVersion -> a) -> a
+withCompilerVersion :: FilePath -> CompilerChoice -> (Either String DebianVersion -> a) -> a
 withCompilerVersion root hc f = f (newestAvailableCompiler root hc)
 
 -- | Memoized version of newestAvailable'
-newestAvailable :: FilePath -> BinPkgName -> Maybe DebianVersion
+newestAvailable :: FilePath -> BinPkgName -> Either String DebianVersion
 newestAvailable root pkg =
     memoize2 f pkg root
     where
-      f :: BinPkgName -> FilePath -> Maybe DebianVersion
+      f :: BinPkgName -> FilePath -> Either String DebianVersion
       f pkg' root' = unsafePerformIO (newestAvailable' root' pkg')
 
 -- | Look up the newest version of a deb available in the given changeroot.
-newestAvailable' :: FilePath -> BinPkgName -> IO (Maybe DebianVersion)
+newestAvailable' :: FilePath -> BinPkgName -> IO (Either String DebianVersion)
 newestAvailable' root (BinPkgName name) = do
   exists <- doesDirectoryExist root
-  when (not exists) (error $ "newestAvailable: no such environment: " ++ show root)
-  versions <- try $ chroot root $
-                (readProcess "apt-cache" ["showpkg", name] "" >>=
-                return . dropWhile (/= "Versions: ") . lines) :: IO (Either SomeException [String])
-  case versions of
-    Left e -> error $ "newestAvailable failed in " ++ show root ++ ": " ++ show e
-    Right (_ : versionLine : _) -> return . Just . parseDebianVersion' . takeWhile (/= ' ') $ versionLine
-    _ -> return Nothing
-    where
-      chroot "/" = id
-      chroot _ = useEnv root (return . force)
+  case exists of
+    False -> return $ Left $ "newestAvailable: no such environment: " ++ show root
+    True -> do
+      versions <- try $ chroot root $
+                    (readProcess "apt-cache" ["showpkg", name] "" >>=
+                    return . dropWhile (/= "Versions: ") . lines) :: IO (Either SomeException [String])
+      case versions of
+        Left e -> return $ Left $ "newestAvailable failed in " ++ show root ++ ": " ++ show e
+        Right (_ : versionLine : _) -> return . Right . parseDebianVersion' . takeWhile (/= ' ') $ versionLine
+        Right x -> return $ Left $ "Unexpected result from apt-cache showpkg: " ++ show x
+        where
+          chroot "/" = id
+          chroot _ = useEnv root (return . force)
 
-newestAvailableCompiler :: FilePath -> CompilerChoice -> Maybe DebianVersion
+newestAvailableCompiler :: FilePath -> CompilerChoice -> Either String DebianVersion
 newestAvailableCompiler root hc = newestAvailable root (compilerPackageName hc Development)
 
-newestAvailableCompilerId :: FilePath -> CompilerChoice -> Maybe CompilerId
+newestAvailableCompilerId :: FilePath -> CompilerChoice -> Either String CompilerId
 newestAvailableCompilerId root hc@(CompilerChoice _ flavor) = fmap (compilerIdFromDebianVersion flavor) (newestAvailableCompiler root hc)
 
 {-

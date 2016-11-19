@@ -18,7 +18,7 @@ import Data.Maybe (fromMaybe)
 import Data.Monoid ((<>), mconcat, mempty)
 import Data.Set as Set (fromList, union, insert)
 import Data.Text as Text (intercalate, split, Text, unlines, unpack)
-import Data.Version (makeVersion, Version(Version))
+import Data.Version (Version(Version))
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(..), parseEntry)
 import Debian.Debianize.BasicInfo (compilerChoice, Flags, verbosity)
 import qualified Debian.Debianize.Bundled as Bundled (tests)
@@ -52,6 +52,12 @@ import Test.HUnit
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr(..))
 import Text.PrettyPrint.HughesPJClass (pPrint, text, Doc)
 
+#if MIN_VERSION_base(4,8,0)
+import Data.Version (makeVersion)
+#else
+makeVersion :: [Int] -> Version
+makeVersion ns = Version ns []
+#endif
 
 -- | Backward compatibility. Should be fixed.
 newFlags :: IO Flags

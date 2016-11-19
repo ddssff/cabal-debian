@@ -18,7 +18,7 @@ import Control.Monad.Trans (liftIO, MonadIO)
 import Data.Char (isSpace)
 import Data.Map as Map (insert, insertWith)
 import Data.Maybe (fromMaybe)
-import Data.Monoid ((<>))
+import Data.Monoid ((<>), mappend)
 import Data.Set as Set (fromList, insert, singleton)
 import Data.Text (break, lines, null, pack, strip, Text, unpack, words)
 import Data.Text.IO (readFile)
@@ -185,7 +185,7 @@ loadChangeLog =
     where
       doPaths :: [FilePath] -> IO (Maybe ChangeLog)
       doPaths (p : ps) = doPath p >>= maybe (doPaths ps) (\log -> {-putStrLn ("Found valid changelog at " ++ p) >>-} return (Just log))
-      doPaths [] = pure Nothing
+      doPaths [] = return Nothing
       doPath :: FilePath -> IO (Maybe ChangeLog)
       doPath p = do
         t <- tryIOError (readFile p)
@@ -193,9 +193,9 @@ loadChangeLog =
           where
             doParse :: Text -> IO (Maybe ChangeLog)
             doParse t = do
-              pure $ either (const Nothing) Just (parseChangeLog (unpack t))
+              return $ either (const Nothing) Just (parseChangeLog (unpack t))
             doExn :: IOError -> IO (Maybe ChangeLog)
-            doExn e | isDoesNotExistError e = pure Nothing
+            doExn e | isDoesNotExistError e = return Nothing
             doExn e = error ("inputChangelog: " ++ show e)
 
 inputCabalInfoFromDirectory :: MonadIO m => DebianT m () -- .install files, .init files, etc.

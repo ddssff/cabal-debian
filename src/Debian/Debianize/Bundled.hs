@@ -20,7 +20,7 @@ module Debian.Debianize.Bundled
     , tests
     ) where
 
-import Control.Applicative ((<$>))
+import Control.Applicative ((<$>), (<*>))
 import Control.DeepSeq (force, NFData)
 import Control.Exception (SomeException, try)
 import Control.Monad.Catch (MonadMask)
@@ -30,19 +30,33 @@ import Data.Function.Memoize (memoize2, memoize3)
 import Data.List (groupBy, intercalate, isPrefixOf, stripPrefix)
 import Data.Maybe (listToMaybe, mapMaybe)
 import Data.Set as Set (difference, fromList)
-import Data.Version (makeVersion, parseVersion, Version(..))
-import Debian.GHC (CompilerChoice(..), CompilerVendor(..))
+import Data.Version (parseVersion, Version(..))
+import Debian.GHC (CompilerChoice(..))
 import Debian.Relation (BinPkgName(..))
 import Debian.Relation.ByteString ()
 import Debian.Version (DebianVersion, parseDebianVersion', prettyDebianVersion)
 import Distribution.Package (PackageIdentifier(..), PackageName(..))
-import Distribution.Simple.Compiler (CompilerFlavor(..))
+#if MIN_VERSION_Cabal(1,22,0)
+import Distribution.Simple.Compiler (CompilerFlavor(GHCJS))
+#endif
 import System.IO.Unsafe (unsafePerformIO)
 import System.Process (readProcess, showCommandForUser)
 import System.Unix.Chroot (useEnv)
 import Test.HUnit (assertEqual, Test(TestList, TestCase))
 import Text.ParserCombinators.ReadP (char, endBy1, munch1, ReadP, readP_to_S)
 import Text.Regex.TDFA ((=~))
+
+#if MIN_VERSION_base(4,8,0)
+import Data.Version (makeVersion)
+#else
+import Data.Monoid (mempty)
+
+unPackageName :: PackageName -> String
+unPackageName (PackageName s) = s
+
+makeVersion :: [Int] -> Version
+makeVersion ns = Version ns []
+#endif
 
 -- | Find out what version, if any, of a cabal library is built into
 -- the newest version of haskell compiler hc in environment root.
@@ -173,15 +187,20 @@ tests = TestList [ TestCase (assertEqual "Bundled1"
                  , TestCase $ do
                      ghc <- (head . lines) <$> readProcess "which" ["ghc"] ""
                      let ver = fmap (takeWhile (/= '/')) (stripPrefix "/opt/ghc/" ghc)
-                     case ver of
-                       Just s -> do
-                           let expected =
-                                   (Set.fromList
-                                           -- This is the package list for ghc-7.10.3
-                                           ["array", "base", "binary", "bin-package-db", "bytestring", "Cabal",
-                                            "containers", "deepseq", "directory", "filepath", "ghc", "ghc-prim",
-                                            "haskeline", "hoopl", "hpc", "integer-gmp", "pretty", "process",
-                                            "template-haskell", "terminfo", "time", "transformers", "unix", "xhtml"])
-                               actual = Set.fromList (map (unPackageName . pkgName) (aptCacheProvides (BinPkgName ("ghc-" ++ s)) "/"))
-                           assertEqual "Bundled4" (mempty, mempty) (Set.difference expected actual, Set.difference actual expected)
+                     let expected =
+                             (Set.fromList
+                                -- This is the package list for ghc-7.10.3
+                                ["array", "base", "binary", "bin-package-db", "bytestring", "Cabal",
+                                 "containers", "deepseq", "directory", "filepath", "ghc", "ghc-prim",
+                                 "haskeline", "hoopl", "hpc", "integer-gmp", "pretty", "process",
+                                 "template-haskell", "terminfo", "time", "transformers", "unix", "xhtml"])
+                         actual = Set.fromList (map (unPackageName . pkgName) (aptCacheProvides (BinPkgName ("ghc" ++ maybe "" ("-" ++) ver)) "/"))
+                         missing (Just "8.0.2") = Set.fromList ["bin-package-db"]
+                         missing _ = mempty
+                         extra (Just "7.8.4") = Set.fromList ["haskell2010","haskell98","old-locale","old-time"]
+                         extra (Just "8.0.2") = Set.fromList ["ghc-boot","ghc-boot-th","ghci"]
+                         extra _ = mempty
+                     assertEqual "Bundled4"
+                       (missing ver, extra ver)
+                       (Set.difference expected actual, Set.difference actual expected)
                  ]

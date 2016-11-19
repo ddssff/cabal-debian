@@ -24,11 +24,11 @@ import Control.DeepSeq (force, NFData)
 import Control.Exception (SomeException, try)
 import Control.Monad.Catch (MonadMask)
 import Control.Monad.Trans (MonadIO)
-import Data.Char (toLower)
+import Data.Char (isAlphaNum, toLower)
 import Data.Function.Memoize (memoize2, memoize3)
-import Data.List (groupBy, isPrefixOf, isSuffixOf)
+import Data.List (groupBy, intercalate, isPrefixOf, isSuffixOf)
 import Data.Maybe (catMaybes, listToMaybe, mapMaybe)
-import Data.Version (parseVersion, Version)
+import Data.Version (makeVersion, parseVersion, Version)
 import Debian.GHC (CompilerChoice(..))
 import Debian.Relation (BinPkgName(..))
 import Debian.Relation.ByteString ()
@@ -39,7 +39,8 @@ import Distribution.Simple.Compiler (CompilerFlavor(..))
 import System.IO.Unsafe (unsafePerformIO)
 import System.Process (readProcess, showCommandForUser)
 import System.Unix.Chroot (useEnv)
-import Text.ParserCombinators.ReadP (readP_to_S)
+import Test.HUnit
+import Text.ParserCombinators.ReadP (char, choice, endBy1, many1, munch1, ReadP, readP_to_S)
 import Text.Regex.TDFA ((=~))
 
 -- | Find out what version, if any, of a cabal library is built into
@@ -51,9 +52,6 @@ builtIn :: CompilerChoice -> FilePath -> [PackageIdentifier]
 builtIn hc root =
   let Just hcname = (hcExecutablePath root hc >>= hcBinPkgName root) in
   aptCacheProvides hcname root
-
-parseVersion' :: String -> Maybe Version
-parseVersion' = listToMaybe . map fst . filter ((== "") . snd) . readP_to_S parseVersion
 
 -- | Convert CompilerFlavor to an executable name in a way that works
 -- for at least the cases we are interested in.  This might need to be
@@ -144,3 +142,35 @@ aptCacheShowPkg =
 chroot :: (NFData a, MonadIO m, MonadMask m) => String -> m a -> m a
 chroot "/" = id
 chroot root = useEnv root (return . force)
+
+-- | A package identifier is a package name followed by a dash and
+-- then a version number.  A package name, according to the cabal
+-- users guide "can use letters, numbers and hyphens, but not spaces."
+-- So be it.
+parsePackageIdentifier :: ReadP PackageIdentifier
+parsePackageIdentifier = do
+  makeId <$> ((,) <$> endBy1 (munch1 isAlphaNum) (char '-') <*> parseVersion)
+    where
+      makeId :: ([String], Version) -> PackageIdentifier
+      makeId (xs, v) = PackageIdentifier {pkgName = PackageName (intercalate "-" xs), pkgVersion = v}
+
+parseMaybe :: ReadP a -> String -> Maybe a
+parseMaybe p = listToMaybe . map fst . filter ((== "") . snd) . readP_to_S p
+
+parseVersion' :: String -> Maybe Version
+parseVersion' = parseMaybe parseVersion
+
+parsePackageIdentifier' :: String -> Maybe PackageIdentifier
+parsePackageIdentifier' = parseMaybe parsePackageIdentifier
+
+tests :: Test
+tests = TestList [ TestCase (assertEqual "Bundled1"
+                               (Just (PackageIdentifier (PackageName "HUnit") (makeVersion [1,2,3])))
+                               (parseMaybe parsePackageIdentifier "HUnit-1.2.3"))
+                 , TestCase (assertEqual "Bundled2"
+                               Nothing
+                               (parseMaybe parsePackageIdentifier "HUnit-1.2.3 "))
+                 , TestCase (assertEqual "Bundled3"
+                               (Just "/opt")
+                               (hcExecutablePath "/" (CompilerChoice (HVR (makeVersion [7,10,3])) GHC))
+                 ]

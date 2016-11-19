@@ -3,8 +3,10 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PackageImports #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
 module Debian.Debianize.Optparse (
   CommandLineOptions(..),
@@ -17,7 +19,7 @@ import Control.Applicative ((<$>), (<*>), many, pure, (<|>))
 import Control.Lens
 import Control.Monad.State.Class (MonadState)
 import Control.Monad.Trans
-import Control.Newtype
+import "newtype-generics" Control.Newtype
 import Data.Bifunctor (first)
 import Data.Char(toUpper)
 import Data.Foldable (forM_)
@@ -25,11 +27,14 @@ import Data.List (nub)
 import Data.Maybe.Extended (fromMaybe)
 import Data.Maybe.Extended (nothingIf)
 import Data.Monoid ((<>))
+import Data.Version (Version, parseVersion)
 import Debian.Debianize.BasicInfo
+import Debian.Debianize.Bundled (parseVersion')
 import Debian.Debianize.DebInfo (TestsStatus(..))
 import Debian.Debianize.Monad
 import Debian.Debianize.Prelude (maybeRead)
 import Debian.Debianize.VersionSplits
+import Debian.GHC (CompilerChoice(..), CompilerVendor(..))
 import Debian.Policy
 import Debian.Relation
 import Debian.Version (DebianVersion, parseDebianVersion')
@@ -41,6 +46,7 @@ import System.Environment (getArgs)
 import System.FilePath(splitFileName, (</>))
 import System.Posix.Env (getEnv)
 import System.Process (showCommandForUser)
+import Text.ParserCombinators.ReadP (readP_to_S)
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr(..))
 import Text.PrettyPrint.ANSI.Leijen (linebreak, (<+>), string, indent)
 import qualified  Debian.Debianize.DebInfo as D
@@ -518,7 +524,7 @@ flagsP = Flags <$> verbosityP
                <*> upgradeP
                <*> roundtripP
                <*> pure False     -- validate
-               <*> ghcjsP         -- CompilerFlavor
+               <*> (CompilerChoice <$> hvrghcP <*> ghcjsP)         -- CompilerChoice
                <*> (flagSet <$> cabalFlagsP)    -- cabalFlagAssignments
                <*> buildEnvDirP
     where
@@ -560,6 +566,16 @@ roundtripP = O.switch m where
   helpMsg = unlines [
     "Roundtrip a debianization to normalize it."
     ]
+
+versionR :: O.ReadM Version
+versionR = (maybe (error "Invalid compiler version") id . parseVersion') <$> O.str
+
+hvrghcP :: O.Parser CompilerVendor
+hvrghcP = O.option (HVR <$> versionR) m where
+  m = O.help "Use HVR's debian repository"
+      <> O.long "hvr-version"
+      <> O.value Debian
+      <> O.metavar "VERSION"
 
 ghcjsP :: O.Parser CompilerFlavor
 ghcjsP = O.flag GHC

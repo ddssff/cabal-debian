@@ -11,7 +11,7 @@ module Debian.Debianize.BasicInfo
     , upgrade
     , roundtrip
     , validate
-    , compilerFlavor
+    , compilerChoice
     , cabalFlagAssignments
     , buildEnv
       -- * State Monad
@@ -25,6 +25,7 @@ import Data.Char (toLower, toUpper)
 import Data.Generics (Data, Typeable)
 import Data.Set as Set (fromList, Set, union)
 import Debian.Debianize.Prelude (read')
+import Debian.GHC (CompilerChoice, hcFlavor)
 import Debian.Orphans ()
 import Distribution.Compiler (CompilerFlavor(..))
 import Distribution.PackageDescription as Cabal (FlagName(FlagName))
@@ -53,7 +54,7 @@ data Flags = Flags
     -- configure is run.  Specifically, the version number in the top
     -- changelog entry must match, and the sets of package names in
     -- the control file must match.
-    , _compilerFlavor :: CompilerFlavor
+    , _compilerChoice :: CompilerChoice
     -- ^ Which compiler should we generate library packages for?  In theory a single
     -- deb could handle multiple compiler flavors, but the support tools are not ready
     -- for this as of right now (28 Jan 2015.)
@@ -96,13 +97,13 @@ flagOptions =
              "Carefully upgrade an existing debianization",
       Option "" ["roundtrip"] (NoArg (roundtrip .= True))
              "Rountrip a debianization to normalize it",
-      Option "" ["ghc"] (NoArg (compilerFlavor .= GHC)) "Generate packages for GHC - same as --with-compiler GHC",
+      Option "" ["ghc"] (NoArg ((compilerChoice . hcFlavor) .= GHC)) "Generate packages for GHC - same as --with-compiler GHC",
 #if MIN_VERSION_Cabal(1,22,0)
-      Option "" ["ghcjs"] (NoArg (compilerFlavor .= GHCJS)) "Generate packages for GHCJS - same as --with-compiler GHCJS",
+      Option "" ["ghcjs"] (NoArg ((compilerChoice . hcFlavor) .= GHCJS)) "Generate packages for GHCJS - same as --with-compiler GHCJS",
 #endif
-      Option "" ["hugs"] (NoArg (compilerFlavor .= Hugs)) "Generate packages for Hugs - same as --with-compiler GHC",
+      Option "" ["hugs"] (NoArg ((compilerChoice . hcFlavor) .= Hugs)) "Generate packages for Hugs - same as --with-compiler GHC",
       Option "" ["with-compiler"] (ReqArg (\ s -> maybe (error $ "Invalid compiler id: " ++ show s)
-                                                        (\ hc -> compilerFlavor .= hc)
+                                                        (\ hc -> (compilerChoice . hcFlavor) .= hc)
                                                         (readMaybe (map toUpper s) :: Maybe CompilerFlavor)) "COMPILER")
              (unlines [ "Generate packages for this CompilerFlavor" ]),
       Option "f" ["flags"] (ReqArg (\ fs -> cabalFlagAssignments %= (Set.union (Set.fromList (flagList fs)))) "FLAGS")

@@ -10,8 +10,9 @@ import Control.Lens
 import Control.Monad (when)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Set as Set (toList)
-import Debian.Debianize.BasicInfo (Flags, buildEnv, dependOS, verbosity, compilerFlavor, cabalFlagAssignments)
+import Debian.Debianize.BasicInfo (Flags, buildEnv, dependOS, verbosity, compilerChoice, cabalFlagAssignments)
 import Debian.Debianize.Prelude (intToVerbosity')
+import Debian.GHC (hcFlavor)
 #if MIN_VERSION_Cabal(1,22,0)
 import Debian.GHC (getCompilerInfo)
 #else
@@ -58,9 +59,9 @@ inputCabalization flags =
 
       getCompInfo =
 #if MIN_VERSION_Cabal(1,22,0)
-              getCompilerInfo root (view compilerFlavor flags)
+              getCompilerInfo root (view (compilerChoice . hcFlavor) flags)
 #else
-              return $ newestAvailableCompilerId root (view compilerFlavor flags)
+              return $ newestAvailableCompilerId root (view (compilerChoice . hcFlavor) flags)
 #endif
       root = dependOS $ view buildEnv flags
       vb = intToVerbosity' $ view verbosity flags

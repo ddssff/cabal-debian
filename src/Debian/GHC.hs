@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, RankNTypes, ScopedTypeVariables, TemplateHaskell #-}
+{-# LANGUAGE CPP, DeriveDataTypeable, RankNTypes, ScopedTypeVariables, StandaloneDeriving, TemplateHaskell #-}
 {-# OPTIONS_GHC -Wall -fno-warn-orphans #-}
 module Debian.GHC
     ( withCompilerVersion
@@ -9,6 +9,8 @@ module Debian.GHC
     -- , ghcNewestAvailableVersion'
     -- , ghcNewestAvailableVersion
     -- , compilerIdFromDebianVersion
+    , CompilerVendor (Debian, HVR)
+    , CompilerChoice(..), hcVendor, hcFlavor
     , compilerPackageName
 #if MIN_VERSION_Cabal(1,22,0)
     , getCompilerInfo
@@ -17,12 +19,14 @@ module Debian.GHC
 
 import Control.DeepSeq (force)
 import Control.Exception (SomeException, throw, try)
+import Control.Lens (makeLenses)
 import Control.Monad (when)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Char (isSpace, {-toLower,-} toUpper)
 import Data.Function.Memoize (deriveMemoizable, memoize2)
+import Data.Generics (Data, Typeable)
 import Data.List (intercalate)
-import Data.Version (showVersion, Version(Version), parseVersion)
+import Data.Version (showVersion, Version(..), parseVersion)
 import Debian.Debianize.BinaryDebDescription (PackageType(..))
 import Debian.Relation (BinPkgName(BinPkgName))
 import Debian.Version (DebianVersion, parseDebianVersion')
@@ -42,9 +46,26 @@ import Text.ParserCombinators.ReadP (readP_to_S)
 import Text.Read (readMaybe)
 
 $(deriveMemoizable ''CompilerFlavor)
+$(deriveMemoizable ''Version)
 $(deriveMemoizable ''BinPkgName)
+deriving instance Data CompilerVendor
 
-withCompilerVersion :: FilePath -> CompilerFlavor -> (Maybe DebianVersion -> a) -> a
+-- | Up until now this system only worked with Debian's or Ubuntu's
+-- ghc source package, which has binary package names ghc, ghc-prof,
+-- ghc-doc, etc.  This type is intended to add support for Herbert
+-- Valerio Riedel's (hvr's) repository of several different versions
+-- of ghc and supporting tools happy, alex and cabal.  These have
+-- different binary package names, and the packages put the
+-- executables in different locations than the Debian (and Ubuntu)
+-- packages.  This option is activated by the --hvr-version option to
+-- cabal-debian.
+data CompilerChoice =
+    CompilerChoice { _hcVendor :: CompilerVendor
+                   , _hcFlavor :: CompilerFlavor
+                   } deriving (Eq, Ord, Show, Data, Typeable)
+data CompilerVendor = Debian | HVR Version deriving (Eq, Ord, Show)
+
+withCompilerVersion :: FilePath -> CompilerChoice -> (Maybe DebianVersion -> a) -> a
 withCompilerVersion root hc f = f (newestAvailableCompiler root hc)
 
 -- | Memoized version of newestAvailable'
@@ -71,11 +92,11 @@ newestAvailable' root (BinPkgName name) = do
       chroot "/" = id
       chroot _ = useEnv root (return . force)
 
-newestAvailableCompiler :: FilePath -> CompilerFlavor -> Maybe DebianVersion
+newestAvailableCompiler :: FilePath -> CompilerChoice -> Maybe DebianVersion
 newestAvailableCompiler root hc = newestAvailable root (compilerPackageName hc Development)
 
-newestAvailableCompilerId :: FilePath -> CompilerFlavor -> Maybe CompilerId
-newestAvailableCompilerId root hc = fmap (compilerIdFromDebianVersion hc) (newestAvailableCompiler root hc)
+newestAvailableCompilerId :: FilePath -> CompilerChoice -> Maybe CompilerId
+newestAvailableCompilerId root hc@(CompilerChoice _ flavor) = fmap (compilerIdFromDebianVersion flavor) (newestAvailableCompiler root hc)
 
 {-
 -- | The IO portion of ghcVersion.  For there to be no version of ghc
@@ -142,18 +163,22 @@ debName hc =
       s -> Just (BinPkgName s)
 -}
 
-compilerPackageName :: CompilerFlavor -> PackageType -> BinPkgName
-compilerPackageName GHC Documentation = BinPkgName "ghc-doc" -- "ghc-7.10.1-htmldocs"
-compilerPackageName GHC Profiling = BinPkgName "ghc-prof" -- "ghc-7.10.1-prof"
-compilerPackageName GHC Development = BinPkgName "ghc" -- "ghc-7.10.1"
-compilerPackageName GHC _ = BinPkgName "ghc" -- "ghc-7.10.1" -- whatevs
+compilerPackageName :: CompilerChoice -> PackageType -> BinPkgName
+compilerPackageName (CompilerChoice Debian GHC) Documentation = BinPkgName "ghc-doc"
+compilerPackageName (CompilerChoice Debian GHC) Profiling = BinPkgName "ghc-prof"
+compilerPackageName (CompilerChoice Debian GHC) Development = BinPkgName "ghc"
+compilerPackageName (CompilerChoice Debian GHC) _ = BinPkgName "ghc" -- whatevs
+compilerPackageName (CompilerChoice (HVR v) GHC) Documentation = BinPkgName ("ghc-" ++ showVersion v ++ "-htmldocs")
+compilerPackageName (CompilerChoice (HVR v) GHC) Profiling = BinPkgName ("ghc-" ++ showVersion v ++ "-prof")
+compilerPackageName (CompilerChoice (HVR v) GHC) Development = BinPkgName ("ghc-" ++ showVersion v)
+compilerPackageName (CompilerChoice (HVR v) GHC) _ = BinPkgName ("ghc-" ++ showVersion v)
 #if MIN_VERSION_Cabal(1,22,0)
-compilerPackageName GHCJS Documentation = BinPkgName "ghcjs"
-compilerPackageName GHCJS Profiling = error "Profiling not supported for GHCJS"
-compilerPackageName GHCJS Development = BinPkgName "ghcjs"
-compilerPackageName GHCJS _ = BinPkgName "ghcjs" -- whatevs
+compilerPackageName (CompilerChoice _ GHCJS) Documentation = BinPkgName "ghcjs"
+compilerPackageName (CompilerChoice _ GHCJS) Profiling = error "Profiling not supported for GHCJS"
+compilerPackageName (CompilerChoice _ GHCJS) Development = BinPkgName "ghcjs"
+compilerPackageName (CompilerChoice _ GHCJS) _ = BinPkgName "ghcjs" -- whatevs
 #endif
-compilerPackageName x _ = error $ "Unsupported compiler flavor: " ++ show x
+compilerPackageName hc _ = error $ "Unsupported compiler flavor: " ++ show hc
 
 #if MIN_VERSION_Cabal(1,22,0)
 -- | IO based alternative to newestAvailableCompilerId - install the
@@ -201,3 +226,7 @@ hcCommand GHC = "ghc"
 hcCommand GHCJS = "ghcjs"
 hcCommand flavor = error $ "hcCommand - unexpected CompilerFlavor: " ++ show flavor
 #endif
+
+$(makeLenses ''CompilerChoice)
+$(deriveMemoizable ''CompilerVendor)
+$(deriveMemoizable ''CompilerChoice)

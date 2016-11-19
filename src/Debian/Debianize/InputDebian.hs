@@ -184,7 +184,7 @@ loadChangeLog =
     doPaths ["CHANGELOG", "ChangeLog", "changelog", "debian/changelog"]
     where
       doPaths :: [FilePath] -> IO (Maybe ChangeLog)
-      doPaths (p : ps) = doPath p >>= maybe (doPaths ps) (\log -> putStrLn ("Found valid changelog at " ++ p) >> return (Just log))
+      doPaths (p : ps) = doPath p >>= maybe (doPaths ps) (\log -> {-putStrLn ("Found valid changelog at " ++ p) >>-} return (Just log))
       doPaths [] = pure Nothing
       doPath :: FilePath -> IO (Maybe ChangeLog)
       doPath p = do

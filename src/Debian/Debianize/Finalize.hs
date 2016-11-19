@@ -24,7 +24,7 @@ import Data.Set as Set (difference, filter, fold, fromList, insert, map, null, S
 import Data.Set.Extra as Set (mapM_)
 import Data.Text as Text (intercalate, pack, Text, unlines, unpack)
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(..))
-import Debian.Debianize.BasicInfo (cabalFlagAssignments, compilerFlavor, verbosity)
+import Debian.Debianize.BasicInfo (cabalFlagAssignments, compilerChoice, verbosity)
 import qualified Debian.Debianize.BinaryDebDescription as B
 import Debian.Debianize.BuildDependencies (debianBuildDeps, debianBuildDepsIndep)
 import qualified Debian.Debianize.CabalInfo as A
@@ -37,6 +37,7 @@ import Debian.Debianize.Monad as Monad (CabalT, liftCabal)
 import Debian.Debianize.Prelude ((.?=))
 import qualified Debian.Debianize.SourceDebDescription as S
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
+import Debian.GHC (CompilerChoice, hcFlavor)
 import Debian.Orphans ()
 import Debian.Policy (getCurrentDebianUser, getDebhelperCompatLevel, haskellMaintainer, maintainerOfLastResort, PackageArchitectures(Any, All), PackagePriority(Extra), parseMaintainer, parseStandardsVersion, Section(..), SourceFormat(Native3))
 import Debian.Pretty (PP(..), ppShow)
@@ -93,7 +94,7 @@ finalizeDebianization =
 finalizeDebianization'  :: (Monad m, Functor m) => String -> Maybe NameAddr -> Maybe Int -> Bool -> CabalT m ()
 finalizeDebianization' date currentUser debhelperCompat setupExists =
     do -- In reality, hcs must be a singleton or many things won't work.  But some day...
-       hc <- use (A.debInfo . D.flags . compilerFlavor)
+       hc <- use (A.debInfo . D.flags . compilerChoice)
        pkgDesc <- use A.packageDescription
 
        testsStatus <- use (A.debInfo . D.testsStatus)
@@ -107,7 +108,7 @@ finalizeDebianization' date currentUser debhelperCompat setupExists =
          _ -> return ()
 
        finalizeSourceName B.HaskellSource
-       checkOfficialSettings hc
+       checkOfficialSettings (view hcFlavor hc)
        addExtraLibDependencies hc
        (A.debInfo . D.watch) .?= Just (watchAtom (pkgName $ Cabal.package $ pkgDesc))
        (A.debInfo . D.control . S.section) .?= Just (MainSection "haskell")
@@ -329,7 +330,7 @@ finalizeChangelog date currentUser =
 -- | Convert the extraLibs field of the cabal build info into debian
 -- binary package names and make them dependendencies of the debian
 -- devel package (if there is one.)
-addExtraLibDependencies :: (Monad m, Functor m) => CompilerFlavor -> CabalT m ()
+addExtraLibDependencies :: (Monad m, Functor m) => CompilerChoice -> CabalT m ()
 addExtraLibDependencies hc =
     do pkgDesc <- use A.packageDescription
        devName <- debianName B.Development hc
@@ -412,16 +413,16 @@ binaryPackageRelations b typ = zoom A.debInfo $ do
       B.provides %= (anyrel "${haskell:Provides}" :)
 
 -- | Add the library paragraphs for a particular compiler flavor.
-librarySpecs :: (Monad m, Functor m) => PackageDescription -> CompilerFlavor -> CabalT m ()
+librarySpecs :: (Monad m, Functor m) => PackageDescription -> CompilerChoice -> CabalT m ()
 librarySpecs pkgDesc hc =
     do let dev = isJust (Cabal.library pkgDesc)
        doc <- get >>= return . not . view (A.debInfo . D.noDocumentationLibrary)
        prof <- get >>= return . not . view (A.debInfo . D.noProfilingLibrary)
        when dev (librarySpec Any B.Development hc)
-       when (dev && prof && hc == GHC) (librarySpec Any B.Profiling hc)
+       when (dev && prof && view hcFlavor hc == GHC) (librarySpec Any B.Profiling hc)
        when (dev && doc) (docSpecsParagraph hc)
 
-docSpecsParagraph :: (Monad m, Functor m) => CompilerFlavor -> CabalT m ()
+docSpecsParagraph :: (Monad m, Functor m) => CompilerChoice -> CabalT m ()
 docSpecsParagraph hc =
     do b <- debianName B.Documentation hc
        binaryPackageRelations b B.Documentation
@@ -431,7 +432,7 @@ docSpecsParagraph hc =
        (A.debInfo . D.binaryDebDescription b . B.binarySection) .?= Just (MainSection "doc")
        (A.debInfo . D.binaryDebDescription b . B.description) .?= Just desc
 
-librarySpec :: (Monad m, Functor m) => PackageArchitectures -> B.PackageType -> CompilerFlavor -> CabalT m ()
+librarySpec :: (Monad m, Functor m) => PackageArchitectures -> B.PackageType -> CompilerChoice -> CabalT m ()
 librarySpec arch typ hc =
     do b <- debianName typ hc
        binaryPackageRelations b typ
@@ -455,7 +456,7 @@ desc = Text.intercalate "\n "
 -- files, assign them to the packages returned by the
 -- utilsPackageNames lens, and make sure those packages are in the
 -- source deb description.
-makeUtilsPackage :: forall m. (Monad m, Functor m) => PackageDescription -> CompilerFlavor -> CabalT m ()
+makeUtilsPackage :: forall m. (Monad m, Functor m) => PackageDescription -> CompilerChoice -> CabalT m ()
 makeUtilsPackage pkgDesc hc =
     do -- Files the cabal package expects to be installed
        -- Files that are already assigned to any binary deb
@@ -518,7 +519,7 @@ makeUtilsPackage pkgDesc hc =
 
 expandAtoms :: Monad m => CabalT m ()
 expandAtoms =
-    do hc <- use (A.debInfo . D.flags . compilerFlavor)
+    do hc <- use (A.debInfo . D.flags . compilerChoice . hcFlavor)
        case hc of
          GHC -> (A.debInfo . D.flags . cabalFlagAssignments) %= (Set.union (Set.fromList (flagList "--ghc")))
 #if MIN_VERSION_Cabal(1,22,0)
@@ -556,7 +557,7 @@ expandAtoms =
       -- Turn A.InstallCabalExec into A.Install
       expandInstallCabalExecs :: Monad m => FilePath -> CabalT m ()
       expandInstallCabalExecs builddir = do
-        hc <- use (A.debInfo . D.flags . compilerFlavor)
+        hc <- use (A.debInfo . D.flags . compilerChoice . hcFlavor)
         use (A.debInfo . D.atomSet) >>= Set.mapM_ (doAtom hc)
           where
             doAtom :: Monad m => CompilerFlavor -> D.Atom -> CabalT m ()
@@ -576,7 +577,7 @@ expandAtoms =
       -- Turn A.InstallCabalExecTo into a make rule
       expandInstallCabalExecTo :: Monad m => FilePath -> CabalT m ()
       expandInstallCabalExecTo builddir = do
-        hc <- use (A.debInfo . D.flags . compilerFlavor)
+        hc <- use (A.debInfo . D.flags . compilerChoice . hcFlavor)
         use (A.debInfo . D.atomSet) >>= Set.mapM_ (doAtom hc)
           where
             doAtom :: Monad m => CompilerFlavor -> D.Atom -> CabalT m ()
@@ -653,7 +654,7 @@ expandAtoms =
 finalizeRules :: (Monad m, Functor m) => CabalT m ()
 finalizeRules =
     do DebBase b <- debianNameBase
-       compiler <- use (A.debInfo . D.flags . compilerFlavor)
+       compiler <- use (A.debInfo . D.flags . compilerChoice . hcFlavor)
        (A.debInfo . D.rulesHead) .?= Just "#!/usr/bin/make -f"
        (A.debInfo . D.rulesSettings) %= (++ ["DEB_CABAL_PACKAGE = " <> pack b])
        (A.debInfo . D.rulesSettings) %= (++ (["DEB_DEFAULT_COMPILER = " <> pack (List.map toLower (show compiler))]))

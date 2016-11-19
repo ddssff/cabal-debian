@@ -75,13 +75,19 @@ runDebianizeScript args =
 -- this function does everything else.
 performDebianization :: CabalT IO () -> IO ()
 performDebianization custom =
-  parseProgramArguments >>= \CommandLineOptions {..} ->
+  parseProgramArguments >>= \CommandLineOptions {..} -> do
+    -- _ <- try (readProcessWithExitCode "apt-get" ["install", "-y", "--force-yes", hcDeb (view compilerFlavor _flags)] "")
     newCabalInfo _flags >>= either
                                (error . ("peformDebianization - " ++))
                                (evalCabalT $ do
                                 handleBehaviorAdjustment _adjustment
                                 debianize custom
                                 finishDebianization)
+
+-- hcDeb :: CompilerFlavor -> String
+-- hcDeb GHC = "ghc"
+-- hcDeb GHCJS = "ghcjs"
+-- hcDeb flavor = error $ "hcDeb - unexpected CompilerFlavor: " ++ show flavor
 
 -- | Depending on the options in @atoms@, either validate, describe,
 -- or write the generated debianization.

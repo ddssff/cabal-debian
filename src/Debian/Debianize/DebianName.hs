@@ -22,6 +22,7 @@ import Debian.Debianize.CabalInfo as A (debianNameMap, packageDescription, debIn
 import Debian.Debianize.BinaryDebDescription as Debian (PackageType(..))
 import Debian.Debianize.DebInfo as D (overrideDebianNameBase, utilsPackageNameBase)
 import Debian.Debianize.VersionSplits (DebBase(DebBase, unDebBase), doSplits, insertSplit, makePackage, VersionSplits(oldestPackage, splits))
+import Debian.GHC (CompilerChoice(..))
 import Debian.Orphans ()
 import Debian.Relation (PkgName(..), Relations)
 import qualified Debian.Relation as D (VersionReq(EEQ))
@@ -39,14 +40,14 @@ data Dependency_
     deriving (Eq, Show)
 
 -- | Build the Debian package name for a given package type.
-debianName :: (Monad m, Functor m, PkgName name) => PackageType -> CompilerFlavor -> CabalT m name
-debianName typ cfl =
+debianName :: (Monad m, Functor m, PkgName name) => PackageType -> CompilerChoice -> CabalT m name
+debianName typ hc@(CompilerChoice {_hcFlavor = cfl}) =
     do base <-
            case (typ, cfl) of
              (Utilities, GHC) -> use (debInfo . utilsPackageNameBase) >>= maybe (((\ base -> "haskell-" ++ base ++ "-utils") . unDebBase) <$> debianNameBase) return
              (Utilities, _) -> use (debInfo . utilsPackageNameBase) >>= maybe (((\ base -> base ++ "-utils") . unDebBase) <$> debianNameBase) return
              _ -> unDebBase <$> debianNameBase
-       return $ mkPkgName' cfl typ (DebBase base)
+       return $ mkPkgName' hc typ (DebBase base)
 
 -- | Function that applies the mapping from cabal names to debian
 -- names based on version numbers.  If a version split happens at v,
@@ -69,11 +70,11 @@ debianNameBase =
 -- debian package type.  Unfortunately, this does not enforce the
 -- correspondence between the PackageType value and the name type, so
 -- it can return nonsense like (SrcPkgName "libghc-debian-dev").
-mkPkgName :: PkgName name => CompilerFlavor -> PackageName -> PackageType -> name
-mkPkgName cfl pkg typ = mkPkgName' cfl typ (debianBaseName pkg)
+mkPkgName :: PkgName name => CompilerChoice -> PackageName -> PackageType -> name
+mkPkgName hc pkg typ = mkPkgName' hc typ (debianBaseName pkg)
 
-mkPkgName' :: PkgName name => CompilerFlavor -> PackageType -> DebBase -> name
-mkPkgName' cfl typ (DebBase base) =
+mkPkgName' :: PkgName name => CompilerChoice -> PackageType -> DebBase -> name
+mkPkgName' (CompilerChoice {_hcFlavor = cfl}) typ (DebBase base) =
     pkgNameFromString $
              case typ of
                 Documentation -> prefix ++ base ++ "-doc"

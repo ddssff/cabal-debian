@@ -1,9 +1,13 @@
+{-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -Wall #-}
 module Distribution.Version.Invert
     ( invertVersionRange
     , invertVersionIntervals
     ) where
 
+#if MIN_VERSION_Cabal(1,24,0)
+import Distribution.Version (invertVersionRange, invertVersionIntervals)
+#else
 import Distribution.Version (Version(Version, versionBranch, versionTags), VersionRange, fromVersionIntervals, asVersionIntervals, mkVersionIntervals,
                              LowerBound(LowerBound), UpperBound(UpperBound, NoUpperBound), Bound(InclusiveBound, ExclusiveBound))
 
@@ -39,3 +43,4 @@ invertVersionIntervals xs =
 
       lb0 :: LowerBound
       lb0 = LowerBound (Version {versionBranch = [0], versionTags = []}) InclusiveBound
+#endif

@@ -10,6 +10,9 @@ module Debian.GHC
     -- , ghcNewestAvailableVersion
     -- , compilerIdFromDebianVersion
     , CompilerVendor (Debian, HVR)
+    , compilerPATH
+    , withCompilerPATH
+    , withModifiedPATH
     , CompilerChoice(..), hcVendor, hcFlavor
     , compilerPackageName
 #if MIN_VERSION_Cabal(1,22,0)
@@ -36,7 +39,9 @@ import Distribution.Compiler (CompilerInfo(..), unknownCompilerInfo, AbiTag(NoAb
 #endif
 import System.Console.GetOpt (ArgDescr(ReqArg), OptDescr(..))
 import System.Directory (doesDirectoryExist)
+import System.Environment (getEnv, setEnv)
 import System.Exit (ExitCode(ExitFailure, ExitSuccess))
+-- import System.IO (hPutStrLn, stderr)
 import System.IO.Error (isDoesNotExistError)
 import System.IO.Unsafe (unsafePerformIO)
 import System.Process (readProcess, showCommandForUser, readProcessWithExitCode)
@@ -68,6 +73,33 @@ data CompilerVendor = Debian | HVR Version deriving (Eq, Ord, Show)
 
 withCompilerVersion :: FilePath -> CompilerChoice -> (Either String DebianVersion -> a) -> a
 withCompilerVersion root hc f = f (newestAvailableCompiler root hc)
+
+withCompilerPATH :: MonadIO m => CompilerVendor -> m a -> m a
+withCompilerPATH vendor action = withModifiedPATH (compilerPATH vendor) action
+
+compilerPATH :: CompilerVendor -> String -> String
+compilerPATH vendor path0 = do
+  case vendor of
+    Debian -> path0
+    HVR v -> "/opt/ghc/" ++ showVersion v ++ "/bin:/opt/cabal/" ++ cabalVersion v ++ "/bin:/opt/happy/" ++ happyVersion v ++ "/bin:/opt/alex/" ++ alexVersion v ++ "/bin:" ++ path0
+        where cabalVersion (Version (m : n : _) _) | m <= 7 && n <= 7 = "1.16"
+              cabalVersion (Version (7 : n : _) _) | n <= 9 = "1.18"
+              cabalVersion (Version (7 : _ : _) _) = "1.22"
+              cabalVersion _ = "1.24"
+              happyVersion (Version (7 : n : _) _) | n <= 2 = "1.19.3"
+              happyVersion _ = "1.19.5"
+              alexVersion _ = "3.1.7"
+
+withModifiedPATH :: MonadIO m => (String -> String) -> m a -> m a
+withModifiedPATH f action = do
+  path0 <- liftIO $ getEnv "PATH"
+  liftIO $ setEnv "PATH" (f path0)
+  -- liftIO $ hPutStrLn stderr $ "*** withCompilerPath vendor=" ++ show vendor
+  -- liftIO $ hPutStrLn stderr $ "*** Setting $PATH to " ++ show path
+  r <- action
+  -- liftIO $ hPutStrLn stderr $ "*** Resetting $PATH to " ++ show path0
+  liftIO $ setEnv "PATH" path0
+  return r
 
 -- | Memoized version of newestAvailable'
 newestAvailable :: FilePath -> BinPkgName -> Either String DebianVersion

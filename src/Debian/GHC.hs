@@ -10,6 +10,9 @@ module Debian.GHC
     -- , ghcNewestAvailableVersion
     -- , compilerIdFromDebianVersion
     , CompilerVendor (Debian, HVR)
+    , hvrCabalVersion
+    , hvrHappyVersion
+    , hvrAlexVersion
     , compilerPATH
     , withCompilerPATH
     , withModifiedPATH
@@ -23,7 +26,6 @@ module Debian.GHC
 import Control.DeepSeq (force)
 import Control.Exception (SomeException, throw, try)
 import Control.Lens (makeLenses)
-import Control.Monad (when)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Char (isSpace, {-toLower,-} toUpper)
 import Data.Function.Memoize (deriveMemoizable, memoize2)
@@ -81,14 +83,28 @@ compilerPATH :: CompilerVendor -> String -> String
 compilerPATH vendor path0 = do
   case vendor of
     Debian -> path0
-    HVR v -> "/opt/ghc/" ++ showVersion v ++ "/bin:/opt/cabal/" ++ cabalVersion v ++ "/bin:/opt/happy/" ++ happyVersion v ++ "/bin:/opt/alex/" ++ alexVersion v ++ "/bin:" ++ path0
-        where cabalVersion (Version (m : n : _) _) | m <= 7 && n <= 7 = "1.16"
-              cabalVersion (Version (7 : n : _) _) | n <= 9 = "1.18"
-              cabalVersion (Version (7 : _ : _) _) = "1.22"
-              cabalVersion _ = "1.24"
-              happyVersion (Version (7 : n : _) _) | n <= 2 = "1.19.3"
-              happyVersion _ = "1.19.5"
-              alexVersion _ = "3.1.7"
+    HVR v -> (intercalate ":" ["/opt/ghc/" ++ showVersion v ++ "/bin",
+                               "/opt/cabal/" ++ showVersion (hvrCabalVersion v) ++ "/bin",
+                               "/opt/happy/" ++ showVersion (hvrHappyVersion v) ++ "/bin",
+                               "/opt/alex/" ++ showVersion (hvrAlexVersion v) ++ "/bin",
+                               path0])
+
+-- | What version of Cabal goes with this version of GHC?
+hvrCabalVersion :: Version -> Version
+hvrCabalVersion (Version (m : n : _) _) | (m == 7 && n <= 7) || m < 7 = Version [1,16] []
+hvrCabalVersion (Version (7 : n : _) _) | n <= 9 = Version [1,18] []
+hvrCabalVersion (Version (7 : _) _) = Version [1,22] []
+hvrCabalVersion _ = Version [1,24] []
+
+-- | What version of Happy goes with this version of GHC?
+hvrHappyVersion :: Version -> Version
+hvrHappyVersion (Version (m : n : _) _) | (m == 7 && n <= 3) || m < 7 = Version [1,19,3] []
+hvrHappyVersion (Version (7 : n : _) _) | n <= 2 = Version [1,19,3] []
+hvrHappyVersion _ = Version [1,19,5] []
+
+-- | What version of Alex goes with this version of GHC?
+hvrAlexVersion :: Version -> Version
+hvrAlexVersion _ = Version [3,1,7] []
 
 withModifiedPATH :: MonadIO m => (String -> String) -> m a -> m a
 withModifiedPATH f action = do

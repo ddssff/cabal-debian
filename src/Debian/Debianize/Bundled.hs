@@ -195,9 +195,11 @@ tests = TestList [ TestCase (assertEqual "Bundled1"
                                  "haskeline", "hoopl", "hpc", "integer-gmp", "pretty", "process",
                                  "template-haskell", "terminfo", "time", "transformers", "unix", "xhtml"])
                          actual = Set.fromList (map (unPackageName . pkgName) (aptCacheProvides (BinPkgName ("ghc" ++ maybe "" ("-" ++) ver)) "/"))
+                         missing (Just "8.0.1") = Set.fromList ["bin-package-db"]
                          missing (Just "8.0.2") = Set.fromList ["bin-package-db"]
                          missing _ = mempty
                          extra (Just "7.8.4") = Set.fromList ["haskell2010","haskell98","old-locale","old-time"]
+                         extra (Just "8.0.1") = Set.fromList ["ghc-boot","ghc-boot-th","ghci"]
                          extra (Just "8.0.2") = Set.fromList ["ghc-boot","ghc-boot-th","ghci"]
                          extra _ = mempty
                      assertEqual "Bundled4"

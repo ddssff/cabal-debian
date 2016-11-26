@@ -25,7 +25,7 @@ module Debian.GHC
 
 import Control.DeepSeq (force)
 import Control.Exception (SomeException, throw, try)
-import Control.Lens (makeLenses)
+import Control.Lens (_2, makeLenses, over)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Char (isSpace, {-toLower,-} toUpper)
 import Data.Function.Memoize (deriveMemoizable, memoize2)
@@ -51,6 +51,7 @@ import System.Unix.Chroot (useEnv, fchroot)
 import System.Unix.Mount (WithProcAndSys)
 import Text.ParserCombinators.ReadP (readP_to_S)
 import Text.Read (readMaybe)
+import Text.Regex.TDFA ((=~))
 
 $(deriveMemoizable ''CompilerFlavor)
 $(deriveMemoizable ''Version)
@@ -73,8 +74,8 @@ data CompilerChoice =
                    } deriving (Eq, Ord, Show, Data, Typeable)
 data CompilerVendor = Debian | HVR Version deriving (Eq, Ord, Show)
 
-withCompilerVersion :: FilePath -> CompilerChoice -> (Either String DebianVersion -> a) -> a
-withCompilerVersion root hc f = f (newestAvailableCompiler root hc)
+withCompilerVersion :: FilePath -> CompilerChoice -> (Either String DebianVersion -> a) -> IO a
+withCompilerVersion root hc f = f <$> newestAvailableCompiler root hc
 
 withCompilerPATH :: MonadIO m => CompilerVendor -> m a -> m a
 withCompilerPATH vendor action = withModifiedPATH (compilerPATH vendor) action
@@ -143,11 +144,11 @@ newestAvailable' root (BinPkgName name) = do
           chroot "/" = id
           chroot _ = useEnv root (return . force)
 
-newestAvailableCompiler :: FilePath -> CompilerChoice -> Either String DebianVersion
-newestAvailableCompiler root hc = newestAvailable root (compilerPackageName hc Development)
+newestAvailableCompiler :: FilePath -> CompilerChoice -> IO (Either String DebianVersion)
+newestAvailableCompiler root hc = compilerPackageName hc Development >>= return . maybe (Left "No compiler package") (newestAvailable root)
 
-newestAvailableCompilerId :: FilePath -> CompilerChoice -> Either String CompilerId
-newestAvailableCompilerId root hc@(CompilerChoice _ flavor) = fmap (compilerIdFromDebianVersion flavor) (newestAvailableCompiler root hc)
+newestAvailableCompilerId :: FilePath -> CompilerChoice -> IO (Either String CompilerId)
+newestAvailableCompilerId root hc@(CompilerChoice _ flavor) = either Left (Right . compilerIdFromDebianVersion flavor) <$> (newestAvailableCompiler root hc)
 
 {-
 -- | The IO portion of ghcVersion.  For there to be no version of ghc
@@ -214,22 +215,52 @@ debName hc =
       s -> Just (BinPkgName s)
 -}
 
-compilerPackageName :: CompilerChoice -> PackageType -> BinPkgName
-compilerPackageName (CompilerChoice Debian GHC) Documentation = BinPkgName "ghc-doc"
-compilerPackageName (CompilerChoice Debian GHC) Profiling = BinPkgName "ghc-prof"
-compilerPackageName (CompilerChoice Debian GHC) Development = BinPkgName "ghc"
-compilerPackageName (CompilerChoice Debian GHC) _ = BinPkgName "ghc" -- whatevs
-compilerPackageName (CompilerChoice (HVR v) GHC) Documentation = BinPkgName ("ghc-" ++ showVersion v ++ "-htmldocs")
-compilerPackageName (CompilerChoice (HVR v) GHC) Profiling = BinPkgName ("ghc-" ++ showVersion v ++ "-prof")
-compilerPackageName (CompilerChoice (HVR v) GHC) Development = BinPkgName ("ghc-" ++ showVersion v)
-compilerPackageName (CompilerChoice (HVR v) GHC) _ = BinPkgName ("ghc-" ++ showVersion v)
+-- | Compute the compiler package names by finding out what package
+-- contains the corresponding executable.
+compilerPackageName :: CompilerChoice -> PackageType -> IO (Maybe BinPkgName)
+compilerPackageName hc typ =
+    compilerPackage (_hcFlavor hc) >>= maybe (return Nothing) (return . Just . finish)
+    where
+      finish (BinPkgName name) =
+          case (typ, _hcVendor hc) of
+            (Documentation, Debian) -> BinPkgName (name ++ "-doc")
+            (Documentation, HVR _) -> BinPkgName (name ++ "-htmldocs")
+            (Profiling, _) -> BinPkgName (name ++ "-prof")
+            _ -> BinPkgName name
+
+compilerPackage :: CompilerFlavor -> IO (Maybe BinPkgName)
+compilerPackage GHC = filePackage "ghc"
 #if MIN_VERSION_Cabal(1,22,0)
-compilerPackageName (CompilerChoice _ GHCJS) Documentation = BinPkgName "ghcjs"
-compilerPackageName (CompilerChoice _ GHCJS) Profiling = error "Profiling not supported for GHCJS"
-compilerPackageName (CompilerChoice _ GHCJS) Development = BinPkgName "ghcjs"
-compilerPackageName (CompilerChoice _ GHCJS) _ = BinPkgName "ghcjs" -- whatevs
+compilerPackage GHCJS = filePackage "ghcjs"
 #endif
-compilerPackageName hc _ = error $ "Unsupported compiler flavor: " ++ show hc
+compilerPackage x = error $ "compilerPackage - unsupported CompilerFlavor: " ++ show x
+
+{-
+compilerExecutable :: CompilerFlavor -> String
+compilerExecutable GHC = "ghc"
+#if MIN_VERSION_Cabal(1,22,0)
+compilerExecutable GHCJS = "ghcjs"
+#endif
+compilerExecutable x = error $ "compilerExecutable - unexpected flavor: " ++ show x
+-}
+
+filePackage :: FilePath -> IO (Maybe BinPkgName)
+filePackage p =
+    which p >>= maybe (return Nothing) (\x -> package <$> readProcess "dpkg-query" ["-S", x] "")
+    where
+      package :: String -> Maybe BinPkgName
+      package s =
+          case s =~ "^(.*): .*$" :: (String, String, String, [String]) of
+            (_, _, _, [name]) -> Just (BinPkgName name)
+            _ -> Nothing
+
+which :: String -> IO (Maybe FilePath)
+which bin = do
+  (toPath . over _2 lines) <$> readProcessWithExitCode "which" [bin] ""
+    where
+      toPath :: (ExitCode, [String], String) -> Maybe String
+      toPath (ExitSuccess, [path], _) = Just path
+      toPath _ = Nothing
 
 #if MIN_VERSION_Cabal(1,22,0)
 -- | IO based alternative to newestAvailableCompilerId - install the
@@ -251,12 +282,14 @@ getCompilerInfo' flavor = do
     Right (_, out, _) -> do
       let compilerId = maybe (error $ "Parse error in version string: " ++ show out) (CompilerId flavor) (toVersion out)
       compilerCompat <- case flavor of
+#if MIN_VERSION_Cabal(1,22,0)
                           GHCJS -> do
                             (r' :: Either IOError (ExitCode, String, String)) <- try $ readProcessWithExitCode (hcCommand flavor) ["--numeric-ghc-version"] ""
                             case r' of
                               Right (ExitSuccess, out', _) ->
                                   maybe (error $ "getCompilerInfo - parse error in version string: " ++ show out') (return . Just . (: []) . CompilerId GHC) (toVersion out')
                               _ -> error "getCompilerInfo - failure computing compilerCompat"
+#endif
                           _ -> return Nothing
       return $ Right $ (unknownCompilerInfo compilerId NoAbiTag) {compilerInfoCompat = compilerCompat}
 
@@ -271,10 +304,13 @@ processErrorMessage msg cmd args (ExitFailure n, out, err) =
     where
       indent :: String -> String
       indent = intercalate "\n         " . lines
+processErrorMessage msg cmd args (ExitSuccess, out, err) = ""
 
 hcCommand :: CompilerFlavor -> String
 hcCommand GHC = "ghc"
+#if MIN_VERSION_Cabal(1,22,0)
 hcCommand GHCJS = "ghcjs"
+#endif
 hcCommand flavor = error $ "hcCommand - unexpected CompilerFlavor: " ++ show flavor
 #endif
 

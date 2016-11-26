@@ -8,7 +8,7 @@ module Distribution.Version.Invert
 #if MIN_VERSION_Cabal(1,24,0)
 import Distribution.Version (invertVersionRange, invertVersionIntervals)
 #else
-import Distribution.Version (Version(Version, versionBranch, versionTags), VersionRange, fromVersionIntervals, asVersionIntervals, mkVersionIntervals,
+import Distribution.Version (Version(Version), VersionRange, fromVersionIntervals, asVersionIntervals, mkVersionIntervals,
                              LowerBound(LowerBound), UpperBound(UpperBound, NoUpperBound), Bound(InclusiveBound, ExclusiveBound))
 
 -- | This function belongs in Cabal, see http://hackage.haskell.org/trac/hackage/ticket/935.
@@ -19,7 +19,7 @@ invertVersionIntervals :: [(LowerBound, UpperBound)] -> [(LowerBound, UpperBound
 invertVersionIntervals xs =
     case xs of
       [] -> [(lb0, NoUpperBound)]
-      ((LowerBound (Version {versionBranch = [0], versionTags = []}) InclusiveBound, ub) : more) ->
+      ((LowerBound (Version [0] []) InclusiveBound, ub) : more) ->
           invertVersionIntervals' ub more
       ((lb, ub) : more) ->
           (lb0, invertLowerBound lb) : invertVersionIntervals' ub more
@@ -42,5 +42,5 @@ invertVersionIntervals xs =
       invertBound InclusiveBound = ExclusiveBound
 
       lb0 :: LowerBound
-      lb0 = LowerBound (Version {versionBranch = [0], versionTags = []}) InclusiveBound
+      lb0 = LowerBound (Version [0] []) InclusiveBound
 #endif

@@ -9,6 +9,7 @@ module Debian.Debianize.BuildDependencies
 import Control.Applicative ((<$>))
 import Control.Lens
 import Control.Monad.State (MonadState(get))
+import Control.Monad.Trans (liftIO, MonadIO)
 import Data.Char (isSpace, toLower)
 import Data.Function (on)
 import Data.List as List (filter, groupBy, map, minimumBy, nub, sortBy)
@@ -104,7 +105,7 @@ mergeCabalDependencies =
 
 -- The haskell-cdbs package contains the hlibrary.mk file with
 -- the rules for building haskell packages.
-debianBuildDeps :: (Monad m, Functor m) => PackageDescription -> CabalT m D.Relations
+debianBuildDeps :: (MonadIO m, Functor m) => PackageDescription -> CabalT m D.Relations
 debianBuildDeps pkgDesc =
     do hchoice <- use (A.debInfo . D.flags . compilerChoice)
        let hcs = singleton hchoice -- vestigial
@@ -134,16 +135,20 @@ debianBuildDeps pkgDesc =
        prof <- not <$> use (A.debInfo . D.noProfilingLibrary)
        official <- use (A.debInfo . D.official)
        compat <- use (A.debInfo . D.compat)
+       ghcdev <- liftIO $ compilerPackageName hchoice B.Development
+       let ghcrel = if member GHC (Set.map _hcFlavor hcs) then maybe [] ((: []) . anyrel') ghcdev else []
+       ghcprof <- liftIO $ compilerPackageName hchoice B.Profiling
+       let ghcrelprof = if prof then maybe [] ((: []) . anyrel') ghcprof else []
        let xs = nub $ [maybe [] (\ n -> [D.Rel (D.BinPkgName "debhelper") (Just (D.GRE (parseDebianVersion' (show n)))) Nothing]) compat,
                        [D.Rel (D.BinPkgName "haskell-devscripts-minimal") Nothing Nothing,
                         D.Rel (D.BinPkgName "haskell-devscripts") (Just $ D.GRE $ parseDebianVersion' $ if official then "0.9" else "0.8" :: String) Nothing],
                        anyrel "cdbs"] ++
-                      (if member GHC (Set.map _hcFlavor hcs)
-                       then [anyrel' (compilerPackageName hchoice B.Development)] ++ if prof then [anyrel' (compilerPackageName hchoice B.Profiling)] else []
-                       else []) ++
+                      (ghcrel ++ ghcrelprof) ++
+{-
 #if MIN_VERSION_Cabal(1,22,0)
-                      (if member GHCJS (Set.map _hcFlavor hcs) then [anyrel "ghcjs"] else []) ++
+                      (if member GHCJS (Set.map _hcFlavor hcs) then [anyrel (compilerPackageName hchoice B.Development)] else []) ++
 #endif
+-}
                        bDeps ++
                        cDeps
        filterMissing xs
@@ -164,7 +169,7 @@ debianBuildDeps pkgDesc =
       hcPackageTypesTests _ = singleton B.Development
 
 
-debianBuildDepsIndep :: (Monad m, Functor m) => PackageDescription -> CabalT m D.Relations
+debianBuildDepsIndep :: (MonadIO m, Functor m) => PackageDescription -> CabalT m D.Relations
 debianBuildDepsIndep pkgDesc =
     do hc <- use (A.debInfo . D.flags . compilerChoice)
        let hcs = singleton hc -- vestigial
@@ -172,11 +177,15 @@ debianBuildDepsIndep pkgDesc =
        bDeps <- use (A.debInfo . D.control . S.buildDependsIndep)
        libDeps <- allBuildDepends (maybe [] (return . libBuildInfo) (Cabal.library pkgDesc))
        cDeps <- mapM docDependencies libDeps
+       ghcdoc <- liftIO $ compilerPackageName hc B.Documentation
+       let ghcreldoc = if doc then maybe [] ((: []) . anyrel') ghcdoc else []
        let xs = nub $ if doc && isJust (Cabal.library pkgDesc)
-                      then (if member GHC (Set.map _hcFlavor hcs) then [anyrel' (compilerPackageName hc B.Documentation)] else []) ++
+                      then (if member GHC (Set.map _hcFlavor hcs) then ghcreldoc else []) ++
+{-
 #if MIN_VERSION_Cabal(1,22,0)
                            (if member GHCJS (Set.map _hcFlavor hcs) then [anyrel "ghcjs"] else []) ++
 #endif
+-}
                            bDeps ++ concat cDeps
                       else []
        filterMissing xs
@@ -184,7 +193,7 @@ debianBuildDepsIndep pkgDesc =
 -- | The documentation dependencies for a package include the
 -- documentation package for any libraries which are build
 -- dependencies, so we have use to all the cross references.
-docDependencies :: (Monad m, Functor m) => Dependency_ -> CabalT m D.Relations
+docDependencies :: (MonadIO m, Functor m) => Dependency_ -> CabalT m D.Relations
 docDependencies (BuildDepends (Dependency name ranges)) =
     do hc <- use (A.debInfo . D.flags . compilerChoice)
        let hcs = singleton hc -- vestigial
@@ -195,7 +204,7 @@ docDependencies _ = return []
 -- | The Debian build dependencies for a package include the profiling
 -- libraries and the documentation packages, used for creating cross
 -- references.  Also the packages associated with extra libraries.
-buildDependencies :: (Monad m, Functor m) => Set (CompilerChoice, B.PackageType) -> Dependency_ -> CabalT m D.Relations
+buildDependencies :: (MonadIO m, Functor m) => Set (CompilerChoice, B.PackageType) -> Dependency_ -> CabalT m D.Relations
 buildDependencies hcTypePairs (BuildDepends (Dependency name ranges)) =
     use (A.debInfo . D.omitProfVersionDeps) >>= \ omitProfDeps ->
     concat <$> mapM (\ (hc, typ) -> dependencies hc typ name ranges omitProfDeps) (toList hcTypePairs)
@@ -250,7 +259,7 @@ anyrel' x = [D.Rel x Nothing Nothing]
 -- | Turn a cabal dependency into debian dependencies.  The result
 -- needs to correspond to a single debian package to be installed,
 -- so we will return just an OrRelation.
-dependencies :: Monad m => CompilerChoice -> B.PackageType -> PackageName -> VersionRange -> Bool -> CabalT m Relations
+dependencies :: MonadIO m => CompilerChoice -> B.PackageType -> PackageName -> VersionRange -> Bool -> CabalT m Relations
 dependencies hc typ name cabalRange omitProfVersionDeps =
     do nameMap <- use A.debianNameMap
        -- Compute a list of alternative debian dependencies for
@@ -317,20 +326,21 @@ dependencies hc typ name cabalRange omitProfVersionDeps =
 -- compiler a substitute for that package.  If we were to
 -- specify the virtual package (e.g. libghc-base-dev) we would
 -- have to make sure not to specify a version number.
-doBundled :: Monad m =>
+doBundled :: MonadIO m =>
              B.PackageType
           -> PackageName
           -> CompilerChoice
           -> [D.Relation]
           -> CabalT m [D.Relation]
-doBundled typ name hc rels =
-    mapM doRel rels >>= return . concat
+doBundled typ name hc rels = do
+  hcname <- liftIO (compilerPackageName hc typ)
+  mapM (doRel hcname) rels >>= return . concat
     where
       -- If a library is built into the compiler, this is the debian
       -- package name the compiler will conflict with.
-      comp = D.Rel (compilerPackageName hc typ) Nothing Nothing
-      doRel :: Monad m => D.Relation -> CabalT m [D.Relation]
-      doRel rel@(D.Rel dname req _) = do
+      doRel :: Monad m => Maybe BinPkgName -> D.Relation -> CabalT m [D.Relation]
+      doRel hcname rel@(D.Rel dname req _) = do
+        let comp = maybe [] (\x -> [D.Rel x Nothing Nothing]) hcname
         -- gver <- use ghcVersion
         root <- use (A.debInfo . D.flags . buildEnv) >>= return . dependOS
         -- Look at what version of the package is provided by the compiler.
@@ -356,7 +366,7 @@ doBundled typ name hc rels =
         -- library (which, if pver is Nothing, will certainly
         -- result in an error which needs to be corrected in
         -- the packaging.)
-        let compilerDependency = if isJust pver && (checkVersionReq req pver || (dname == naiveDebianName && conflictsWithHC naiveDebianName)) then [comp] else []
+        let compilerDependency = if isJust pver && (checkVersionReq req pver || (dname == naiveDebianName && conflictsWithHC naiveDebianName)) then comp else []
         -- The library package can satisfy the dependency if
         -- the compiler doesn't provide a version, or if the
         -- compiler doesn't conflict with the package's

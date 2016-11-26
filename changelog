@@ -1,3 +1,10 @@
+haskell-cabal-debian (4.35.3) unstable; urgency=low
+
+  * Prefer dependency on haskell-devscript-minimal over haskell-devscript
+  * Do not assume deb containing ghc executable is named ghc, nor ghcjs.
+
+ -- David Fox <dsf@foxthompson.net>  Sat, 26 Nov 2016 04:29:21 -0800
+
 haskell-cabal-debian (4.35) unstable; urgency=low
 
   * Add support for the packages in hvr's compiler repository.

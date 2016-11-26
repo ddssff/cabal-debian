@@ -6,7 +6,9 @@ module Debian.Debianize.Finalize
     ) where
 
 
+#if !MIN_VERSION_base(4,8,0)
 import Control.Applicative ((<$>))
+#endif
 import Control.Lens hiding ((<.>))
 import Control.Monad (unless, when)
 import Control.Monad as List (mapM_)
@@ -23,6 +25,7 @@ import Data.Monoid ((<>), mempty)
 import Data.Set as Set (difference, filter, fold, fromList, insert, map, null, Set, singleton, toList, union, unions)
 import Data.Set.Extra as Set (mapM_)
 import Data.Text as Text (intercalate, pack, Text, unlines, unpack)
+import Data.Version (showVersion)
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(..))
 import Debian.Debianize.BasicInfo (cabalFlagAssignments, compilerChoice, verbosity)
 import qualified Debian.Debianize.BinaryDebDescription as B
@@ -37,7 +40,7 @@ import Debian.Debianize.Monad as Monad (CabalT, liftCabal)
 import Debian.Debianize.Prelude ((.?=))
 import qualified Debian.Debianize.SourceDebDescription as S
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
-import Debian.GHC (CompilerChoice, hcFlavor)
+import Debian.GHC (CompilerChoice, CompilerVendor(Debian, HVR), hcFlavor, hcVendor)
 import Debian.Orphans ()
 import Debian.Policy (getCurrentDebianUser, getDebhelperCompatLevel, haskellMaintainer, maintainerOfLastResort, PackageArchitectures(Any, All), PackagePriority(Extra), parseMaintainer, parseStandardsVersion, Section(..), SourceFormat(Native3))
 import Debian.Pretty (PP(..), ppShow)
@@ -91,7 +94,7 @@ finalizeDebianization =
 -- this function is not idempotent.  (Exported for use in unit tests.)
 -- FIXME: we should be able to run this without a PackageDescription, change
 --        paramter type to Maybe PackageDescription and propagate down thru code
-finalizeDebianization'  :: (Monad m, Functor m) => String -> Maybe NameAddr -> Maybe Int -> Bool -> CabalT m ()
+finalizeDebianization'  :: (MonadIO m, Functor m) => String -> Maybe NameAddr -> Maybe Int -> Bool -> CabalT m ()
 finalizeDebianization' date currentUser debhelperCompat setupExists =
     do -- In reality, hcs must be a singleton or many things won't work.  But some day...
        hc <- use (A.debInfo . D.flags . compilerChoice)
@@ -103,10 +106,9 @@ finalizeDebianization' date currentUser debhelperCompat setupExists =
          (True, D.TestsRun) -> (A.debInfo . D.rulesSettings) %= (++ ["DEB_ENABLE_TESTS = yes"])
          (True, D.TestsBuild) -> (A.debInfo . D.rulesSettings) %= (++ ["DEB_ENABLE_TESTS = yes", "DEB_BUILD_OPTIONS += nocheck"])
          _ -> return ()
-       case setupExists of
-         False -> (A.debInfo . D.rulesSettings) %= (++ ["DEB_SETUP_BIN_NAME = cabal"])
-         _ -> return ()
-
+       (A.debInfo . D.rulesSettings) %=
+          (++ ["DEB_SETUP_BIN_NAME = " <> if setupExists then "debian/hlibrary.setup" else "cabal"])
+ 
        finalizeSourceName B.HaskellSource
        checkOfficialSettings (view hcFlavor hc)
        addExtraLibDependencies hc
@@ -370,7 +372,7 @@ officialSettings = do
               , S.VCSGit  "https://anonscm.debian.org/cgit/pkg-haskell/DHG_packages.git"
               ])
 
-putBuildDeps :: (Monad m, Functor m) => (Relations -> Relations) -> PackageDescription -> CabalT m ()
+putBuildDeps :: (MonadIO m, Functor m) => (Relations -> Relations) -> PackageDescription -> CabalT m ()
 putBuildDeps finalizeRelations pkgDesc =
     do deps <- debianBuildDeps pkgDesc >>= return . finalizeRelations
        depsIndep <- debianBuildDepsIndep pkgDesc >>= return . finalizeRelations
@@ -657,7 +659,11 @@ finalizeRules =
        compiler <- use (A.debInfo . D.flags . compilerChoice . hcFlavor)
        (A.debInfo . D.rulesHead) .?= Just "#!/usr/bin/make -f"
        (A.debInfo . D.rulesSettings) %= (++ ["DEB_CABAL_PACKAGE = " <> pack b])
-       (A.debInfo . D.rulesSettings) %= (++ (["DEB_DEFAULT_COMPILER = " <> pack (List.map toLower (show compiler))]))
+       hc <- use (A.debInfo . D.flags . compilerChoice)
+       (A.debInfo . D.rulesSettings) %=
+          (++ ["DEB_DEFAULT_COMPILER = " <> case view hcVendor hc of
+                                              Debian -> "ghc"
+                                              HVR v -> "ghc-" <> pack (showVersion v)])
        flags <- (flagString . Set.toList) <$> use (A.debInfo . D.flags . cabalFlagAssignments)
        unless (List.null flags) ((A.debInfo . D.rulesSettings) %= (++ ["DEB_SETUP_GHC6_CONFIGURE_ARGS = " <> pack flags]))
        (A.debInfo . D.rulesIncludes) %= (++ ["include /usr/share/cdbs/1/rules/debhelper.mk",

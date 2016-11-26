@@ -3,10 +3,10 @@ Maintainer: Jeremy Shaw <jeremy@seereason.com>
 Priority: extra
 Section: haskell
 Build-Depends: debhelper (>= 9)
-	       , haskell-devscripts (>= 0.8)
+	       , haskell-devscripts-minimal | haskell-devscripts (>= 0.8)
 	       , cdbs
-               , ghc-7.6.3
-               , ghc-7.6.3-prof
+               , ghc
+               , ghc-prof
                , libghc-extra-dev
                , libghc-hjscript-dev
                , libghc-http-dev

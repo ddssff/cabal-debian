@@ -226,8 +226,11 @@ compilerPackageName hc typ =
     where
       finish (BinPkgName name) =
           case (typ, _hcVendor hc) of
+            -- Debian puts the .haddock files in ghc-doc
             (Documentation, Debian) -> BinPkgName (name ++ "-doc")
-            (Documentation, HVR _) -> BinPkgName (name ++ "-htmldocs")
+            -- In HVR repo the .haddock files required to buid html
+            -- are in the main compiler package
+            (Documentation, HVR _) -> BinPkgName name
             (Profiling, _) -> BinPkgName (name ++ "-prof")
             _ -> BinPkgName name
 

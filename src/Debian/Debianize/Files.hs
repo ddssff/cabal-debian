@@ -1,13 +1,16 @@
 -- | Convert a Debianization into a list of files that can then be
 -- written out.
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, OverloadedStrings, ScopedTypeVariables, TupleSections #-}
+{-# LANGUAGE CPP, FlexibleContexts, FlexibleInstances, OverloadedStrings, ScopedTypeVariables, TupleSections #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Debian.Debianize.Files
     ( debianizationFileMap
     ) where
 
 
+#if !MIN_VERSION_base(4,8,0)
 import Control.Applicative ((<$>))
+import Data.Monoid (mempty)
+#endif
 import Control.Lens
 import Control.Monad.Trans (lift)
 import Control.Monad.Writer (execWriterT, tell, WriterT)
@@ -15,7 +18,7 @@ import Data.Char (isSpace)
 import Data.List as List (dropWhile, dropWhileEnd, map)
 import Data.Map as Map (fromListWithKey, insertWith, map, Map, mapKeys, toList)
 import Data.Maybe (fromMaybe)
-import Data.Monoid ((<>), mempty)
+import Data.Monoid ((<>))
 import Data.Set as Set (fold, member, toList)
 import Data.Text as Text (dropWhile, dropWhileEnd, intercalate, lines, null, pack, strip, Text, unlines, unpack)
 import Debian.Control (Control'(Control, unControl), Field'(Field), Paragraph'(Paragraph))

@@ -113,5 +113,5 @@ import Debian.Debianize.Output (compareDebianization, describeDebianization, fin
 import Debian.Debianize.Prelude (buildDebVersionMap, debOfFile, dpkgFileMap, withCurrentDirectory, (.?=))
 import Debian.Debianize.SourceDebDescription
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
-import Debian.GHC (CompilerChoice(..), CompilerVendor(..), hcVendor, hcFlavor)
+import Debian.GHC ()
 import Debian.Policy (accessLogBaseName, apacheAccessLog, apacheErrorLog, apacheLogDirectory, appLogBaseName, Area(..), databaseDirectory, debianPackageVersion, errorLogBaseName, fromCabalLicense, getCurrentDebianUser, getDebhelperCompatLevel, getDebianStandardsVersion, haskellMaintainer, License(..), PackageArchitectures(..), PackagePriority(..), MultiArch(..), parseMaintainer, parsePackageArchitectures, parseStandardsVersion, parseUploaders, readLicense, readPriority, readSection, readMultiArch, readSourceFormat, Section(..), serverAccessLog, serverAppLog, serverLogDirectory, SourceFormat(..), StandardsVersion(..), toCabalLicense)

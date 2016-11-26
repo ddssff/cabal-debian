@@ -5,7 +5,10 @@ module Main
     , main
     ) where
 
+#if !MIN_VERSION_base(4,8,0)
 import Control.Applicative ((<$>))
+import Data.Monoid (mconcat, mempty)
+#endif
 import Debian.Debianize.Optparse(_flags, parseProgramArguments)
 import Control.Lens
 import Data.Algorithm.DiffContext (getContextDiff, prettyContextDiff)
@@ -15,12 +18,12 @@ import Data.List (sortBy)
 import Data.Map as Map (differenceWithKey, insert, intersectionWithKey)
 import qualified Data.Map as Map (elems, Map, toList)
 import Data.Maybe (fromMaybe)
-import Data.Monoid ((<>), mconcat, mempty)
+import Data.Monoid ((<>))
 import Data.Set as Set (fromList, union, insert)
 import Data.Text as Text (intercalate, split, Text, unlines, unpack)
 import Data.Version (Version(Version))
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(..), parseEntry)
-import Debian.Debianize.BasicInfo (compilerChoice, Flags, verbosity)
+import Debian.Debianize.BasicInfo (Flags, verbosity)
 import qualified Debian.Debianize.Bundled as Bundled (tests)
 import qualified Debian.Debianize.BinaryDebDescription as B
 import Debian.Debianize.CabalInfo as A (CabalInfo, debInfo, epochMap, newCabalInfo)
@@ -35,7 +38,7 @@ import Debian.Debianize.Monad (CabalT, evalCabalT, execCabalM, execCabalT, liftC
 import Debian.Debianize.Prelude (withCurrentDirectory)
 import qualified Debian.Debianize.SourceDebDescription as S
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
-import Debian.GHC (CompilerChoice(..), CompilerVendor(..))
+import Debian.GHC (withModifiedPATH)
 import Debian.Pretty (ppShow)
 import Debian.Policy (databaseDirectory, PackageArchitectures(All), PackagePriority(Extra), parseMaintainer, Section(MainSection), SourceFormat(Native3), StandardsVersion(..), getDebhelperCompatLevel, getDebianStandardsVersion, License(..))
 import Debian.Relation (BinPkgName(..), Relation(..), SrcPkgName(..), VersionReq(..))
@@ -80,9 +83,7 @@ testAtoms = ghc763 <$> (newFlags >>= newCabalInfo)
     where
       ghc763 :: Either String CabalInfo -> CabalInfo
       ghc763 (Left s) = error $ "testAtoms - failed to build CabalInfo: " ++ s
-      ghc763 (Right atoms) =
-          set (A.debInfo . D.flags . compilerChoice)
-              (CompilerChoice {_hcVendor = HVR (makeVersion [7,6,3]), _hcFlavor = GHC}) atoms
+      ghc763 (Right atoms) = {-set (A.debInfo . D.flags . compilerFlavor) GHC-} atoms
 
 -- | Create a Debianization based on a changelog entry and a license
 -- value.  Uses the currently installed versions of debhelper and
@@ -757,7 +758,7 @@ sortBinaryDebs = (D.control . S.binaryPackages) %= sortBy (compare `on` view B.p
 
 main :: IO ()
 main = do
- counts <- runTestTT tests
+ counts <- withModifiedPATH (const "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games") (runTestTT tests)
  exitWith $ if errors counts + failures counts > 0
             then ExitFailure 1
             else ExitSuccess

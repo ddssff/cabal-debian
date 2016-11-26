@@ -1,6 +1,6 @@
 -- | Things that seem like they could be clients of this library, but
 -- are instead included as part of the library.
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE CPP, OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 module Debian.Debianize.Goodies
     ( tightDependencyFixup
@@ -23,7 +23,10 @@ import Data.Char (isSpace)
 import Data.List as List (dropWhileEnd, intercalate, intersperse, map)
 import Data.Map as Map (insert, insertWith)
 import Data.Maybe (fromMaybe)
-import Data.Monoid ((<>), mappend)
+import Data.Monoid ((<>))
+#if !MIN_VERSION_base(4,8,0)
+import Data.Monoid (mappend)
+#endif
 import Data.Set as Set (insert, singleton, union)
 import Data.Text as Text (pack, Text, unlines)
 import qualified Debian.Debianize.DebInfo as D

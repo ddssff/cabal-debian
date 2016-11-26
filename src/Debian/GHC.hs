@@ -9,14 +9,13 @@ module Debian.GHC
     -- , ghcNewestAvailableVersion'
     -- , ghcNewestAvailableVersion
     -- , compilerIdFromDebianVersion
-    , CompilerVendor (Debian, HVR)
     , hvrCabalVersion
     , hvrHappyVersion
     , hvrAlexVersion
-    , compilerPATH
-    , withCompilerPATH
+    , hvrCompilerPATH
+    , isHVRCompilerPackage
     , withModifiedPATH
-    , CompilerChoice(..), hcVendor, hcFlavor
+    -- , CompilerChoice(..), hcVendor, hcFlavor
     , compilerPackageName
 #if MIN_VERSION_Cabal(1,22,0)
     , getCompilerInfo
@@ -28,11 +27,10 @@ import Control.Applicative ((<$>))
 #endif
 import Control.DeepSeq (force)
 import Control.Exception (SomeException, throw, try)
-import Control.Lens (_2, makeLenses, over)
+import Control.Lens (_2, over)
 import Control.Monad.Trans (MonadIO, liftIO)
-import Data.Char (isSpace, {-toLower,-} toUpper)
+import Data.Char (isSpace, toLower, toUpper)
 import Data.Function.Memoize (deriveMemoizable, memoize2)
-import Data.Generics (Data, Typeable)
 import Data.List (intercalate)
 import Data.Version (showVersion, Version(..), parseVersion)
 import Debian.Debianize.BinaryDebDescription (PackageType(..))
@@ -59,39 +57,34 @@ import Text.Regex.TDFA ((=~))
 $(deriveMemoizable ''CompilerFlavor)
 $(deriveMemoizable ''Version)
 $(deriveMemoizable ''BinPkgName)
-deriving instance Data CompilerVendor
-deriving instance Typeable CompilerVendor
 
--- | Up until now this system only worked with Debian's or Ubuntu's
--- ghc source package, which has binary package names ghc, ghc-prof,
--- ghc-doc, etc.  This type is intended to add support for Herbert
--- Valerio Riedel's (hvr's) repository of several different versions
--- of ghc and supporting tools happy, alex and cabal.  These have
--- different binary package names, and the packages put the
--- executables in different locations than the Debian (and Ubuntu)
--- packages.  This option is activated by the --hvr-version option to
--- cabal-debian.
-data CompilerChoice =
-    CompilerChoice { _hcVendor :: CompilerVendor
-                   , _hcFlavor :: CompilerFlavor
-                   } deriving (Eq, Ord, Show, Data, Typeable)
-data CompilerVendor = Debian | HVR Version deriving (Eq, Ord, Show)
+-- | Up until now cabal-debian only worked with Debian's or Ubuntu's
+-- ghc debs, which have binary package names ghc, ghc-prof, ghc-doc,
+-- etc.  This type is intended to add support for Herbert Valerio
+-- Riedel's (hvr's) repository of several different versions of ghc
+-- and supporting tools happy, alex and cabal.  These have different
+-- binary package names, and the packages put the executables in
+-- different locations than the Debian (and Ubuntu) packages.  This
+-- option is activated when a directory such as /opt/ghc/8.0.1/bin is
+-- present in $PATH and a ghc executable is found there.
+--
+-- This function decides whether a deb name is that of one of
+-- debian/ubuntu's ghc packages or one of hvr's.
+isHVRCompilerPackage :: CompilerFlavor -> BinPkgName -> Bool
+isHVRCompilerPackage hc (BinPkgName name) = map toLower (show hc) /= name
 
-withCompilerVersion :: FilePath -> CompilerChoice -> (Either String DebianVersion -> a) -> IO a
-withCompilerVersion root hc f = f <$> newestAvailableCompiler root hc
+withCompilerVersion :: FilePath -> CompilerFlavor -> (DebianVersion -> IO a) -> IO (Either String a)
+withCompilerVersion root hc f = newestAvailableCompiler root hc >>= either (return . Left) (\v -> Right <$> f v)
 
-withCompilerPATH :: MonadIO m => CompilerVendor -> m a -> m a
-withCompilerPATH vendor action = withModifiedPATH (compilerPATH vendor) action
-
-compilerPATH :: CompilerVendor -> String -> String
-compilerPATH vendor path0 = do
-  case vendor of
-    Debian -> path0
-    HVR v -> (intercalate ":" ["/opt/ghc/" ++ showVersion v ++ "/bin",
-                               "/opt/cabal/" ++ showVersion (hvrCabalVersion v) ++ "/bin",
-                               "/opt/happy/" ++ showVersion (hvrHappyVersion v) ++ "/bin",
-                               "/opt/alex/" ++ showVersion (hvrAlexVersion v) ++ "/bin",
-                               path0])
+-- | Return the a string containing the PATH environment variable value
+-- suitable for using some version of ghc from hvr's compiler repo.
+hvrCompilerPATH :: Version -> String -> String
+hvrCompilerPATH v path0 =
+    intercalate ":" ["/opt/ghc/" ++ showVersion v ++ "/bin",
+                     "/opt/cabal/" ++ showVersion (hvrCabalVersion v) ++ "/bin",
+                     "/opt/happy/" ++ showVersion (hvrHappyVersion v) ++ "/bin",
+                     "/opt/alex/" ++ showVersion (hvrAlexVersion v) ++ "/bin",
+                     path0]
 
 -- | What version of Cabal goes with this version of GHC?
 hvrCabalVersion :: Version -> Version
@@ -147,11 +140,11 @@ newestAvailable' root (BinPkgName name) = do
           chroot "/" = id
           chroot _ = useEnv root (return . force)
 
-newestAvailableCompiler :: FilePath -> CompilerChoice -> IO (Either String DebianVersion)
+newestAvailableCompiler :: FilePath -> CompilerFlavor -> IO (Either String DebianVersion)
 newestAvailableCompiler root hc = compilerPackageName hc Development >>= return . maybe (Left "No compiler package") (newestAvailable root)
 
-newestAvailableCompilerId :: FilePath -> CompilerChoice -> IO (Either String CompilerId)
-newestAvailableCompilerId root hc@(CompilerChoice _ flavor) = either Left (Right . compilerIdFromDebianVersion flavor) <$> (newestAvailableCompiler root hc)
+newestAvailableCompilerId :: FilePath -> CompilerFlavor -> IO (Either String CompilerId)
+newestAvailableCompilerId root hc = either Left (Right . compilerIdFromDebianVersion hc) <$> (newestAvailableCompiler root hc)
 
 {-
 -- | The IO portion of ghcVersion.  For there to be no version of ghc
@@ -220,19 +213,23 @@ debName hc =
 
 -- | Compute the compiler package names by finding out what package
 -- contains the corresponding executable.
-compilerPackageName :: CompilerChoice -> PackageType -> IO (Maybe BinPkgName)
+compilerPackageName :: CompilerFlavor -> PackageType -> IO (Maybe BinPkgName)
 compilerPackageName hc typ =
-    compilerPackage (_hcFlavor hc) >>= maybe (return Nothing) (return . Just . finish)
+    compilerPackage hc >>= maybe (return Nothing) (return . Just . finish)
     where
-      finish (BinPkgName name) =
-          case (typ, _hcVendor hc) of
+      finish (BinPkgName hcname) =
+          let isDebian = map toLower (show hc) == hcname in
+          -- hcname is the package that contains the compiler
+          -- executable.  This will be ghc or ghcjs for Debian
+          -- packages, anything else is an hvr package.
+          case (typ, isDebian) of
             -- Debian puts the .haddock files in ghc-doc
-            (Documentation, Debian) -> BinPkgName (name ++ "-doc")
+            (Documentation, True) -> BinPkgName (hcname ++ "-doc")
             -- In HVR repo the .haddock files required to buid html
             -- are in the main compiler package
-            (Documentation, HVR _) -> BinPkgName name
-            (Profiling, _) -> BinPkgName (name ++ "-prof")
-            _ -> BinPkgName name
+            (Documentation, False) -> BinPkgName hcname
+            (Profiling, _) -> BinPkgName (hcname ++ "-prof")
+            _ -> BinPkgName hcname
 
 compilerPackage :: CompilerFlavor -> IO (Maybe BinPkgName)
 compilerPackage GHC = filePackage "ghc"
@@ -310,7 +307,7 @@ processErrorMessage msg cmd args (ExitFailure n, out, err) =
     where
       indent :: String -> String
       indent = intercalate "\n         " . lines
-processErrorMessage msg cmd args (ExitSuccess, out, err) = ""
+processErrorMessage _msg _cmd _args (ExitSuccess, _out, _err) = ""
 
 hcCommand :: CompilerFlavor -> String
 hcCommand GHC = "ghc"
@@ -319,7 +316,3 @@ hcCommand GHCJS = "ghcjs"
 #endif
 hcCommand flavor = error $ "hcCommand - unexpected CompilerFlavor: " ++ show flavor
 #endif
-
-$(makeLenses ''CompilerChoice)
-$(deriveMemoizable ''CompilerVendor)
-$(deriveMemoizable ''CompilerChoice)

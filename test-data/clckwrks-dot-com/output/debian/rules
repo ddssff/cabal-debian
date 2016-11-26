@@ -3,7 +3,7 @@
 DEB_SETUP_GHC_CONFIGURE_ARGS = -fbackups
 DEB_SETUP_BIN_NAME = cabal
 DEB_CABAL_PACKAGE = clckwrks-dot-com
-DEB_DEFAULT_COMPILER = ghc-7.6.3
+DEB_DEFAULT_COMPILER = ghc
 
 include /usr/share/cdbs/1/rules/debhelper.mk
 include /usr/share/cdbs/1/class/hlibrary.mk

@@ -12,18 +12,18 @@ import Control.Monad.Trans (MonadIO, liftIO)
 import Control.Applicative ((<$>))
 #endif
 import Data.Set as Set (toList)
-import Debian.Debianize.BasicInfo (Flags, buildEnv, dependOS, verbosity, compilerChoice, cabalFlagAssignments)
+import Debian.Debianize.BasicInfo (Flags, buildEnv, dependOS, verbosity, compilerFlavor, cabalFlagAssignments)
 import Debian.Debianize.Prelude (intToVerbosity')
-import Debian.GHC (hcFlavor)
 #if MIN_VERSION_Cabal(1,22,0)
 import Debian.GHC (getCompilerInfo)
 #else
 import Debian.GHC (newestAvailableCompilerId)
 #endif
 import Debian.Orphans ()
-import Distribution.Compiler (CompilerId)
 #if MIN_VERSION_Cabal(1,22,0)
 import Distribution.Compiler (CompilerInfo)
+#else
+import Distribution.Compiler (CompilerId)
 #endif
 import Distribution.Package (Package(packageId))
 import Distribution.PackageDescription as Cabal (PackageDescription)
@@ -73,7 +73,7 @@ inputCabalization flags =
 getCompInfo :: MonadIO m => Flags -> WithProcAndSys m (Either String CompilerInfo)
 getCompInfo flags =
 #if MIN_VERSION_Cabal(1,22,0)
-              getCompilerInfo root (view (compilerChoice . hcFlavor) flags)
+              getCompilerInfo root (view compilerFlavor flags)
 #else
               return $ newestAvailableCompilerId root (view compilerChoice flags)
 #endif

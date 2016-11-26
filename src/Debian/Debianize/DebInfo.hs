@@ -91,7 +91,9 @@ import Control.Lens
 import Control.Monad.State (StateT)
 import Data.Generics (Data, Typeable)
 import Data.Map as Map (Map)
+#if !MIN_VERSION_base(4,8,0)
 import Data.Monoid (Monoid(..))
+#endif
 import Data.Set as Set (insert, Set)
 import Data.Text (Text)
 import Debian.Changes (ChangeLog)

@@ -15,7 +15,11 @@ module Debian.Debianize.Optparse (
   parseProgramArguments,
   parseProgramArguments',
   handleBehaviorAdjustment) where
-import Control.Applicative ((<$>), (<*>), many, pure, (<|>))
+
+#if !MIN_VERSION_base(4,8,0)
+import Control.Applicative ((<$>), (<*>))
+#endif
+import Control.Applicative (many, (<|>))
 import Control.Lens
 import Control.Monad.State.Class (MonadState)
 import Control.Monad.Trans
@@ -23,18 +27,15 @@ import "newtype-generics" Control.Newtype
 import Data.Bifunctor (first)
 import Data.Char(toUpper)
 import Data.Foldable (forM_)
-import Data.List (nub)
 import Data.Maybe.Extended (fromMaybe)
 import Data.Maybe.Extended (nothingIf)
 import Data.Monoid ((<>))
-import Data.Version (Version, parseVersion)
-import Debian.Debianize.BasicInfo
-import Debian.Debianize.Bundled (parseVersion')
+import Debian.Debianize.BasicInfo (EnvSet(EnvSet), cleanOS, dependOS, buildOS, Flags(..))
 import Debian.Debianize.DebInfo (TestsStatus(..))
 import Debian.Debianize.Monad
 import Debian.Debianize.Prelude (maybeRead)
 import Debian.Debianize.VersionSplits
-import Debian.GHC (CompilerChoice(..), CompilerVendor(..))
+import Debian.GHC ()
 import Debian.Policy
 import Debian.Relation
 import Debian.Version (DebianVersion, parseDebianVersion')
@@ -44,9 +45,7 @@ import Distribution.PackageDescription (FlagName(FlagName))
 import GHC.Generics
 import System.Environment (getArgs)
 import System.FilePath(splitFileName, (</>))
-import System.Posix.Env (getEnv)
 import System.Process (showCommandForUser)
-import Text.ParserCombinators.ReadP (readP_to_S)
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr(..))
 import Text.PrettyPrint.ANSI.Leijen (linebreak, (<+>), string, indent)
 import qualified  Debian.Debianize.DebInfo as D
@@ -524,7 +523,7 @@ flagsP = Flags <$> verbosityP
                <*> upgradeP
                <*> roundtripP
                <*> pure False     -- validate
-               <*> (CompilerChoice <$> hvrghcP <*> ghcjsP)         -- CompilerChoice
+               <*> hcFlavorP         -- CompilerFlavor
                <*> (flagSet <$> cabalFlagsP)    -- cabalFlagAssignments
                <*> buildEnvDirP
     where
@@ -567,18 +566,11 @@ roundtripP = O.switch m where
     "Roundtrip a debianization to normalize it."
     ]
 
-versionR :: O.ReadM Version
-versionR = (maybe (error "Invalid compiler version") id . parseVersion') <$> O.str
+-- versionR :: O.ReadM Version
+-- versionR = (maybe (error "Invalid compiler version") id . parseVersion') <$> O.str
 
-hvrghcP :: O.Parser CompilerVendor
-hvrghcP = O.option (HVR <$> versionR) m where
-  m = O.help "Use HVR's debian repository"
-      <> O.long "hvr-version"
-      <> O.value Debian
-      <> O.metavar "VERSION"
-
-ghcjsP :: O.Parser CompilerFlavor
-ghcjsP = O.flag GHC
+hcFlavorP :: O.Parser CompilerFlavor
+hcFlavorP = O.flag GHC
 #if MIN_VERSION_Cabal(1,22,0)
                     GHCJS
 #else
@@ -674,9 +666,9 @@ parseProgramArguments :: IO CommandLineOptions
 parseProgramArguments = getArgs >>= parseProgramArguments' . leaveOne "--disable-haddock"
     where
       leaveOne :: String -> [String] -> [String]
-      leaveOne s xs = go s False xs
+      leaveOne s xs = go False xs
           where
-            go _ _ [] = []
-            go s False (x : xs) | x == s = x : go s True xs
-            go s True (x : xs) | x == s = go s True xs
-            go s flag (x : xs) = x : go s flag xs
+            go _ [] = []
+            go False (x : xs') | x == s = x : go True xs'
+            go True (x : xs') | x == s = go True xs'
+            go flag (x : xs') = x : go flag xs'

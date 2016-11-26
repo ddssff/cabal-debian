@@ -16,6 +16,7 @@ module Debian.Debianize.CabalInfo
 
 #if !MIN_VERSION_base(4,8,0)
 import Control.Applicative ((<$>))
+import Data.Monoid (Monoid(..))
 #endif
 import Control.Lens
 import Control.Monad.Catch (MonadMask)
@@ -23,7 +24,6 @@ import Control.Monad.State (execStateT)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Generics (Data, Typeable)
 import Data.Map as Map (Map)
-import Data.Monoid (Monoid(..))
 import Data.Text as Text (null, pack, strip)
 import Debian.Debianize.BasicInfo (Flags)
 import Debian.Debianize.DebInfo as D (control, copyright, DebInfo, makeDebInfo)

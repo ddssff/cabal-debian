@@ -20,7 +20,9 @@ module Debian.Debianize.Bundled
     , tests
     ) where
 
+#if !MIN_VERSION_base(4,8,0)
 import Control.Applicative ((<$>), (<*>))
+#endif
 import Control.DeepSeq (force, NFData)
 import Control.Exception (SomeException, try)
 import Control.Monad.Catch (MonadMask)
@@ -31,7 +33,7 @@ import Data.List (groupBy, intercalate, isPrefixOf, stripPrefix)
 import Data.Maybe (listToMaybe, mapMaybe)
 import Data.Set as Set (difference, fromList)
 import Data.Version (parseVersion, Version(..))
-import Debian.GHC (CompilerChoice(..))
+import Debian.GHC ({-instance Memoizable CompilerFlavor-})
 import Debian.Relation (BinPkgName(..))
 import Debian.Relation.ByteString ()
 import Debian.Version (DebianVersion, parseDebianVersion', prettyDebianVersion)
@@ -63,7 +65,7 @@ makeVersion ns = Version ns []
 -- This is done by looking for .conf files beneath a package.conf.d
 -- directory and parsing the name.  (Probably better to actually read
 -- the .conf file.)
-builtIn :: CompilerChoice -> FilePath -> [PackageIdentifier]
+builtIn :: CompilerFlavor -> FilePath -> [PackageIdentifier]
 builtIn hc root =
   let Just hcname = (hcExecutablePath root hc >>= hcBinPkgName root) in
   aptCacheProvides hcname root
@@ -71,15 +73,15 @@ builtIn hc root =
 -- | Convert CompilerFlavor to an executable name in a way that works
 -- for at least the cases we are interested in.  This might need to be
 -- fudged or replaced as more cases become interesting.
-hcExecutable :: CompilerChoice -> String
-hcExecutable = map toLower . show . _hcFlavor
+hcExecutable :: CompilerFlavor -> String
+hcExecutable = map toLower . show
 
 -- | Use which(1) to determine full path name to haskell compiler executable
-hcExecutablePath :: FilePath -> CompilerChoice -> Maybe FilePath
+hcExecutablePath :: FilePath -> CompilerFlavor -> Maybe FilePath
 hcExecutablePath = memoize2 $ \root hc ->
   listToMaybe $ lines $ unsafePerformIO $ chroot root (readProcess "which" [hcExecutable hc] "")
 
-hcVersion :: FilePath -> CompilerChoice -> Maybe Version
+hcVersion :: FilePath -> CompilerFlavor -> Maybe Version
 hcVersion root hc =
     let Just hcpath = hcExecutablePath root hc in
     maybe Nothing parseVersion' $
@@ -87,7 +89,7 @@ hcVersion root hc =
      lines $
      unsafePerformIO . chroot root $
      readProcess hcpath
-                 [case _hcFlavor hc of
+                 [case hc of
 #if MIN_VERSION_Cabal(1,22,0)
                     GHCJS -> "--numeric-ghc-version"
 #endif

@@ -1,5 +1,5 @@
 -- | How to name the debian packages based on the cabal package name and version number.
-{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, OverloadedStrings, RankNTypes, ScopedTypeVariables, StandaloneDeriving, TypeFamilies #-}
+{-# LANGUAGE CPP, FlexibleInstances, MultiParamTypeClasses, OverloadedStrings, RankNTypes, ScopedTypeVariables, StandaloneDeriving, TypeFamilies #-}
 {-# OPTIONS -Wall -Wwarn -fno-warn-name-shadowing -fno-warn-orphans #-}
 module Debian.Debianize.DebianName
     ( debianName
@@ -12,7 +12,9 @@ module Debian.Debianize.DebianName
     ) where
 
 
+#if !MIN_VERSION_base(4,8,0)
 import Control.Applicative ((<$>))
+#endif
 import Control.Lens
 import Data.Char (toLower)
 import Data.Map as Map (alter, lookup)
@@ -22,7 +24,6 @@ import Debian.Debianize.CabalInfo as A (debianNameMap, packageDescription, debIn
 import Debian.Debianize.BinaryDebDescription as Debian (PackageType(..))
 import Debian.Debianize.DebInfo as D (overrideDebianNameBase, utilsPackageNameBase)
 import Debian.Debianize.VersionSplits (DebBase(DebBase, unDebBase), doSplits, insertSplit, makePackage, VersionSplits(oldestPackage, splits))
-import Debian.GHC (CompilerChoice(..))
 import Debian.Orphans ()
 import Debian.Relation (PkgName(..), Relations)
 import qualified Debian.Relation as D (VersionReq(EEQ))
@@ -40,10 +41,10 @@ data Dependency_
     deriving (Eq, Show)
 
 -- | Build the Debian package name for a given package type.
-debianName :: (Monad m, Functor m, PkgName name) => PackageType -> CompilerChoice -> CabalT m name
-debianName typ hc@(CompilerChoice {_hcFlavor = cfl}) =
+debianName :: (Monad m, Functor m, PkgName name) => PackageType -> CompilerFlavor -> CabalT m name
+debianName typ hc =
     do base <-
-           case (typ, cfl) of
+           case (typ, hc) of
              (Utilities, GHC) -> use (debInfo . utilsPackageNameBase) >>= maybe (((\ base -> "haskell-" ++ base ++ "-utils") . unDebBase) <$> debianNameBase) return
              (Utilities, _) -> use (debInfo . utilsPackageNameBase) >>= maybe (((\ base -> base ++ "-utils") . unDebBase) <$> debianNameBase) return
              _ -> unDebBase <$> debianNameBase
@@ -70,24 +71,24 @@ debianNameBase =
 -- debian package type.  Unfortunately, this does not enforce the
 -- correspondence between the PackageType value and the name type, so
 -- it can return nonsense like (SrcPkgName "libghc-debian-dev").
-mkPkgName :: PkgName name => CompilerChoice -> PackageName -> PackageType -> name
+mkPkgName :: PkgName name => CompilerFlavor -> PackageName -> PackageType -> name
 mkPkgName hc pkg typ = mkPkgName' hc typ (debianBaseName pkg)
 
-mkPkgName' :: PkgName name => CompilerChoice -> PackageType -> DebBase -> name
-mkPkgName' (CompilerChoice {_hcFlavor = cfl}) typ (DebBase base) =
+mkPkgName' :: PkgName name => CompilerFlavor -> PackageType -> DebBase -> name
+mkPkgName' hc typ (DebBase base) =
     pkgNameFromString $
              case typ of
                 Documentation -> prefix ++ base ++ "-doc"
                 Development -> prefix ++ base ++ "-dev"
                 Profiling -> prefix ++ base ++ "-prof"
-                Utilities -> base {- ++ case cfl of
+                Utilities -> base {- ++ case hc of
                                           GHC -> ""
-                                          _ -> "-" ++ map toLower (show cfl) -}
+                                          _ -> "-" ++ map toLower (show hc) -}
                 Exec -> base
                 Source -> base
                 HaskellSource -> "haskell-" ++ base
                 Cabal -> base
-    where prefix = "lib" ++ map toLower (show cfl) ++ "-"
+    where prefix = "lib" ++ map toLower (show hc) ++ "-"
 
 debianBaseName :: PackageName -> DebBase
 debianBaseName (PackageName name) =

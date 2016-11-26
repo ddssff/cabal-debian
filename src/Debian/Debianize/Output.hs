@@ -44,7 +44,7 @@ import System.FilePath ((</>), takeDirectory)
 import System.IO (hPutStrLn, stderr)
 import System.Process (readProcessWithExitCode, showCommandForUser)
 import Text.PrettyPrint.HughesPJClass (text)
-import System.Posix.Env (setEnv)
+-- import System.Posix.Env (setEnv)
 
 -- | Run the script in @debian/Debianize.hs@ with the given command
 -- line arguments.  Returns @True@ if the script exists and succeeds.

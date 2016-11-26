@@ -1,3 +1,10 @@
+haskell-cabal-debian (4.35.4) unstable; urgency=low
+
+  * Get rid of CompilerChoice and CompilerVendor types, just look for
+    the ghc executable via the $PATH and use that info.
+
+ -- David Fox <dsf@seereason.com>  Sat, 26 Nov 2016 11:39:48 -0800
+
 haskell-cabal-debian (4.35.3) unstable; urgency=low
 
   * Prefer dependency on haskell-devscript-minimal over haskell-devscript

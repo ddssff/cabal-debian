@@ -344,16 +344,6 @@ doBundled typ name hc rels = do
         -- What version of this package (if any) does the compiler provide?
         let relInfo = builtIn hc root
             pver = listToMaybe $ fmap (debianVersion'' atoms) (filter ((== name) . pkgName) relInfo)
-#if 0
-        let Just hcv = hcVersion root hc
-            v = view (A.debInfo . D.flags . verbosity) atoms
-        case (v > 0, filter ((== name) . pkgName) relInfo) of
-          (True, [i]) ->
-              trace ("  " ++ show hc ++ "-" ++ show (showVersion hcv) ++ " in " ++ root ++ " provides " ++ display (pkgName i) ++ "-" ++ display (pkgVersion i)) (return ())
-          (True, _) ->
-              trace ("  " ++ show hc ++ "-" ++ show (showVersion hcv) ++ " in " ++ root ++ " does not provide " ++ display name) (return ())
-          _ -> return ()
-#endif
         -- The name this library would have if it was in the compiler conflicts list.
         let naiveDebianName = mkPkgName hc name typ
         -- The compiler should appear in the build dependency

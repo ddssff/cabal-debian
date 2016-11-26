@@ -2,7 +2,7 @@
 
 DEB_SETUP_BIN_NAME = cabal
 DEB_CABAL_PACKAGE = creativeprompts
-DEB_DEFAULT_COMPILER = ghc
+DEB_DEFAULT_COMPILER = ghc-7.6.3
 
 include /usr/share/cdbs/1/rules/debhelper.mk
 include /usr/share/cdbs/1/class/hlibrary.mk

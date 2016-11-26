@@ -23,6 +23,9 @@ module Debian.GHC
 #endif
     ) where
 
+#if !MIN_VERSION_base(4,8,0)
+import Control.Applicative ((<$>))
+#endif
 import Control.DeepSeq (force)
 import Control.Exception (SomeException, throw, try)
 import Control.Lens (_2, makeLenses, over)

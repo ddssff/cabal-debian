@@ -10,6 +10,9 @@ module System.Git
     , withCleanRepo
     ) where
 
+#if !MIN_VERSION_base(4,8,0)
+import Control.Applicative (pure, (<$>))
+#endif 
 import Control.Exception (catch, SomeException, throw)
 import System.Directory (getCurrentDirectory)
 import System.Exit (ExitCode(ExitSuccess, ExitFailure))

@@ -23,18 +23,20 @@ import Data.Set as Set (fromList, union, insert)
 import Data.Text as Text (intercalate, split, Text, unlines, unpack)
 import Data.Version (Version(Version))
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(..), parseEntry)
-import Debian.Debianize.BasicInfo (Flags, verbosity)
+import Debian.Debianize.BasicInfo (compilerFlavor, Flags, verbosity)
 import qualified Debian.Debianize.Bundled as Bundled (tests)
 import qualified Debian.Debianize.BinaryDebDescription as B
 import Debian.Debianize.CabalInfo as A (CabalInfo, debInfo, epochMap, newCabalInfo)
 import Debian.Debianize.CopyrightDescription
 import Debian.Debianize.DebianName (mapCabal, splitCabal)
 import qualified Debian.Debianize.DebInfo as D
+import Debian.Debianize.Details (debianDefaults)
 import Debian.Debianize.Files (debianizationFileMap)
 import Debian.Debianize.Finalize (debianize {-, finalizeDebianization-})
 import Debian.Debianize.Goodies (doBackups, doExecutable, doServer, doWebsite, tightDependencyFixup)
 import Debian.Debianize.InputDebian (inputDebianization)
 import Debian.Debianize.Monad (CabalT, evalCabalT, execCabalM, execCabalT, liftCabal, execDebianT, DebianT, evalDebianT)
+import Debian.Debianize.Output (performDebianization)
 import Debian.Debianize.Prelude (withCurrentDirectory)
 import qualified Debian.Debianize.SourceDebDescription as S
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
@@ -44,12 +46,13 @@ import Debian.Policy (databaseDirectory, PackageArchitectures(All), PackagePrior
 import Debian.Relation (BinPkgName(..), Relation(..), SrcPkgName(..), VersionReq(..))
 import Debian.Release (ReleaseName(ReleaseName, relName))
 import Debian.Version (parseDebianVersion', buildDebianVersion)
-import Distribution.Compiler (CompilerFlavor(GHC))
+import Distribution.Compiler (CompilerFlavor(GHC, GHCJS))
 import Distribution.Package (PackageName(PackageName))
 import Prelude hiding (log)
 import System.Directory (doesDirectoryExist)
 import System.Exit (exitWith, ExitCode(..))
 import System.FilePath ((</>))
+import System.Git (gitResetSubdir)
 import System.Process (readProcessWithExitCode)
 import Test.HUnit
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr(..))
@@ -116,7 +119,8 @@ tests = TestLabel "Debianization Tests" (TestList [Bundled.tests,
                                                    -- test7 "test7 - debian/Debianize.hs",
                                                    test8 "test8 - test-data/artvaluereport-data",
                                                    test9 "test9 - test-data/alex",
-                                                   test10 "test10 - test-data/archive" {- ,
+                                                   test10 "test10 - test-data/archive",
+                                                   test11 "test11 - test-data/diff" {- ,
                                                    issue23 "issue23" -}])
 
 issue23 :: String -> Test
@@ -755,6 +759,19 @@ diffDebianizations old new =
 
 sortBinaryDebs :: DebianT IO ()
 sortBinaryDebs = (D.control . S.binaryPackages) %= sortBy (compare `on` view B.package)
+
+test11 :: String -> Test
+test11 label =
+    TestLabel label $
+    TestCase $ do let input = "test-data/diff/input"
+                      expected = "test-data/diff/expected"
+                  gitResetSubdir input
+                  withCurrentDirectory input (performDebianization (do debianDefaults
+                                                                       (debInfo . D.flags . compilerFlavor) .= GHCJS
+                                                                       (debInfo . D.testsStatus) .= D.TestsDisable
+                                                                       (debInfo . D.sourceFormat) .= Native3))
+                  assertEmptyDiff expected input
+
 
 main :: IO ()
 main = do

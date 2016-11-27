@@ -31,7 +31,7 @@ import Control.Lens (_2, over)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Char (isSpace, toLower, toUpper)
 import Data.Function.Memoize (deriveMemoizable, memoize2)
-import Data.List (intercalate)
+import Data.List (intercalate, isPrefixOf)
 import Data.Version (showVersion, Version(..), parseVersion)
 import Debian.Debianize.BinaryDebDescription (PackageType(..))
 import Debian.Relation (BinPkgName(BinPkgName))
@@ -69,9 +69,15 @@ $(deriveMemoizable ''BinPkgName)
 -- present in $PATH and a ghc executable is found there.
 --
 -- This function decides whether a deb name is that of one of
--- debian/ubuntu's ghc packages or one of hvr's.
-isHVRCompilerPackage :: CompilerFlavor -> BinPkgName -> Bool
-isHVRCompilerPackage hc (BinPkgName name) = map toLower (show hc) /= name
+-- debian/ubuntu's ghc packages or one of hvr's.  If it is an hvr
+-- package it returns the version number embedded in its name.
+isHVRCompilerPackage :: CompilerFlavor -> BinPkgName -> Maybe Version
+isHVRCompilerPackage hc (BinPkgName name) =
+    case isPrefixOf prefix name of
+      True -> toVersion (takeWhile (/= '-') (drop (length prefix) name))
+      False -> Nothing
+      where
+        prefix = map toLower (show hc) ++ "-"
 
 withCompilerVersion :: FilePath -> CompilerFlavor -> (DebianVersion -> IO a) -> IO (Either String a)
 withCompilerVersion root hc f = newestAvailableCompiler root hc >>= either (return . Left) (\v -> Right <$> f v)
@@ -222,13 +228,13 @@ compilerPackageName hc typ =
           -- hcname is the package that contains the compiler
           -- executable.  This will be ghc or ghcjs for Debian
           -- packages, anything else is an hvr package.
-          case (typ, isDebian) of
+          case (hc, typ, isDebian) of
             -- Debian puts the .haddock files in ghc-doc
-            (Documentation, True) -> BinPkgName (hcname ++ "-doc")
+            (GHC, Documentation, True) -> BinPkgName (hcname ++ "-doc")
             -- In HVR repo the .haddock files required to buid html
             -- are in the main compiler package
-            (Documentation, False) -> BinPkgName hcname
-            (Profiling, _) -> BinPkgName (hcname ++ "-prof")
+            (GHC, Documentation, False) -> BinPkgName hcname
+            (GHC, Profiling, _) -> BinPkgName (hcname ++ "-prof")
             _ -> BinPkgName hcname
 
 compilerPackage :: CompilerFlavor -> IO (Maybe BinPkgName)

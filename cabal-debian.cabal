@@ -218,6 +218,7 @@ Library
     Debian.Debianize.SourceDebDescription
     Debian.Debianize.VersionSplits
     Paths_cabal_debian
+    System.Git
   Other-Modules:
     Debian.Orphans
   if flag(pretty-112)

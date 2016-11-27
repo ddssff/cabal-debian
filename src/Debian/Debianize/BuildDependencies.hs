@@ -170,7 +170,8 @@ debianBuildDeps pkgDesc =
       hcPackageTypesTests :: CompilerFlavor -> Set B.PackageType
       hcPackageTypesTests _ = singleton B.Development
 
-
+-- | Collect the dependencies required to build any packages that have
+-- architecture "all".
 debianBuildDepsIndep :: (MonadIO m, Functor m) => PackageDescription -> CabalT m D.Relations
 debianBuildDepsIndep pkgDesc =
     do hc <- use (A.debInfo . D.flags . compilerFlavor)

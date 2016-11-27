@@ -1,0 +1,8 @@
+#!/usr/bin/make -f
+
+DEB_SETUP_BIN_NAME = debian/hlibrary.setup
+DEB_CABAL_PACKAGE = diff
+DEB_DEFAULT_COMPILER = ghcjs
+
+include /usr/share/cdbs/1/rules/debhelper.mk
+include /usr/share/cdbs/1/class/hlibrary.mk

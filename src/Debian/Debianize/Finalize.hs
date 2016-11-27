@@ -214,10 +214,16 @@ debianEpoch name = get >>= return . Map.lookup name . view A.epochMap
 finalizeSourceName :: (Monad m, Functor m) => B.PackageType -> CabalT m ()
 finalizeSourceName typ =
     do DebBase debName <- debianNameBase
-       (A.debInfo . D.sourcePackageName) .?= Just (SrcPkgName (case typ of
-                                                   B.HaskellSource -> "haskell-" ++ debName
-                                                   B.Source -> debName
-                                                   _ -> error $ "finalizeSourceName: " ++ show typ))
+       hc <- use (A.debInfo . D.flags . compilerFlavor)
+       (A.debInfo . D.sourcePackageName) .?=
+          Just (SrcPkgName (case (hc, typ) of
+                              -- Haskell source deb names conventionally have the prefix
+                              -- "haskell-" added.  Here we add prefix "ghcjs-" to
+                              -- haskell packages build with the ghcjs compiler.
+                              (GHC, B.HaskellSource) -> "haskell-" ++ debName
+                              (GHCJS, B.HaskellSource) -> "ghcjs-" ++ debName
+                              (_, B.Source) -> debName
+                              _ -> error $ "finalizeSourceName: " ++ show typ))
 
 -- | Try to compute a string for the the debian "Maintainer:" and
 -- "Uploaders:" fields using, in this order

@@ -113,7 +113,7 @@ tests = TestLabel "Debianization Tests" (TestList [Bundled.tests,
                                                    test4 "test4 - test-data/clckwrks-dot-com",
                                                    test5 "test5 - test-data/creativeprompts",
                                                    test6 "test6 - test-data/artvaluereport2",
-                                                   test7 "test7 - debian/Debianize.hs",
+                                                   -- test7 "test7 - debian/Debianize.hs",
                                                    test8 "test8 - test-data/artvaluereport-data",
                                                    test9 "test9 - test-data/alex",
                                                    test10 "test10 - test-data/archive" {- ,
@@ -758,7 +758,6 @@ sortBinaryDebs = (D.control . S.binaryPackages) %= sortBy (compare `on` view B.p
 
 main :: IO ()
 main = do
- readFile "changelog" >>= writeFile "debian/changelog"
  counts <- withModifiedPATH (const "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games") (runTestTT tests)
  exitWith $ if errors counts + failures counts > 0
             then ExitFailure 1

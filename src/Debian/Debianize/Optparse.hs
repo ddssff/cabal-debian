@@ -17,7 +17,7 @@ module Debian.Debianize.Optparse (
   handleBehaviorAdjustment) where
 
 #if !MIN_VERSION_base(4,8,0)
-import Control.Applicative ((<$>), (<*>))
+import Control.Applicative ((<$>), (<*>), pure)
 #endif
 import Control.Applicative (many, (<|>))
 import Control.Lens

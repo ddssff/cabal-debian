@@ -40,6 +40,8 @@ import Debian.Version (DebianVersion, parseDebianVersion', prettyDebianVersion)
 import Distribution.Package (PackageIdentifier(..), PackageName(..))
 #if MIN_VERSION_Cabal(1,22,0)
 import Distribution.Simple.Compiler (CompilerFlavor(GHCJS))
+#else
+import Distribution.Compiler (CompilerFlavor)
 #endif
 import System.IO.Unsafe (unsafePerformIO)
 import System.Process (readProcess, showCommandForUser)

@@ -221,7 +221,9 @@ finalizeSourceName typ =
                               -- "haskell-" added.  Here we add prefix "ghcjs-" to
                               -- haskell packages build with the ghcjs compiler.
                               (GHC, B.HaskellSource) -> "haskell-" ++ debName
+#if MIN_VERSION_Cabal(1,22,0)
                               (GHCJS, B.HaskellSource) -> "ghcjs-" ++ debName
+#endif
                               (_, B.Source) -> debName
                               _ -> error $ "finalizeSourceName: " ++ show typ))
 

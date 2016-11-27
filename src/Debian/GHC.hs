@@ -79,6 +79,11 @@ isHVRCompilerPackage hc (BinPkgName name) =
       where
         prefix = map toLower (show hc) ++ "-"
 
+toVersion :: String -> Maybe Version
+toVersion s = case filter (all isSpace . snd) (readP_to_S parseVersion s) of
+                [(v, _)] -> Just v
+                _ -> Nothing
+
 withCompilerVersion :: FilePath -> CompilerFlavor -> (DebianVersion -> IO a) -> IO (Either String a)
 withCompilerVersion root hc f = newestAvailableCompiler root hc >>= either (return . Left) (\v -> Right <$> f v)
 
@@ -301,11 +306,6 @@ getCompilerInfo' flavor = do
 #endif
                           _ -> return Nothing
       return $ Right $ (unknownCompilerInfo compilerId NoAbiTag) {compilerInfoCompat = compilerCompat}
-
-toVersion :: String -> Maybe Version
-toVersion s = case filter (all isSpace . snd) (readP_to_S parseVersion s) of
-                [(v, _)] -> Just v
-                _ -> Nothing
 
 processErrorMessage :: String -> String -> [String] -> (ExitCode, String, String) -> String
 processErrorMessage msg cmd args (ExitFailure n, out, err) =

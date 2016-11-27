@@ -120,7 +120,8 @@ tests = TestLabel "Debianization Tests" (TestList [Bundled.tests,
                                                    test8 "test8 - test-data/artvaluereport-data",
                                                    test9 "test9 - test-data/alex",
                                                    test10 "test10 - test-data/archive",
-                                                   test11 "test11 - test-data/diff" {- ,
+                                                   -- This works, but it adds a dependency on ghcjs to the test suite
+                                                   -- test11 "test11 - test-data/diff" {- ,
                                                    issue23 "issue23" -}])
 
 issue23 :: String -> Test

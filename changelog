@@ -1,3 +1,9 @@
+haskell-cabal-debian (4.35.5) unstable; urgency=low
+
+  * Fix up some ghcjs and hvr packaging issues.
+
+ -- David Fox <dsf@foxthompson.net>  Sun, 27 Nov 2016 09:19:02 -0800
+
 haskell-cabal-debian (4.35.4) unstable; urgency=low
 
   * Get rid of CompilerChoice and CompilerVendor types, just look for

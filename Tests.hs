@@ -1,9 +1,6 @@
 {-# LANGUAGE CPP, OverloadedStrings, RankNTypes, ScopedTypeVariables, StandaloneDeriving #-}
 {-# OPTIONS_GHC -Wall -fno-warn-orphans #-}
-module Main
-    ( tests
-    , main
-    ) where
+module Main where
 
 #if !MIN_VERSION_base(4,8,0)
 import Control.Applicative ((<$>))
@@ -40,13 +37,13 @@ import Debian.Debianize.Output (performDebianization)
 import Debian.Debianize.Prelude (withCurrentDirectory)
 import qualified Debian.Debianize.SourceDebDescription as S
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
-import Debian.GHC (withModifiedPATH)
+import Debian.GHC (hvrCompilerPATH, withModifiedPATH)
 import Debian.Pretty (ppShow)
-import Debian.Policy (databaseDirectory, PackageArchitectures(All), PackagePriority(Extra), parseMaintainer, Section(MainSection), SourceFormat(Native3), StandardsVersion(..), getDebhelperCompatLevel, getDebianStandardsVersion, License(..))
+import Debian.Policy (databaseDirectory, PackageArchitectures(All), PackagePriority(Extra), parseMaintainer, Section(MainSection), SourceFormat(Native3), StandardsVersion(..) {-, getDebhelperCompatLevel, getDebianStandardsVersion, License(..)-})
 import Debian.Relation (BinPkgName(..), Relation(..), SrcPkgName(..), VersionReq(..))
 import Debian.Release (ReleaseName(ReleaseName, relName))
-import Debian.Version (parseDebianVersion', buildDebianVersion)
-import Distribution.Compiler (CompilerFlavor(GHC, GHCJS))
+import Debian.Version (parseDebianVersion'{-, buildDebianVersion-})
+import Distribution.Compiler (CompilerFlavor({-GHC,-} GHCJS))
 import Distribution.Package (PackageName(PackageName))
 import Prelude hiding (log)
 import System.Directory (doesDirectoryExist)
@@ -57,13 +54,6 @@ import System.Process (readProcessWithExitCode)
 import Test.HUnit
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr(..))
 import Text.PrettyPrint.HughesPJClass (pPrint, text, Doc)
-
-#if MIN_VERSION_base(4,8,0)
-import Data.Version (makeVersion)
-#else
-makeVersion :: [Int] -> Version
-makeVersion ns = Version ns []
-#endif
 
 -- | Backward compatibility. Should be fixed.
 newFlags :: IO Flags
@@ -119,9 +109,11 @@ tests = TestLabel "Debianization Tests" (TestList [Bundled.tests,
                                                    -- test7 "test7 - debian/Debianize.hs",
                                                    test8 "test8 - test-data/artvaluereport-data",
                                                    test9 "test9 - test-data/alex",
-                                                   test10 "test10 - test-data/archive",
+                                                   test10 "test10 - test-data/archive" {-,
                                                    -- This works, but it adds a dependency on ghcjs to the test suite
-                                                   -- test11 "test11 - test-data/diff" {- ,
+                                                   -- test11 "test11 - test-data/diff",
+                                                   -- And this requires ghc-8.0.1 from the hvr compiler repo
+                                                   -- test12 "test12 - test-data/diff",
                                                    issue23 "issue23" -}])
 
 issue23 :: String -> Test
@@ -765,7 +757,7 @@ test11 :: String -> Test
 test11 label =
     TestLabel label $
     TestCase $ do let input = "test-data/diff/input"
-                      expected = "test-data/diff/expected"
+                      expected = "test-data/diff/expected.ghcjs"
                   gitResetSubdir input
                   withCurrentDirectory input (performDebianization (do debianDefaults
                                                                        (debInfo . D.flags . compilerFlavor) .= GHCJS
@@ -773,11 +765,23 @@ test11 label =
                                                                        (debInfo . D.sourceFormat) .= Native3))
                   assertEmptyDiff expected input
 
+test12 :: String -> Test
+test12 label =
+    TestLabel label $
+    TestCase $ withModifiedPATH (hvrCompilerPATH (Version [8,0,1] [])) $
+               do let input = "test-data/diff/input"
+                      expected = "test-data/diff/expected.hvr"
+                  gitResetSubdir input
+                  withCurrentDirectory input (performDebianization (do debianDefaults
+                                                                       (debInfo . D.testsStatus) .= D.TestsDisable
+                                                                       (debInfo . D.sourceFormat) .= Native3))
+                  assertEmptyDiff expected input
+
 
 main :: IO ()
 main = do
- counts <- withModifiedPATH (const "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games") (runTestTT tests)
- exitWith $ if errors counts + failures counts > 0
+ cts <- withModifiedPATH (const "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games") (runTestTT tests)
+ exitWith $ if errors cts + failures cts > 0
             then ExitFailure 1
             else ExitSuccess
 
@@ -786,7 +790,7 @@ main = do
 assertEmptyDiff :: String -- ^ The message prefix
                 -> String -- ^ The actual diff
                 -> Assertion
-assertEmptyDiff preface "" = return ()
+assertEmptyDiff _preface "" = return ()
 assertEmptyDiff preface diff = assertFailure $
  (if null preface then "" else preface ++ "\n") ++
  "diff not empty:\n" ++

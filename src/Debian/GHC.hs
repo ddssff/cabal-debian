@@ -30,7 +30,7 @@ import Control.Exception (SomeException, throw, try)
 import Control.Lens (_2, over)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Char (isSpace, toLower, toUpper)
-import Data.Function.Memoize (deriveMemoizable, memoize2)
+import Data.Function.Memoize (deriveMemoizable, memoize, memoize2)
 import Data.List (intercalate, isPrefixOf)
 import Data.Version (showVersion, Version(..), parseVersion)
 import Debian.Debianize.BinaryDebDescription (PackageType(..))
@@ -84,8 +84,8 @@ toVersion s = case filter (all isSpace . snd) (readP_to_S parseVersion s) of
                 [(v, _)] -> Just v
                 _ -> Nothing
 
-withCompilerVersion :: FilePath -> CompilerFlavor -> (DebianVersion -> IO a) -> IO (Either String a)
-withCompilerVersion root hc f = newestAvailableCompiler root hc >>= either (return . Left) (\v -> Right <$> f v)
+withCompilerVersion :: FilePath -> CompilerFlavor -> (DebianVersion -> a) -> Either String a
+withCompilerVersion root hc f = either Left (\v -> Right (f v)) (newestAvailableCompiler root hc)
 
 -- | Return the a string containing the PATH environment variable value
 -- suitable for using some version of ghc from hvr's compiler repo.
@@ -151,11 +151,11 @@ newestAvailable' root (BinPkgName name) = do
           chroot "/" = id
           chroot _ = useEnv root (return . force)
 
-newestAvailableCompiler :: FilePath -> CompilerFlavor -> IO (Either String DebianVersion)
-newestAvailableCompiler root hc = compilerPackageName hc Development >>= return . maybe (Left "No compiler package") (newestAvailable root)
+newestAvailableCompiler :: FilePath -> CompilerFlavor -> Either String DebianVersion
+newestAvailableCompiler root hc = maybe (Left "No compiler package") (newestAvailable root) (compilerPackageName hc Development)
 
-newestAvailableCompilerId :: FilePath -> CompilerFlavor -> IO (Either String CompilerId)
-newestAvailableCompilerId root hc = either Left (Right . compilerIdFromDebianVersion hc) <$> (newestAvailableCompiler root hc)
+newestAvailableCompilerId :: FilePath -> CompilerFlavor -> Either String CompilerId
+newestAvailableCompilerId root hc = either Left (Right . compilerIdFromDebianVersion hc) (newestAvailableCompiler root hc)
 
 {-
 -- | The IO portion of ghcVersion.  For there to be no version of ghc
@@ -224,9 +224,9 @@ debName hc =
 
 -- | Compute the compiler package names by finding out what package
 -- contains the corresponding executable.
-compilerPackageName :: CompilerFlavor -> PackageType -> IO (Maybe BinPkgName)
+compilerPackageName :: CompilerFlavor -> PackageType -> Maybe BinPkgName
 compilerPackageName hc typ =
-    compilerPackage hc >>= maybe (return Nothing) (return . Just . finish)
+    maybe Nothing (Just . finish) (compilerPackage hc)
     where
       finish (BinPkgName hcname) =
           let isDebian = map toLower (show hc) == hcname in
@@ -242,7 +242,7 @@ compilerPackageName hc typ =
             (GHC, Profiling, _) -> BinPkgName (hcname ++ "-prof")
             _ -> BinPkgName hcname
 
-compilerPackage :: CompilerFlavor -> IO (Maybe BinPkgName)
+compilerPackage :: CompilerFlavor -> Maybe BinPkgName
 compilerPackage GHC = filePackage "ghc"
 #if MIN_VERSION_Cabal(1,22,0)
 compilerPackage GHCJS = filePackage "ghcjs"
@@ -258,10 +258,11 @@ compilerExecutable GHCJS = "ghcjs"
 compilerExecutable x = error $ "compilerExecutable - unexpected flavor: " ++ show x
 -}
 
-filePackage :: FilePath -> IO (Maybe BinPkgName)
-filePackage p =
-    which p >>= maybe (return Nothing) (\x -> package <$> readProcess "dpkg-query" ["-S", x] "")
+filePackage :: FilePath -> Maybe BinPkgName
+filePackage = memoize f
     where
+      f :: FilePath -> Maybe BinPkgName
+      f p = unsafePerformIO (which p >>= maybe (return Nothing) (\x -> package <$> readProcess "dpkg-query" ["-S", x] ""))
       package :: String -> Maybe BinPkgName
       package s =
           case s =~ "^(.*): .*$" :: (String, String, String, [String]) of

@@ -665,7 +665,7 @@ finalizeRules :: (MonadIO m, Functor m) => CabalT m ()
 finalizeRules =
     do DebBase b <- debianNameBase
        hc <- use (A.debInfo . D.flags . compilerFlavor)
-       BinPkgName hcdeb <- maybe (error "No compiler package") id <$> liftIO (compilerPackageName hc B.Development)
+       let BinPkgName hcdeb = maybe (error "No compiler package") id (compilerPackageName hc B.Development)
        (A.debInfo . D.rulesHead) .?= Just "#!/usr/bin/make -f"
        (A.debInfo . D.rulesSettings) %= (++ ["DEB_CABAL_PACKAGE = " <> pack b])
        (A.debInfo . D.rulesSettings) %= (++ ["DEB_DEFAULT_COMPILER = " <> pack hcdeb])

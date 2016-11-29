@@ -137,9 +137,9 @@ debianBuildDeps pkgDesc =
        prof <- not <$> use (A.debInfo . D.noProfilingLibrary)
        official <- use (A.debInfo . D.official)
        compat <- use (A.debInfo . D.compat)
-       ghcdev <- liftIO $ compilerPackageName hflavor B.Development
+       let ghcdev = compilerPackageName hflavor B.Development
        let ghcrel = if member GHC hcs then maybe [] ((: []) . anyrel') ghcdev else []
-       ghcprof <- liftIO $ compilerPackageName hflavor B.Profiling
+       let ghcprof = compilerPackageName hflavor B.Profiling
        let ghcrelprof = if prof then maybe [] ((: []) . anyrel') ghcprof else []
        let xs = nub $ [maybe [] (\ n -> [D.Rel (D.BinPkgName "debhelper") (Just (D.GRE (parseDebianVersion' (show n)))) Nothing]) compat,
                        [D.Rel (D.BinPkgName "haskell-devscripts-minimal") Nothing Nothing,
@@ -180,7 +180,7 @@ debianBuildDepsIndep pkgDesc =
        bDeps <- use (A.debInfo . D.control . S.buildDependsIndep)
        libDeps <- allBuildDepends (maybe [] (return . libBuildInfo) (Cabal.library pkgDesc))
        cDeps <- mapM docDependencies libDeps
-       ghcdoc <- liftIO $ compilerPackageName hc B.Documentation
+       let ghcdoc = compilerPackageName hc B.Documentation
        let hcdocdep = if doc && member GHC hcs then maybe [] ((: []) . anyrel') ghcdoc else []
        let xs = nub $ if doc && isJust (Cabal.library pkgDesc)
                       then hcdocdep ++ bDeps ++ concat cDeps
@@ -330,7 +330,7 @@ doBundled :: MonadIO m =>
           -> [D.Relation]
           -> CabalT m [D.Relation]
 doBundled typ name hc rels = do
-  hcname <- liftIO (compilerPackageName hc typ)
+  let hcname = compilerPackageName hc typ
   mapM (doRel hcname) rels >>= return . concat
     where
       -- If a library is built into the compiler, this is the debian

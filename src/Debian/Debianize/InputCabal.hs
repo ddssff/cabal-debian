@@ -75,7 +75,7 @@ getCompInfo flags =
 #if MIN_VERSION_Cabal(1,22,0)
               getCompilerInfo root (view compilerFlavor flags)
 #else
-              liftIO (newestAvailableCompilerId root (view compilerFlavor flags))
+              return $ newestAvailableCompilerId root (view compilerFlavor flags)
 #endif
     where
       root = dependOS $ view buildEnv flags

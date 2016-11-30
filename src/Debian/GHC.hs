@@ -42,12 +42,13 @@ import Distribution.Compiler (CompilerInfo(..), unknownCompilerInfo, AbiTag(NoAb
 #endif
 import System.Console.GetOpt (ArgDescr(ReqArg), OptDescr(..))
 import System.Directory (doesDirectoryExist)
-import System.Environment (getEnv, setEnv)
+import System.Environment (getEnv)
 import System.Exit (ExitCode(ExitFailure, ExitSuccess))
 -- import System.IO (hPutStrLn, stderr)
 import System.IO.Error (isDoesNotExistError)
 import System.IO.Unsafe (unsafePerformIO)
 import System.Process (readProcess, showCommandForUser, readProcessWithExitCode)
+import System.Posix.Env (setEnv)
 import System.Unix.Chroot (useEnv, fchroot)
 import System.Unix.Mount (WithProcAndSys)
 import Text.ParserCombinators.ReadP (readP_to_S)
@@ -117,12 +118,12 @@ hvrAlexVersion _ = Version [3,1,7] []
 withModifiedPATH :: MonadIO m => (String -> String) -> m a -> m a
 withModifiedPATH f action = do
   path0 <- liftIO $ getEnv "PATH"
-  liftIO $ setEnv "PATH" (f path0)
+  liftIO $ setEnv "PATH" (f path0) True
   -- liftIO $ hPutStrLn stderr $ "*** withCompilerPath vendor=" ++ show vendor
   -- liftIO $ hPutStrLn stderr $ "*** Setting $PATH to " ++ show path
   r <- action
   -- liftIO $ hPutStrLn stderr $ "*** Resetting $PATH to " ++ show path0
-  liftIO $ setEnv "PATH" path0
+  liftIO $ setEnv "PATH" path0 True
   return r
 
 -- | Memoized version of newestAvailable'

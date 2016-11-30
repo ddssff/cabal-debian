@@ -55,8 +55,10 @@ import Data.Version (makeVersion)
 #else
 import Data.Monoid (mempty)
 
+#if !MIN_VERSION_Cabal(1,22,0)
 unPackageName :: PackageName -> String
 unPackageName (PackageName s) = s
+#endif
 
 makeVersion :: [Int] -> Version
 makeVersion ns = Version ns []

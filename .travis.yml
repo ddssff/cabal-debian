@@ -31,6 +31,7 @@ matrix:
 
   allow_failures:
     - env: CABALVER=head GHCVER=head
+    - env: CABALVER=1.16 GHCVER=7.6.3
 
 before_install:
  - unset CC
@@ -60,7 +61,7 @@ install:
      echo "cabal build-cache MISS";
      rm -rf $HOME/.cabsnap;
      mkdir -p $HOME/.ghc $HOME/.cabal/lib $HOME/.cabal/share $HOME/.cabal/bin;
-     cabal install --only-dependencies --enable-benchmarks;
+     cabal install --force-reinstalls --only-dependencies --enable-benchmarks;
    fi
 
 # snapshot package-db on cache miss

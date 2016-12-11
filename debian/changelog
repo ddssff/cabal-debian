@@ -1,3 +1,9 @@
+haskell-cabal-debian (4.35.7) unstable; urgency=low
+
+  * Remove logrotate from standard server package site config.
+
+ -- David Fox <dsf@foxthompson.net>  Sun, 11 Dec 2016 12:26:58 -0800
+
 haskell-cabal-debian (4.35.6) unstable; urgency=low
 
   * Restore ghc-7.6.3 support

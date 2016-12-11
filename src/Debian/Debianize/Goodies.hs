@@ -1,6 +1,6 @@
 -- | Things that seem like they could be clients of this library, but
 -- are instead included as part of the library.
-{-# LANGUAGE CPP, OverloadedStrings #-}
+{-# LANGUAGE CPP, FlexibleContexts, OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 module Debian.Debianize.Goodies
     ( tightDependencyFixup
@@ -13,12 +13,14 @@ module Debian.Debianize.Goodies
     , oldClckwrksSiteFlags
     , oldClckwrksServerFlags
     , siteAtoms
+    , logrotate
     , serverAtoms
     , backupAtoms
     , execAtoms
     ) where
 
 import Control.Lens
+import Control.Monad.State (MonadState)
 import Data.Char (isSpace)
 import Data.List as List (dropWhileEnd, intercalate, intersperse, map)
 import Data.Map as Map (insert, insertWith)
@@ -178,24 +180,7 @@ siteAtoms pkgDesc b site =
           (A.debInfo . D.atomSet) %= (Set.insert $ D.Link b ("/etc/apache2/sites-available/" ++ D.domain site ++ ".conf") ("/etc/apache2/sites-enabled/" ++ D.domain site ++ ".conf"))
           (A.debInfo . D.atomSet) %= (Set.insert $ D.File b ("/etc/apache2/sites-available" </> D.domain site ++ ".conf") apacheConfig)
           (A.debInfo . D.atomSet) %= (Set.insert $ D.InstallDir b (apacheLogDirectory b))
-          (A.debInfo . D.logrotateStanza) %= Map.insertWith mappend b
-                              (singleton
-                                   (Text.unlines $ [ pack (apacheAccessLog b) <> " {"
-                                                   , "  copytruncate" -- hslogger doesn't notice when the log is rotated, maybe this will help
-                                                   , "  weekly"
-                                                   , "  rotate 5"
-                                                   , "  compress"
-                                                   , "  missingok"
-                                                   , "}"]))
-          (A.debInfo . D.logrotateStanza) %= Map.insertWith mappend b
-                              (singleton
-                                   (Text.unlines $ [ pack (apacheErrorLog b) <> " {"
-                                                   , "  copytruncate"
-                                                   , "  weekly"
-                                                   , "  rotate 5"
-                                                   , "  compress"
-                                                   , "  missingok"
-                                                   , "}" ]))) .
+          {-logrotate b-}) .
       serverAtoms pkgDesc b (D.server site) True
     where
       -- An apache site configuration file.  This is installed via a line
@@ -235,6 +220,30 @@ siteAtoms pkgDesc b site =
                    , "    ProxyPassReverse / http://127.0.0.1:" <> port' <> "/"
                    , "</VirtualHost>" ]
       port' = pack (show (D.port (D.server site)))
+
+-- | Install configuration files to do log rotation.  This does not
+-- work well with the haskell logging library, so it is no longer
+-- called in siteAtoms.
+logrotate :: MonadState CabalInfo m => BinPkgName -> m ()
+logrotate b = do
+          (A.debInfo . D.logrotateStanza) %= Map.insertWith mappend b
+                              (singleton
+                                   (Text.unlines $ [ pack (apacheAccessLog b) <> " {"
+                                                   , "  copytruncate" -- hslogger doesn't notice when the log is rotated, maybe this will help
+                                                   , "  weekly"
+                                                   , "  rotate 5"
+                                                   , "  compress"
+                                                   , "  missingok"
+                                                   , "}"]))
+          (A.debInfo . D.logrotateStanza) %= Map.insertWith mappend b
+                              (singleton
+                                   (Text.unlines $ [ pack (apacheErrorLog b) <> " {"
+                                                   , "  copytruncate"
+                                                   , "  weekly"
+                                                   , "  rotate 5"
+                                                   , "  compress"
+                                                   , "  missingok"
+                                                   , "}" ]))
 
 serverAtoms :: PackageDescription -> BinPkgName -> D.Server -> Bool -> CabalInfo -> CabalInfo
 serverAtoms pkgDesc b server' isSite =

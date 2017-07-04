@@ -180,7 +180,7 @@ nameAddrR :: O.ReadM NameAddr
 nameAddrR = either fail return =<< parseMaintainer <$> O.str
 
 relationsR :: O.ReadM Relations
-relationsR = either (fail . show) return =<< parseRelations <$> O.str
+relationsR = either (fail . show) return =<< parseRelations <$> (O.str :: O.ReadM String)
 
 mappingR :: O.ReadM (String, Relations)
 mappingR = span (/= ':') <$> O.str >>= \case
@@ -313,7 +313,7 @@ debianNameBaseP = O.option (Just . DebBase <$> O.str) m where
     ]
 
 debianVersionP :: O.Parser (Maybe DebianVersion)
-debianVersionP = O.option (Just . parseDebianVersion' <$> O.str) m where
+debianVersionP = O.option (Just . parseDebianVersion' <$> (O.str :: O.ReadM String)) m where
   m = O.help helpMsg
       <> O.long "deb-version"
       <> O.metavar "DEBIANVERSION"

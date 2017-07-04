@@ -411,6 +411,8 @@ binaryPackageRelations b typ = zoom A.debInfo $ do
     when (typ == B.Development) $ do
       B.depends %= (edds ++)
       B.depends %= (anyrel "${shlibs:Depends}" : )
+    when (typ == B.Utilities) $
+      B.depends %= (anyrel "${shlibs:Depends}" : )
     B.depends    %= ([anyrel "${haskell:Depends}", anyrel "${misc:Depends}"] ++)
     B.recommends %= (anyrel "${haskell:Recommends}" : )
     B.suggests   %= (anyrel "${haskell:Suggests}" :)

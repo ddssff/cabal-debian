@@ -46,7 +46,11 @@ import GHC.Generics
 import System.Environment (getArgs)
 import System.FilePath(splitFileName, (</>))
 import System.Process (showCommandForUser)
+#if MIN_VERSION_hsemail(2,0,0)
+import Text.Parsec.Rfc2822 (NameAddr(..))
+#else
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr(..))
+#endif
 import Text.PrettyPrint.ANSI.Leijen (linebreak, (<+>), string, indent)
 import qualified  Debian.Debianize.DebInfo as D
 import qualified Data.Map as Map

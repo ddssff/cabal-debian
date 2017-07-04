@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, FlexibleInstances, TemplateHaskell, TypeSynonymInstances #-}
+{-# LANGUAGE CPP, DeriveDataTypeable, FlexibleInstances, TemplateHaskell, TypeSynonymInstances #-}
 module Debian.Debianize.SourceDebDescription
     ( SourceDebDescription
     , newSourceDebDescription
@@ -34,7 +34,11 @@ import Debian.Orphans ()
 import Debian.Policy (PackagePriority, Section, StandardsVersion)
 import Debian.Relation (Relations, SrcPkgName)
 import Prelude hiding (init, init, log, log, unlines)
+#if MIN_VERSION_hsemail(2,0,0)
+import Text.Parsec.Rfc2822 (NameAddr)
+#else
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr)
+#endif
 
 -- | This type represents the debian/control file, which is the core
 -- of the source package debianization.  It includes the information

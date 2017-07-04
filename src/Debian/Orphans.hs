@@ -27,7 +27,11 @@ import Language.Haskell.Extension (Language(..))
 import Language.Haskell.Extension (Extension(..), KnownExtension(..))
 #endif
 import Network.URI (URI)
+#if MIN_VERSION_hsemail(2,0,0)
+import Text.Parsec.Rfc2822 (NameAddr(..))
+#else
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr(..))
+#endif
 import Text.PrettyPrint.HughesPJClass (hcat, Pretty(pPrint), text)
 
 deriving instance Typeable Compiler

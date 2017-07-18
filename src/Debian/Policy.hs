@@ -126,7 +126,7 @@ debianPackageVersion name =
 -- installed.
 getDebhelperCompatLevel :: IO (Maybe Int)
 getDebhelperCompatLevel =
-    debianPackageVersion "debhelper" >>= return . fmap (read . takeWhile (/= '.') . version)
+    debianPackageVersion "debhelper" >>= return . fmap (min 9 . read . takeWhile (/= '.') . version)
 
 data StandardsVersion = StandardsVersion Int Int Int (Maybe Int) deriving (Eq, Ord, Show, Data, Typeable)
 

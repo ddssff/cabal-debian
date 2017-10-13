@@ -41,6 +41,7 @@ module Debian.Debianize.Prelude
 #if MIN_VERSION_Cabal(2,0,0)
     -- Cabal has its own Version type starting in 2.0.0.0
     , module Distribution.Version
+    , module Distribution.Package
 #else
     , module Data.Version
     , mkPackageName

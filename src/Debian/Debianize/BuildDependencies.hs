@@ -14,11 +14,23 @@ import Control.Monad.State (MonadState(get))
 import Control.Monad.Trans (liftIO, MonadIO)
 import Data.Char (isSpace, toLower)
 import Data.Function (on)
-import Data.List as List (filter, groupBy, map, minimumBy, nub, sortBy)
-import Data.Map as Map (lookup, Map)
+import Data.List as List (filter, groupBy, intercalate, map, minimumBy, nub, sortBy)
+#if MIN_VERSION_Cabal(2,0,0)
+import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, listToMaybe, mapMaybe)
+import Distribution.Package (Dependency(Dependency), PackageIdentifier(pkgName, pkgVersion), PackageName, unPackageName)
+import Distribution.PackageDescription as Cabal (BuildInfo(..), BuildInfo(buildTools, extraLibs, pkgconfigDepends), Library(libBuildInfo), Executable(buildInfo), TestSuite(testBuildInfo))
+import Distribution.Types.LegacyExeDependency (LegacyExeDependency(..))
+import Distribution.Types.PkgconfigDependency (PkgconfigDependency(..))
+import Distribution.Version (Version, anyVersion, asVersionIntervals, earlierVersion, foldVersionRange', fromVersionIntervals, intersectVersionRanges, isNoVersion, laterVersion, orEarlierVersion, orLaterVersion, toVersionIntervals, unionVersionRanges, VersionRange, withinVersion, showVersion)
+#else
 import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, listToMaybe)
-import Data.Set as Set (empty, fold, fromList, map, member, Set, singleton, toList, union)
 import Data.Version (showVersion, Version)
+import Distribution.Package (Dependency(..), PackageIdentifier(pkgName, pkgVersion), PackageName(PackageName))
+import Distribution.PackageDescription as Cabal (BuildInfo(..), BuildInfo(buildTools, extraLibs, pkgconfigDepends), Library(..), Executable(..), TestSuite(..))
+import Distribution.Version (anyVersion, asVersionIntervals, earlierVersion, foldVersionRange', fromVersionIntervals, intersectVersionRanges, isNoVersion, laterVersion, orEarlierVersion, orLaterVersion, toVersionIntervals, unionVersionRanges, VersionRange, withinVersion)
+#endif
+import Data.Map as Map (lookup, Map)
+import Data.Set as Set (empty, fold, fromList, map, member, Set, singleton, toList, union)
 import Debian.Debianize.BasicInfo (buildEnv, compilerFlavor, EnvSet(dependOS))
 import Debian.Debianize.Bundled (builtIn)
 import qualified Debian.Debianize.DebInfo as D
@@ -34,12 +46,9 @@ import Debian.Relation (BinPkgName(..), checkVersionReq, Relation(..), Relations
 import qualified Debian.Relation as D (BinPkgName(BinPkgName), Relation(..), Relations, VersionReq(EEQ, GRE, LTE, SGR, SLT))
 import Debian.Version (DebianVersion, parseDebianVersion')
 import Distribution.Compiler (CompilerFlavor(..))
-import Distribution.Package (Dependency(..), PackageIdentifier(pkgName, pkgVersion), PackageName(PackageName))
 import Distribution.PackageDescription (PackageDescription)
-import Distribution.PackageDescription as Cabal (BuildInfo(..), BuildInfo(buildTools, extraLibs, pkgconfigDepends), Library(..), Executable(..), TestSuite(..))
 import qualified Distribution.PackageDescription as Cabal (PackageDescription(library, executables, testSuites))
 --import Distribution.Text (display)
-import Distribution.Version (anyVersion, asVersionIntervals, earlierVersion, foldVersionRange', fromVersionIntervals, intersectVersionRanges, isNoVersion, laterVersion, orEarlierVersion, orLaterVersion, toVersionIntervals, unionVersionRanges, VersionRange, withinVersion)
 import Distribution.Version.Invert (invertVersionRange)
 import Prelude hiding (init, log, map, unlines, unlines, writeFile)
 import System.Directory (findExecutable)
@@ -70,8 +79,13 @@ data Dependency_
 
 unboxDependency :: Dependency_ -> Maybe Dependency
 unboxDependency (BuildDepends d) = Just d
+#if MIN_VERSION_Cabal(2,0,0)
+unboxDependency (PkgConfigDepends d) = Nothing
+unboxDependency (BuildTools d) = Nothing
+#else
 unboxDependency (BuildTools d) = Just d
 unboxDependency (PkgConfigDepends d) = Just d
+#endif
 unboxDependency (ExtraLibs _) = Nothing -- Dependency (PackageName d) anyVersion
 
 -- |Debian packages don't have per binary package build dependencies,
@@ -80,11 +94,22 @@ allBuildDepends :: Monad m => [BuildInfo] -> CabalT m [Dependency_]
 allBuildDepends buildInfos =
     allBuildDepends'
       (mergeCabalDependencies $ concatMap Cabal.targetBuildDepends buildInfos)
+#if MIN_VERSION_Cabal(2,0,0)
+      (mergeCabalDependencies $ mapMaybe convertLegacy $ concatMap buildTools buildInfos)
+      (mergeCabalDependencies $ mapMaybe convertPkgconfig $  concatMap pkgconfigDepends buildInfos)
+#else
       (mergeCabalDependencies $ concatMap buildTools buildInfos)
       (mergeCabalDependencies $ concatMap pkgconfigDepends buildInfos)
+#endif
       (concatMap extraLibs buildInfos) >>=
     return {- . List.filter (not . selfDependency (Cabal.package pkgDesc)) -}
     where
+#if MIN_VERSION_Cabal(2,0,0)
+      convertLegacy :: LegacyExeDependency -> Maybe Dependency
+      convertLegacy = const Nothing
+      convertPkgconfig :: PkgconfigDependency -> Maybe Dependency
+      convertPkgconfig = const Nothing
+#endif
       allBuildDepends' :: Monad m => [Dependency] -> [Dependency] -> [Dependency] -> [String] -> CabalT m [Dependency_]
       allBuildDepends' buildDepends' buildTools' pkgconfigDepends' extraLibs' =
           do atoms <- get
@@ -124,6 +149,11 @@ debianBuildDeps pkgDesc =
        libDeps <- allBuildDepends (maybe [] (return . libBuildInfo) (Cabal.library pkgDesc))
        binDeps <- allBuildDepends (List.map buildInfo (Cabal.executables pkgDesc))
        testDeps <- allBuildDepends (List.map testBuildInfo (Cabal.testSuites pkgDesc))
+
+       liftIO (putStrLn ("library dependencies: " ++ show libDeps))
+       liftIO (putStrLn ("executable dependencies: " ++ show binDeps))
+       liftIO (putStrLn (intercalate "\n  " ("executables:" :  fmap show (Cabal.executables pkgDesc))))
+       liftIO (putStrLn ("test suite dependencies: " ++ show testDeps))
 
        testsStatus <- use (A.debInfo . D.testsStatus)
 
@@ -217,12 +247,21 @@ buildDependencies _ dep =
           return []
 
 adapt :: Map.Map String Relations -> Dependency_ -> [Relations]
+#if MIN_VERSION_Cabal(2,0,0)
+adapt mp (PkgConfigDepends (Dependency pkg _)) =
+    maybe (aptFile (unPackageName pkg)) (: []) (Map.lookup (unPackageName pkg) mp)
+adapt mp (BuildTools (Dependency pkg _)) =
+    maybe (aptFile (unPackageName pkg)) (: []) (Map.lookup (unPackageName pkg) mp)
+adapt _flags (ExtraLibs x) = [x]
+adapt _flags (BuildDepends (Dependency pkg _)) = [[[D.Rel (D.BinPkgName (unPackageName pkg)) Nothing Nothing]]]
+#else
 adapt mp (PkgConfigDepends (Dependency (PackageName pkg) _)) =
     maybe (aptFile pkg) (: []) (Map.lookup pkg mp)
 adapt mp (BuildTools (Dependency (PackageName pkg) _)) =
     maybe (aptFile pkg) (: []) (Map.lookup pkg mp)
 adapt _flags (ExtraLibs x) = [x]
 adapt _flags (BuildDepends (Dependency (PackageName pkg) _)) = [[[D.Rel (D.BinPkgName pkg) Nothing Nothing]]]
+#endif
 
 -- There are three reasons this may not work, or may work
 -- incorrectly: (1) the build environment may be a different
@@ -283,6 +322,12 @@ dependencies hc typ name cabalRange omitProfVersionDeps =
                           (\ v -> debianVersion' name v >>= \ dv -> return $ Rel' (D.Rel dname (Just (D.SLT dv)) Nothing))
                           (\ v -> debianVersion' name v >>= \ dv -> return $ Rel' (D.Rel dname (Just (D.GRE dv)) Nothing))
                           (\ v -> debianVersion' name v >>= \ dv -> return $ Rel' (D.Rel dname (Just (D.LTE dv)) Nothing))
+#if MIN_VERSION_Cabal(2,0,0)
+                          (\ x y -> debianVersion' name x >>= \ dvx ->
+                                    debianVersion' name y >>= \ dvy ->
+                                    return $ And [Rel' (D.Rel dname (Just (D.GRE dvx)) Nothing),
+                                                  Rel' (D.Rel dname (Just (D.SLT dvy)) Nothing)])
+#endif
                           (\ x y -> debianVersion' name x >>= \ dvx ->
                                     debianVersion' name y >>= \ dvy ->
                                     return $ And [Rel' (D.Rel dname (Just (D.GRE dvx)) Nothing),
@@ -310,6 +355,9 @@ dependencies hc typ name cabalRange omitProfVersionDeps =
             orLaterVersion
             orEarlierVersion
             (\ lb ub -> intersectVersionRanges (orLaterVersion lb) (earlierVersion ub))
+#if MIN_VERSION_Cabal(2,0,0)
+            (\ lb ub -> intersectVersionRanges (orLaterVersion lb) (earlierVersion ub))
+#endif
             unionVersionRanges
             intersectVersionRanges
             id

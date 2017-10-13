@@ -1,6 +1,6 @@
 -- | Functions and instances used by but not related to cabal-debian.
 -- These could conceivably be moved into more general libraries.
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, Rank2Types, ScopedTypeVariables #-}
+{-# LANGUAGE CPP, FlexibleContexts, FlexibleInstances, Rank2Types, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wall -fno-warn-orphans #-}
 module Debian.Debianize.Prelude
     ( curry3
@@ -62,7 +62,11 @@ import Debian.Pretty (PP(PP))
 import qualified Debian.Relation as D (BinPkgName(BinPkgName), Relations)
 import Debian.Relation.Common ()
 import Debian.Version (DebianVersion, parseDebianVersion', prettyDebianVersion)
+#if MIN_VERSION_Cabal(2,0,0)
+import Distribution.Package (PackageIdentifier(..), PackageName, unPackageName)
+#else
 import Distribution.Package (PackageIdentifier(..), PackageName(..))
+#endif
 import Distribution.Verbosity (intToVerbosity, Verbosity)
 import GHC.IO.Exception (ExitCode(ExitFailure, ExitSuccess), IOErrorType(InappropriateType, NoSuchThing), IOException(IOError, ioe_description, ioe_type))
 import Prelude hiding (lookup, map)
@@ -328,7 +332,11 @@ instance Pretty (PP PackageIdentifier) where
     pPrint (PP p) = pPrint (PP (pkgName p)) <> text "-" <> pPrint (PP (pkgVersion p))
 
 instance Pretty (PP PackageName) where
+#if MIN_VERSION_Cabal(2,0,0)
+    pPrint (PP p) = text (unPackageName p)
+#else
     pPrint (PP (PackageName s)) = text s
+#endif
 
 -- | Set @b@ if it currently isNothing and the argument isJust, that is
 --  1. Nothing happens if the argument isNothing

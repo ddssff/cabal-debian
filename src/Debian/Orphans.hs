@@ -7,7 +7,6 @@ import Data.Generics (Data, Typeable)
 import Data.List (intersperse, isPrefixOf)
 import Data.Maybe (fromMaybe)
 import Data.Monoid ((<>))
-import Data.Version (showVersion, Version(..))
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(..))
 import Debian.Pretty (PP(PP, unPP))
 import Debian.Relation (ArchitectureReq(..), Relation(..), VersionReq(..))
@@ -22,6 +21,11 @@ import Distribution.License (License(..))
 import Distribution.PackageDescription (Executable(..), PackageDescription(package))
 import Distribution.Simple.Compiler (Compiler(..))
 import Distribution.Version (foldVersionRange', VersionRange(..))
+#if MIN_VERSION_Cabal(2,0,0)
+import Distribution.Version (showVersion, Version)
+#else
+import Data.Version (showVersion, Version(..))
+#endif
 import Language.Haskell.Extension (Language(..))
 #if !MIN_VERSION_Cabal(1,21,0)
 import Language.Haskell.Extension (Extension(..), KnownExtension(..))
@@ -132,6 +136,9 @@ instance Pretty (PP VersionRange) where
           (\ v -> text ">=" <> pPrint (PP v))
           (\ v -> text "<=" <> pPrint (PP v))
           (\ x _ -> text "=" <> pPrint (PP x) <> text ".*") -- not exactly right
+#if MIN_VERSION_Cabal(2,0,0)
+          (\ v _ -> text " >= " <> pPrint (PP v)) -- maybe this will do?
+#endif
           (\ x y -> text "(" <> x <> text " || " <> y <> text ")")
           (\ x y -> text "(" <> x <> text " && " <> y <> text ")")
           (\ x -> text "(" <> x <> text ")")

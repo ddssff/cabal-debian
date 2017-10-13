@@ -1,3 +1,9 @@
+haskell-cabal-debian (4.36) unstable; urgency=medium
+
+  * Support for Cabal-2
+
+ -- David Fox <dsf@seereason.com>  Fri, 13 Oct 2017 00:11:19 -0700
+
 haskell-cabal-debian (4.35.7) unstable; urgency=low
 
   * Remove logrotate from standard server package site config.

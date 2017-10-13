@@ -30,15 +30,22 @@ import Control.Exception (SomeException, throw, try)
 import Control.Lens (_2, over)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Char (isSpace, toLower, toUpper)
-import Data.Function.Memoize (deriveMemoizable, memoize, memoize2)
 import Data.List (intercalate, isPrefixOf)
-import Data.Version (showVersion, Version(..), parseVersion)
 import Debian.Debianize.BinaryDebDescription (PackageType(..))
 import Debian.Relation (BinPkgName(BinPkgName))
 import Debian.Version (DebianVersion, parseDebianVersion')
 import Distribution.Compiler (CompilerFlavor(..), CompilerId(CompilerId))
 #if MIN_VERSION_Cabal(1,22,0)
 import Distribution.Compiler (CompilerInfo(..), unknownCompilerInfo, AbiTag(NoAbiTag))
+#endif
+#if MIN_VERSION_Cabal(2,0,0)
+import Data.Function.Memoize (deriveMemoizable, Memoizable, memoize, memoize2, memoizeFinite)
+import Distribution.Version (mkVersion', mkVersion, showVersion, Version, versionNumbers)
+import Data.Version (parseVersion)
+import Data.Word (Word64)
+#else
+import Data.Function.Memoize (deriveMemoizable, memoize, memoize2)
+import Data.Version (showVersion, Version(..), parseVersion)
 #endif
 import System.Console.GetOpt (ArgDescr(ReqArg), OptDescr(..))
 import System.Directory (doesDirectoryExist)
@@ -55,6 +62,9 @@ import Text.ParserCombinators.ReadP (readP_to_S)
 import Text.Read (readMaybe)
 import Text.Regex.TDFA ((=~))
 
+#if MIN_VERSION_Cabal(2,0,0)
+instance Memoizable Word64 where memoize = memoizeFinite
+#endif
 $(deriveMemoizable ''CompilerFlavor)
 $(deriveMemoizable ''Version)
 $(deriveMemoizable ''BinPkgName)
@@ -82,7 +92,11 @@ isHVRCompilerPackage hc (BinPkgName name) =
 
 toVersion :: String -> Maybe Version
 toVersion s = case filter (all isSpace . snd) (readP_to_S parseVersion s) of
+#if MIN_VERSION_Cabal(2,0,0)
+                [(v, _)] -> Just (mkVersion' v)
+#else
                 [(v, _)] -> Just v
+#endif
                 _ -> Nothing
 
 withCompilerVersion :: FilePath -> CompilerFlavor -> (DebianVersion -> a) -> Either String a
@@ -100,20 +114,41 @@ hvrCompilerPATH v path0 =
 
 -- | What version of Cabal goes with this version of GHC?
 hvrCabalVersion :: Version -> Version
+#if MIN_VERSION_Cabal(2,0,0)
+hvrCabalVersion v =
+  case versionNumbers v of
+    (m : n : _) | (m == 7 && n <= 7) || m < 7 -> mkVersion [1,16]
+    (7 : n : _) | n <= 9 -> mkVersion [1,18]
+    (7 : _) -> mkVersion [1,22]
+    _ -> mkVersion [1,24]
+#else
 hvrCabalVersion (Version (m : n : _) _) | (m == 7 && n <= 7) || m < 7 = Version [1,16] []
 hvrCabalVersion (Version (7 : n : _) _) | n <= 9 = Version [1,18] []
 hvrCabalVersion (Version (7 : _) _) = Version [1,22] []
 hvrCabalVersion _ = Version [1,24] []
+#endif
 
 -- | What version of Happy goes with this version of GHC?
 hvrHappyVersion :: Version -> Version
+#if MIN_VERSION_Cabal(2,0,0)
+hvrHappyVersion v =
+    case versionNumbers v of
+      (m : n : _) | (m == 7 && n <= 3) || m < 7 -> mkVersion [1,19,3]
+      (7 : n : _) | n <= 2 -> mkVersion [1,19,3]
+      _ -> mkVersion [1,19,5]
+#else
 hvrHappyVersion (Version (m : n : _) _) | (m == 7 && n <= 3) || m < 7 = Version [1,19,3] []
 hvrHappyVersion (Version (7 : n : _) _) | n <= 2 = Version [1,19,3] []
 hvrHappyVersion _ = Version [1,19,5] []
+#endif
 
 -- | What version of Alex goes with this version of GHC?
 hvrAlexVersion :: Version -> Version
+#if MIN_VERSION_Cabal(2,0,0)
+hvrAlexVersion _ = mkVersion [3,1,7]
+#else
 hvrAlexVersion _ = Version [3,1,7] []
+#endif
 
 withModifiedPATH :: MonadIO m => (String -> String) -> m a -> m a
 withModifiedPATH f action = do
@@ -196,8 +231,13 @@ ghcNewestAvailableVersion' hc root =
 
 compilerIdFromDebianVersion :: CompilerFlavor -> DebianVersion -> CompilerId
 compilerIdFromDebianVersion hc debVersion =
+#if MIN_VERSION_Cabal(2,0,0)
+    let ds = versionNumbers (greatestLowerBound debVersion (map (\ d -> mkVersion [d]) [0..])) in
+    CompilerId hc (greatestLowerBound debVersion (map (\ d -> mkVersion (ds ++ [d])) [0..]))
+#else
     let (Version ds ts) = greatestLowerBound debVersion (map (\ d -> Version [d] []) [0..]) in
     CompilerId hc (greatestLowerBound debVersion (map (\ d -> Version (ds ++ [d]) ts) [0..]))
+#endif
     where
       greatestLowerBound :: DebianVersion -> [Version] -> Version
       greatestLowerBound b xs = last $ takeWhile (\ v -> parseDebianVersion' (showVersion v) < b) xs

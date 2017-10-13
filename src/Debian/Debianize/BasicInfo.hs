@@ -27,7 +27,11 @@ import Data.Set as Set (fromList, Set, union)
 import Debian.Debianize.Prelude (read')
 import Debian.Orphans ()
 import Distribution.Compiler (CompilerFlavor(..))
+#if MIN_VERSION_Cabal(2,0,0)
+import Distribution.PackageDescription as Cabal (FlagName, mkFlagName)
+#else
 import Distribution.PackageDescription as Cabal (FlagName(FlagName))
+#endif
 import Prelude hiding (break, lines, log, null, readFile, sum)
 import System.Console.GetOpt (ArgDescr(ReqArg, NoArg), OptDescr(Option))
 import System.FilePath ((</>))
@@ -118,5 +122,10 @@ flagOptions =
 -- Lifted from Distribution.Simple.Setup, since it's not exported.
 flagList :: String -> [(FlagName, Bool)]
 flagList = map tagWithValue . words
+#if MIN_VERSION_Cabal(2,0,0)
+  where tagWithValue ('-':name) = (mkFlagName (map toLower name), False)
+        tagWithValue name       = (mkFlagName (map toLower name), True)
+#else
   where tagWithValue ('-':name) = (FlagName (map toLower name), False)
         tagWithValue name       = (FlagName (map toLower name), True)
+#endif

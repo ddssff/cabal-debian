@@ -54,7 +54,11 @@ import Prelude hiding (init, init, log, log, unlines, readFile)
 import Text.PrettyPrint.HughesPJClass (Pretty(pPrint), text)
 
 unPackageName :: Cabal.PackageName -> String
+#if MIN_VERSION_Cabal(2,0,0)
+unPackageName p = Cabal.unPackageName p
+#else
 unPackageName (Cabal.PackageName x) = x
+#endif
 
 -- | Description of the machine readable debian/copyright file.  A
 -- special case is used to represeent the old style free format file -

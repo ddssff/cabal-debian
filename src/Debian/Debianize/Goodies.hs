@@ -40,7 +40,11 @@ import Debian.Orphans ()
 import Debian.Policy (apacheAccessLog, apacheErrorLog, apacheLogDirectory, databaseDirectory, dataDirectory, serverAccessLog, serverAppLog)
 import Debian.Pretty (ppShow, ppText)
 import Debian.Relation (BinPkgName(BinPkgName), Relation(Rel))
+#if MIN_VERSION_Cabal(2,0,0)
+import Distribution.Package (PackageName, unPackageName)
+#else
 import Distribution.Package (PackageName(PackageName))
+#endif
 import Distribution.PackageDescription as Cabal (PackageDescription(package, synopsis, description))
 import Distribution.Simple.Build.PathsModule (pkgPathEnvVar)
 import Prelude hiding (init, log, map, unlines, writeFile)
@@ -170,8 +174,13 @@ oldClckwrksServerFlags x =
     , "--http-port", show (D.port x)]
 
 watchAtom :: PackageName -> Text
+#if MIN_VERSION_Cabal(2,0,0)
+watchAtom pkgname =
+    pack $ "version=3\nhttp://hackage.haskell.org/package/" ++ unPackageName pkgname ++ "/distro-monitor .*-([0-9\\.]+)\\.(?:zip|tgz|tbz|txz|(?:tar\\.(?:gz|bz2|xz)))\n"
+#else
 watchAtom (PackageName pkgname) =
     pack $ "version=3\nhttp://hackage.haskell.org/package/" ++ pkgname ++ "/distro-monitor .*-([0-9\\.]+)\\.(?:zip|tgz|tbz|txz|(?:tar\\.(?:gz|bz2|xz)))\n"
+#endif
 
 siteAtoms :: PackageDescription -> BinPkgName -> D.Site -> CabalInfo -> CabalInfo
 siteAtoms pkgDesc b site =

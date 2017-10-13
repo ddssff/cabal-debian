@@ -18,7 +18,6 @@ import Control.Applicative ((<$>))
 import Control.Lens
 import Data.Char (toLower)
 import Data.Map as Map (alter, lookup)
-import Data.Version (showVersion, Version)
 import Debian.Debianize.Monad (CabalT)
 import Debian.Debianize.CabalInfo as A (debianNameMap, packageDescription, debInfo)
 import Debian.Debianize.BinaryDebDescription as Debian (PackageType(..))
@@ -29,7 +28,13 @@ import Debian.Relation (PkgName(..), Relations)
 import qualified Debian.Relation as D (VersionReq(EEQ))
 import Debian.Version (parseDebianVersion')
 import Distribution.Compiler (CompilerFlavor(..))
+#if MIN_VERSION_Cabal(2,0,0)
+import Distribution.Package (Dependency(..), PackageIdentifier(..), PackageName, unPackageName)
+import Distribution.Version (showVersion, Version)
+#else
+import Data.Version (showVersion, Version)
 import Distribution.Package (Dependency(..), PackageIdentifier(..), PackageName(PackageName))
+#endif
 import qualified Distribution.PackageDescription as Cabal (PackageDescription(package))
 import Prelude hiding (unlines)
 
@@ -60,7 +65,11 @@ debianNameBase =
        pkgDesc <- use packageDescription
        let pkgId = Cabal.package pkgDesc
        nameMap <- use A.debianNameMap
+#if MIN_VERSION_Cabal(2,0,0)
+       let pname = pkgName pkgId
+#else
        let pname@(PackageName _) = pkgName pkgId
+#endif
            version = (Just (D.EEQ (parseDebianVersion' (showVersion (pkgVersion pkgId)))))
        case (nameBase, Map.lookup (pkgName pkgId) nameMap) of
          (Just base, _) -> return base
@@ -91,8 +100,13 @@ mkPkgName' hc typ (DebBase base) =
     where prefix = "lib" ++ map toLower (show hc) ++ "-"
 
 debianBaseName :: PackageName -> DebBase
+#if MIN_VERSION_Cabal(2,0,0)
+debianBaseName p =
+    DebBase (map (fixChar . toLower) (unPackageName p))
+#else
 debianBaseName (PackageName name) =
     DebBase (map (fixChar . toLower) name)
+#endif
     where
       -- Underscore is prohibited in debian package names.
       fixChar :: Char -> Char

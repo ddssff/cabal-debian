@@ -53,8 +53,15 @@ import Distribution.Compiler (CompilerFlavor(GHC))
 #if MIN_VERSION_Cabal(1,22,0)
 import Distribution.Compiler (CompilerFlavor(GHCJS))
 #endif
+#if MIN_VERSION_Cabal(2,0,0)
+import Distribution.Package (Dependency(..), PackageIdentifier(..), PackageName, mkPackageName, unPackageName)
+import Distribution.PackageDescription as Cabal (allBuildInfo, author, BuildInfo(buildable, extraLibs), Executable(buildInfo, exeName), FlagName, mkFlagName, unFlagName, maintainer, PackageDescription(testSuites))
+import Distribution.Types.UnqualComponentName
+import Distribution.Utils.ShortText
+#else
 import Distribution.Package (Dependency(..), PackageIdentifier(..), PackageName(PackageName))
 import Distribution.PackageDescription as Cabal (allBuildInfo, author, BuildInfo(buildable, extraLibs), Executable(buildInfo, exeName), FlagName(FlagName), maintainer, PackageDescription(testSuites))
+#endif
 import qualified Distribution.PackageDescription as Cabal (PackageDescription(dataFiles, executables, library, package))
 import Prelude hiding (init, log, map, unlines, unlines, writeFile)
 import System.Directory (doesFileExist)
@@ -368,7 +375,11 @@ checkOfficialSettings flavor =
 officialSettings :: (Monad m, Functor m) => CabalT m ()
 officialSettings = do
     pkgDesc <- use A.packageDescription
+#if MIN_VERSION_Cabal(2,0,0)
+    let cabal = pkgName (Cabal.package pkgDesc)
+#else
     let PackageName cabal = pkgName (Cabal.package pkgDesc)
+#endif
     zoom A.debInfo $ do
         let officialError = error "officialSettings: no sourcePackageName"
 
@@ -378,7 +389,11 @@ officialSettings = do
         let packagesURI = "https://anonscm.debian.org/cgit/pkg-haskell/DHG_packages.git/tree/p/" <> pack src
         zoom D.control $ do
            S.standardsVersion .?= Just (parseStandardsVersion "3.9.8")
+#if MIN_VERSION_Cabal(2,0,0)
+           S.homepage .?= Just ("http://hackage.haskell.org/package/" <> pack (unPackageName cabal))
+#else
            S.homepage .?= Just ("http://hackage.haskell.org/package/" <> pack cabal)
+#endif
            S.vcsFields %= Set.union (Set.fromList
               [ S.VCSBrowser packagesURI
               , S.VCSGit  "https://anonscm.debian.org/cgit/pkg-haskell/DHG_packages.git"
@@ -491,12 +506,23 @@ makeUtilsPackage pkgDesc hc =
        -- The names of cabal executables that go into eponymous debs
        insExecPkg <- use (A.debInfo . D.executable) >>= return . Set.map ename . Set.fromList . elems
 
+#if MIN_VERSION_Cabal(2,0,0)
+       let installedData :: Set (FilePath, FilePath)
+           installedData = Set.map (\ a -> (a, a)) $ Set.unions (Map.elems installedDataMap)
+           installedExec :: Set String
+#else
        let installedData = Set.map (\ a -> (a, a)) $ Set.unions (Map.elems installedDataMap)
+#endif
            installedExec = Set.unions (Map.elems installedExecMap)
 
        prefixPath <- dataTop
        let dataFilePaths = Set.fromList (zip (List.map (prefixPath </>) (Cabal.dataFiles pkgDesc)) (Cabal.dataFiles pkgDesc)) :: Set (FilePath, FilePath)
+#if MIN_VERSION_Cabal(2,0,0)
+           execFilePaths :: Set FilePath
+           execFilePaths = Set.map (unUnqualComponentName . Cabal.exeName) (Set.filter (Cabal.buildable . Cabal.buildInfo) (Set.fromList (Cabal.executables pkgDesc))) :: Set FilePath
+#else
            execFilePaths = Set.map Cabal.exeName (Set.filter (Cabal.buildable . Cabal.buildInfo) (Set.fromList (Cabal.executables pkgDesc))) :: Set FilePath
+#endif
        let availableData = Set.union installedData dataFilePaths
            availableExec = Set.union installedExec execFilePaths
 
@@ -696,8 +722,17 @@ anyrel' x = [D.Rel x Nothing Nothing]
 -- Lifted from Distribution.Simple.Setup, since it's not exported.
 flagList :: String -> [(FlagName, Bool)]
 flagList = List.map tagWithValue . words
+#if MIN_VERSION_Cabal(2,0,0)
+  where tagWithValue ('-':name) = (mkFlagName (List.map toLower name), False)
+        tagWithValue name       = (mkFlagName (List.map toLower name), True)
+#else
   where tagWithValue ('-':name) = (FlagName (List.map toLower name), False)
         tagWithValue name       = (FlagName (List.map toLower name), True)
+#endif
 
 flagString :: [(FlagName, Bool)] -> String
+#if MIN_VERSION_Cabal(2,0,0)
+flagString = List.intercalate " " . List.map (\ (s, sense) -> "-f" ++ (if sense then "" else "-") ++ unFlagName s)
+#else
 flagString = List.intercalate " " . List.map (\ (FlagName s, sense) -> "-f" ++ (if sense then "" else "-") ++ s)
+#endif

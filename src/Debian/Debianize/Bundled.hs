@@ -32,12 +32,18 @@ import Data.Function.Memoize (memoize2, memoize3)
 import Data.List (groupBy, intercalate, isPrefixOf, stripPrefix)
 import Data.Maybe (listToMaybe, mapMaybe)
 import Data.Set as Set (difference, fromList)
-import Data.Version (parseVersion, Version(..))
 import Debian.GHC ({-instance Memoizable CompilerFlavor-})
 import Debian.Relation (BinPkgName(..))
 import Debian.Relation.ByteString ()
 import Debian.Version (DebianVersion, parseDebianVersion', prettyDebianVersion)
+#if MIN_VERSION_Cabal(2,0,0)
+import Distribution.Package (mkPackageName, PackageIdentifier(..), unPackageName)
+import Data.Version (parseVersion)
+import Distribution.Version(mkVersion, mkVersion', Version)
+#else
+import Data.Version (parseVersion, Version(..))
 import Distribution.Package (PackageIdentifier(..), PackageName(..))
+#endif
 #if MIN_VERSION_Cabal(1,22,0)
 import Distribution.Simple.Compiler (CompilerFlavor(GHCJS))
 #else
@@ -51,7 +57,10 @@ import Text.ParserCombinators.ReadP (char, endBy1, munch1, ReadP, readP_to_S)
 import Text.Regex.TDFA ((=~))
 
 #if MIN_VERSION_base(4,8,0)
+#if !MIN_VERSION_Cabal(2,0,0)
 import Data.Version (makeVersion)
+#else
+#endif
 #else
 import Data.Monoid (mempty)
 
@@ -169,23 +178,41 @@ chroot root = useEnv root (return . force)
 -- So be it.
 parsePackageIdentifier :: ReadP PackageIdentifier
 parsePackageIdentifier = do
+#if MIN_VERSION_Cabal(2,0,0)
+  makeId <$> ((,) <$> endBy1 (munch1 isAlphaNum) (char '-') <*> parseCabalVersion)
+    where
+      makeId :: ([String], Version) -> PackageIdentifier
+      makeId (xs, v) = PackageIdentifier {pkgName = mkPackageName (intercalate "-" xs), pkgVersion = v}
+#else
   makeId <$> ((,) <$> endBy1 (munch1 isAlphaNum) (char '-') <*> parseVersion)
     where
       makeId :: ([String], Version) -> PackageIdentifier
       makeId (xs, v) = PackageIdentifier {pkgName = PackageName (intercalate "-" xs), pkgVersion = v}
+#endif
 
 parseMaybe :: ReadP a -> String -> Maybe a
 parseMaybe p = listToMaybe . map fst . filter ((== "") . snd) . readP_to_S p
 
 parseVersion' :: String -> Maybe Version
+#if MIN_VERSION_Cabal(2,0,0)
+parseVersion' = parseMaybe parseCabalVersion
+
+parseCabalVersion :: ReadP Version
+parseCabalVersion = fmap mkVersion' parseVersion
+#else
 parseVersion' = parseMaybe parseVersion
+#endif
 
 parsePackageIdentifier' :: String -> Maybe PackageIdentifier
 parsePackageIdentifier' = parseMaybe parsePackageIdentifier
 
 tests :: Test
 tests = TestList [ TestCase (assertEqual "Bundled1"
+#if MIN_VERSION_Cabal(2,0,0)
+                               (Just (PackageIdentifier (mkPackageName "HUnit") (mkVersion [1,2,3])))
+#else
                                (Just (PackageIdentifier (PackageName "HUnit") (makeVersion [1,2,3])))
+#endif
                                (parseMaybe parsePackageIdentifier "HUnit-1.2.3"))
                  , TestCase (assertEqual "Bundled2"
                                Nothing

@@ -1,6 +1,6 @@
 -- | Convert between cabal and debian package names based on version
 -- number ranges.
-{-# LANGUAGE DeriveDataTypeable, FlexibleInstances, MultiParamTypeClasses, TypeSynonymInstances #-}
+{-# LANGUAGE CPP, DeriveDataTypeable, FlexibleInstances, MultiParamTypeClasses, TypeSynonymInstances #-}
 module Debian.Debianize.VersionSplits
     ( DebBase(DebBase, unDebBase)
     -- * Combinators for VersionSplits
@@ -18,12 +18,18 @@ module Debian.Debianize.VersionSplits
 import Data.Generics (Data, Typeable)
 import Data.Map as Map (elems, Map, mapMaybeWithKey)
 import Data.Set as Set (fromList, Set, toList)
-import Data.Version (showVersion, Version(Version))
 import Debian.Debianize.Interspersed (foldTriples, Interspersed(leftmost, pairs, foldInverted))
 import Debian.Orphans ()
 import qualified Debian.Relation as D (VersionReq(..))
 import Debian.Version (DebianVersion, parseDebianVersion')
+#if MIN_VERSION_Cabal(2,0,0)
+import Distribution.Package (PackageIdentifier(..), PackageName)
+import Distribution.Package (mkPackageName)
+import Distribution.Version (showVersion, Version)
+#else
+import Data.Version (showVersion, Version(Version))
 import Distribution.Package (PackageIdentifier(..), PackageName(..))
+#endif
 import Distribution.Version (anyVersion, earlierVersion, intersectVersionRanges, orLaterVersion, VersionRange)
 import Prelude hiding (init, log, unlines)
 
@@ -63,7 +69,11 @@ insertSplit :: Version -- ^ Where to split the version range
             -> DebBase -- ^ The name to use for versions older than the split
             -> VersionSplits
             -> VersionSplits
+#if MIN_VERSION_Cabal(2,0,0)
+insertSplit ver ltname sp@(VersionSplits {}) =
+#else
 insertSplit ver@(Version _ _) ltname sp@(VersionSplits {}) =
+#endif
     -- (\ x -> trace ("insertSplit " ++ show (ltname, ver, sp) ++ " -> " ++ show x) x) $
     case splits sp of
       -- This is the oldest split, change oldestPackage and insert a new head pair
@@ -104,7 +114,11 @@ cabalFromDebian :: Map PackageName VersionSplits -> DebBase -> DebianVersion -> 
 cabalFromDebian mp base@(DebBase name) ver =
     case Set.toList pset of
       [x] -> x
+#if MIN_VERSION_Cabal(2,0,0)
+      [] -> mkPackageName name
+#else
       [] -> PackageName name
+#endif
       l -> error $ "Error, multiple cabal package names associated with " ++ show base ++ ": " ++ show l
     where
       -- Look for splits that involve the right DebBase and return the

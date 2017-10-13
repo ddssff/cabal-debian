@@ -75,7 +75,7 @@ import qualified Debian.Relation as D (BinPkgName(BinPkgName), Relations)
 import Debian.Relation.Common ()
 import Debian.Version (DebianVersion, parseDebianVersion', prettyDebianVersion)
 #if MIN_VERSION_Cabal(2,0,0)
-import Distribution.Package (PackageIdentifier(..), PackageName, unPackageName)
+import Distribution.Package (PackageIdentifier(..), PackageName, mkPackageName, unPackageName)
 import Distribution.Version
 #else
 import Distribution.Package (PackageIdentifier(..), PackageName(..))

@@ -157,7 +157,7 @@ Source-Repository head
 Library
   Default-Language: Haskell2010
   Hs-Source-Dirs: src
-  GHC-Options: -Wall -O2
+  GHC-Options: -Wall
   Build-Depends:
     base < 5,
     bifunctors,
@@ -230,7 +230,7 @@ Executable cabal-debian
   Default-Language: Haskell2010
   Hs-Source-Dirs: .
   Main-is: CabalDebian.hs
-  ghc-options: -threaded -Wall -O2
+  ghc-options: -threaded -Wall
   Build-Depends:
     base,
     cabal-debian,
@@ -251,7 +251,7 @@ Test-Suite cabal-debian-tests
   Type: exitcode-stdio-1.0
   Hs-Source-Dirs: .
   Main-is: Tests.hs
-  ghc-options: -threaded -Wall -O2
+  ghc-options: -threaded -Wall
   Build-Depends:
     base < 5,
     cabal-debian,

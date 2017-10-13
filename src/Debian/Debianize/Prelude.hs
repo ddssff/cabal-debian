@@ -38,6 +38,16 @@ module Debian.Debianize.Prelude
     , fromSingleton
     , (.?=)
     , escapeDebianWildcards
+#if MIN_VERSION_Cabal(2,0,0)
+    -- Cabal has its own Version type starting in 2.0.0.0
+    , module Distribution.Version
+#else
+    , module Data.Version
+    , mkPackageName
+    , mkVersion
+    , mkVersion'
+    , versionNumbers
+#endif
     ) where
 
 
@@ -64,8 +74,10 @@ import Debian.Relation.Common ()
 import Debian.Version (DebianVersion, parseDebianVersion', prettyDebianVersion)
 #if MIN_VERSION_Cabal(2,0,0)
 import Distribution.Package (PackageIdentifier(..), PackageName, unPackageName)
+import Distribution.Version
 #else
 import Distribution.Package (PackageIdentifier(..), PackageName(..))
+import Data.Version
 #endif
 import Distribution.Verbosity (intToVerbosity, Verbosity)
 import GHC.IO.Exception (ExitCode(ExitFailure, ExitSuccess), IOErrorType(InappropriateType, NoSuchThing), IOException(IOError, ioe_description, ioe_type))
@@ -349,3 +361,14 @@ escapeDebianWildcards :: String -> String
 escapeDebianWildcards (c : more) | elem c "[]" = '\\' : c : escapeDebianWildcards more
 escapeDebianWildcards (c : more) = c : escapeDebianWildcards more
 escapeDebianWildcards "" = ""
+
+#if !MIN_VERSION_Cabal(2,0,0)
+mkPackageName :: String -> PackageName
+mkPackageName = PackageName
+mkVersion :: [Int] -> Version
+mkVersion ns = Version ns []
+mkVersion' :: Version -> Version
+mkVersion' = id
+versionNumbers :: Version -> [Int]
+versionNumbers (Version ns _) = ns
+#endif

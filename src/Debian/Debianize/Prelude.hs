@@ -47,6 +47,7 @@ module Debian.Debianize.Prelude
     , mkVersion
     , mkVersion'
     , versionNumbers
+    , unPackageName
 #endif
     ) where
 
@@ -371,4 +372,8 @@ mkVersion' :: Version -> Version
 mkVersion' = id
 versionNumbers :: Version -> [Int]
 versionNumbers (Version ns _) = ns
+#if !MIN_VERSION_Cabal(1,22,0)
+unPackageName :: PackageName -> String
+unPackageName (PackageName x) = x
+#endif
 #endif

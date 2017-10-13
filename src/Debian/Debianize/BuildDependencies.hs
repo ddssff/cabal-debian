@@ -34,7 +34,7 @@ import Debian.Relation (BinPkgName(..), checkVersionReq, Relation(..), Relations
 import qualified Debian.Relation as D (BinPkgName(BinPkgName), Relation(..), Relations, VersionReq(EEQ, GRE, LTE, SGR, SLT))
 import Debian.Version (DebianVersion, parseDebianVersion')
 import Distribution.Compiler (CompilerFlavor(..))
-import Distribution.Package (Dependency(..), PackageIdentifier(pkgName, pkgVersion), PackageName, unPackageName)
+import Distribution.Package (Dependency(..), PackageIdentifier(pkgName, pkgVersion), PackageName)
 import Distribution.PackageDescription as Cabal (BuildInfo(..), BuildInfo(buildTools, extraLibs, pkgconfigDepends), Library(..), Executable(..), TestSuite(..))
 import Distribution.PackageDescription (PackageDescription)
 import qualified Distribution.PackageDescription as Cabal (PackageDescription(library, executables, testSuites))

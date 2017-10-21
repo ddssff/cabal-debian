@@ -44,6 +44,7 @@ module Debian.Debianize.Prelude
     , module Distribution.Package
 #else
     , module Data.Version
+    , mkFlagName
     , mkPackageName
     , mkVersion
     , mkVersion'
@@ -79,6 +80,7 @@ import Distribution.Package (PackageIdentifier(..), PackageName, mkPackageName, 
 import Distribution.Version
 #else
 import Distribution.Package (PackageIdentifier(..), PackageName(..))
+import Distribution.PackageDescription (FlagName(..))
 import Data.Version
 #endif
 import Distribution.Verbosity (intToVerbosity, Verbosity)
@@ -365,6 +367,8 @@ escapeDebianWildcards (c : more) = c : escapeDebianWildcards more
 escapeDebianWildcards "" = ""
 
 #if !MIN_VERSION_Cabal(2,0,0)
+mkFlagName :: String -> FlagName
+mkFlagName = FlagName
 mkPackageName :: String -> PackageName
 mkPackageName = PackageName
 mkVersion :: [Int] -> Version

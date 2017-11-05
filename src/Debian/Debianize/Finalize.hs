@@ -42,7 +42,7 @@ import qualified Debian.Debianize.SourceDebDescription as S
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
 import Debian.GHC (compilerPackageName)
 import Debian.Orphans ()
-import Debian.Policy (getCurrentDebianUser, getDebhelperCompatLevel, haskellMaintainer, maintainerOfLastResort, PackageArchitectures(Any, All), PackagePriority(Extra), parseMaintainer, parseStandardsVersion, Section(..), SourceFormat(Native3))
+import Debian.Policy (getCurrentDebianUser, getDebhelperCompatLevel, haskellMaintainer, maintainerOfLastResort, PackageArchitectures(Any, All), PackagePriority(Optional), parseMaintainer, parseStandardsVersion, Section(..), SourceFormat(Native3))
 import Debian.Pretty (PP(..), ppShow)
 import Debian.Relation (BinPkgName, BinPkgName(BinPkgName), Relation(Rel), Relations, SrcPkgName(SrcPkgName))
 import qualified Debian.Relation as D (BinPkgName(BinPkgName), Relation(..))
@@ -125,7 +125,7 @@ finalizeDebianization' date currentUser debhelperCompat setupExists =
        addExtraLibDependencies hc
        (A.debInfo . D.watch) .?= Just (watchAtom (pkgName $ Cabal.package $ pkgDesc))
        (A.debInfo . D.control . S.section) .?= Just (MainSection "haskell")
-       (A.debInfo . D.control . S.priority) .?= Just Extra
+       (A.debInfo . D.control . S.priority) .?= Just Optional
        (A.debInfo . D.compat) .?= debhelperCompat
        finalizeChangelog date currentUser
        finalizeControl currentUser
@@ -388,7 +388,7 @@ officialSettings = do
 
         let packagesURI = "https://anonscm.debian.org/cgit/pkg-haskell/DHG_packages.git/tree/p/" <> pack src
         zoom D.control $ do
-           S.standardsVersion .?= Just (parseStandardsVersion "3.9.8")
+           S.standardsVersion .?= Just (parseStandardsVersion "4.1.1")
 #if MIN_VERSION_Cabal(2,0,0)
            S.homepage .?= Just ("http://hackage.haskell.org/package/" <> pack (unPackageName cabal))
 #else

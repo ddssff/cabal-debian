@@ -137,10 +137,10 @@ debianBuildDeps pkgDesc =
        binDeps <- allBuildDepends (List.map buildInfo (Cabal.executables pkgDesc))
        testDeps <- allBuildDepends (List.map testBuildInfo (Cabal.testSuites pkgDesc))
 
-       liftIO (putStrLn ("library dependencies: " ++ show libDeps))
-       liftIO (putStrLn ("executable dependencies: " ++ show binDeps))
-       liftIO (putStrLn (intercalate "\n  " ("executables:" :  fmap show (Cabal.executables pkgDesc))))
-       liftIO (putStrLn ("test suite dependencies: " ++ show testDeps))
+       -- liftIO (putStrLn ("library dependencies: " ++ show libDeps))
+       -- liftIO (putStrLn ("executable dependencies: " ++ show binDeps))
+       -- liftIO (putStrLn (intercalate "\n  " ("executables:" :  fmap show (Cabal.executables pkgDesc))))
+       -- liftIO (putStrLn ("test suite dependencies: " ++ show testDeps))
 
        testsStatus <- use (A.debInfo . D.testsStatus)
 

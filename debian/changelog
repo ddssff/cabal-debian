@@ -1,3 +1,9 @@
+haskell-cabal-debian (4.36.1) unstable; urgency=medium
+
+  * Disable some debug output.
+
+ -- David Fox <dsf@genie>  Wed, 22 Nov 2017 03:42:18 -0800
+
 haskell-cabal-debian (4.36) unstable; urgency=medium
 
   * Support for Cabal-2

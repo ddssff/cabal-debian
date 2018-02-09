@@ -99,7 +99,7 @@ instance Pretty CopyrightDescription where
 
 instance Default CopyrightDescription where
     def = CopyrightDescription
-          { _format = fromJust $ parseURI "http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/"
+          { _format = fromJust $ parseURI "https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/"
           , _upstreamName = Nothing
           , _upstreamContact = Nothing
           , _upstreamSource = Nothing

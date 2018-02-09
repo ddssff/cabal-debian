@@ -390,9 +390,9 @@ officialSettings = do
         zoom D.control $ do
            S.standardsVersion .?= Just (parseStandardsVersion "4.1.1")
 #if MIN_VERSION_Cabal(2,0,0)
-           S.homepage .?= Just ("http://hackage.haskell.org/package/" <> pack (unPackageName cabal))
+           S.homepage .?= Just ("https://hackage.haskell.org/package/" <> pack (unPackageName cabal))
 #else
-           S.homepage .?= Just ("http://hackage.haskell.org/package/" <> pack cabal)
+           S.homepage .?= Just ("https://hackage.haskell.org/package/" <> pack cabal)
 #endif
            S.vcsFields %= Set.union (Set.fromList
               [ S.VCSBrowser packagesURI

@@ -386,7 +386,7 @@ officialSettings = do
         D.omitProfVersionDeps .= True
         SrcPkgName src <- fromMaybe officialError <$> use D.sourcePackageName
 
-        let packagesURI = "https://anonscm.debian.org/cgit/pkg-haskell/DHG_packages.git/tree/p/" <> pack src
+        let packagesURI = "https://salsa.debian.org/haskell-team/DHG_packages/tree/master/p/" <> pack src
         zoom D.control $ do
            S.standardsVersion .?= Just (parseStandardsVersion "4.1.1")
 #if MIN_VERSION_Cabal(2,0,0)
@@ -396,7 +396,7 @@ officialSettings = do
 #endif
            S.vcsFields %= Set.union (Set.fromList
               [ S.VCSBrowser packagesURI
-              , S.VCSGit  "https://anonscm.debian.org/cgit/pkg-haskell/DHG_packages.git"
+              , S.VCSGit  "https://salsa.debian.org/haskell-team/DHG_packages.git"
               ])
 
 putBuildDeps :: (MonadIO m, Functor m) => (Relations -> Relations) -> PackageDescription -> CabalT m ()

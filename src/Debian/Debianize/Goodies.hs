@@ -176,10 +176,10 @@ oldClckwrksServerFlags x =
 watchAtom :: PackageName -> Text
 #if MIN_VERSION_Cabal(2,0,0)
 watchAtom pkgname =
-    pack $ "version=3\nhttp://hackage.haskell.org/package/" ++ unPackageName pkgname ++ "/distro-monitor .*-([0-9\\.]+)\\.(?:zip|tgz|tbz|txz|(?:tar\\.(?:gz|bz2|xz)))\n"
+    pack $ "version=3\nhttps://hackage.haskell.org/package/" ++ unPackageName pkgname ++ "/distro-monitor .*-([0-9\\.]+)\\.(?:zip|tgz|tbz|txz|(?:tar\\.(?:gz|bz2|xz)))\n"
 #else
 watchAtom (PackageName pkgname) =
-    pack $ "version=3\nhttp://hackage.haskell.org/package/" ++ pkgname ++ "/distro-monitor .*-([0-9\\.]+)\\.(?:zip|tgz|tbz|txz|(?:tar\\.(?:gz|bz2|xz)))\n"
+    pack $ "version=3\nhttps://hackage.haskell.org/package/" ++ pkgname ++ "/distro-monitor .*-([0-9\\.]+)\\.(?:zip|tgz|tbz|txz|(?:tar\\.(?:gz|bz2|xz)))\n"
 #endif
 
 siteAtoms :: PackageDescription -> BinPkgName -> D.Site -> CabalInfo -> CabalInfo

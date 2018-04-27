@@ -1,5 +1,5 @@
 Name:           cabal-debian
-Version:        4.36.2
+Version:        4.37
 Copyright:      Copyright (c) 2007-2014, David Fox, Jeremy Shaw
 License:        BSD3
 License-File:   LICENSE
@@ -205,6 +205,7 @@ Library
     Debian.Debianize.DebianName
     Debian.Debianize.DebInfo
     Debian.Debianize.Details
+    Debian.Debianize.ExecAtoms
     Debian.Debianize.Files
     Debian.Debianize.Finalize
     Debian.Debianize.Goodies

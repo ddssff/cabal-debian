@@ -13,6 +13,8 @@ module Debian.Debianize.Output
     , compareDebianization
     , validateDebianization
     , performDebianization
+    , performDebianizationOfWebsite
+    , performDebianizationWith
     ) where
 
 import Control.Exception as E (throw)
@@ -30,9 +32,10 @@ import Debian.Debianize.CabalInfo (CabalInfo, debInfo)
 import qualified Debian.Debianize.DebInfo as D
 import Debian.Debianize.Files (debianizationFileMap)
 import Debian.Debianize.InputDebian (inputDebianization)
+import Debian.Debianize.Goodies (expandWebsite)
 import Debian.Debianize.Monad (DebianT, CabalT, evalDebian, evalCabalT)
 import Debian.Debianize.Prelude (indent, replaceFile, zipMaps)
-import Debian.Debianize.Finalize (debianize)
+import Debian.Debianize.Finalize (debianizeWith)
 import Debian.Debianize.Optparse
 import Debian.Debianize.BinaryDebDescription as B (canonical, package)
 import qualified Debian.Debianize.SourceDebDescription as S
@@ -74,14 +77,20 @@ runDebianizeScript args =
 -- | Perform whole debianization. You provide your customization,
 -- this function does everything else.
 performDebianization :: CabalT IO () -> IO ()
-performDebianization custom =
+performDebianization = performDebianizationWith (pure ())
+
+performDebianizationOfWebsite :: CabalT IO () -> IO ()
+performDebianizationOfWebsite = performDebianizationWith expandWebsite
+
+performDebianizationWith :: CabalT IO () -> CabalT IO () -> IO ()
+performDebianizationWith goodies custom =
   parseProgramArguments >>= \CommandLineOptions {..} -> do
     -- _ <- try (readProcessWithExitCode "apt-get" ["install", "-y", "--force-yes", hcDeb (view compilerFlavor _flags)] "")
     newCabalInfo _flags >>= either
                                (error . ("peformDebianization - " ++))
                                (evalCabalT $ do
                                 handleBehaviorAdjustment _adjustment
-                                debianize custom
+                                debianizeWith goodies custom
                                 finishDebianization)
 
 -- hcDeb :: CompilerFlavor -> String

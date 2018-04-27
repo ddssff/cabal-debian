@@ -4,12 +4,10 @@
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 module Debian.Debianize.Goodies
     ( tightDependencyFixup
-    , doServer
-    , doWebsite
-    , doBackups
+    , expandWebsite, doServer
+    , expandServer, doWebsite
+    , expandBackups, doBackups
     , doExecutable
-    , describe
-    , watchAtom
     , oldClckwrksSiteFlags
     , oldClckwrksServerFlags
     , siteAtoms
@@ -20,32 +18,26 @@ module Debian.Debianize.Goodies
     ) where
 
 import Control.Lens
-import Control.Monad.State (MonadState)
-import Data.Char (isSpace)
-import Data.List as List (dropWhileEnd, intercalate, intersperse, map)
-import Data.Map as Map (insert, insertWith)
-import Data.Maybe (fromMaybe)
+import Control.Monad.State (MonadState(get), modify)
+import Data.List as List ({-dropWhileEnd, intercalate,-} intersperse, map)
+import Data.Map as Map (insert, insertWith, toList)
 import Data.Monoid ((<>))
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid (mappend)
 #endif
 import Data.Set as Set (insert, singleton, union)
-import Data.Text as Text (pack, Text, unlines)
+import Data.Text as Text (pack, {-Text,-} unlines)
 import qualified Debian.Debianize.DebInfo as D
+import Debian.Debianize.ExecAtoms (execAtoms)
 import Debian.Debianize.Monad (CabalInfo, CabalT, DebianT, execCabalM)
-import Debian.Debianize.Prelude (stripWith)
+--import Debian.Debianize.Prelude (stripWith)
 import qualified Debian.Debianize.CabalInfo as A
 import qualified Debian.Debianize.BinaryDebDescription as B
 import Debian.Orphans ()
 import Debian.Policy (apacheAccessLog, apacheErrorLog, apacheLogDirectory, databaseDirectory, dataDirectory, serverAccessLog, serverAppLog)
-import Debian.Pretty (ppShow, ppText)
+import Debian.Pretty (ppText)
 import Debian.Relation (BinPkgName(BinPkgName), Relation(Rel))
-#if MIN_VERSION_Cabal(2,0,0)
-import Distribution.Package (PackageName, unPackageName)
-#else
-import Distribution.Package (PackageName(PackageName))
-#endif
-import Distribution.PackageDescription as Cabal (PackageDescription(package, synopsis, description))
+import Distribution.PackageDescription as Cabal (PackageDescription)
 import Distribution.Simple.Build.PathsModule (pkgPathEnvVar)
 import Prelude hiding (init, log, map, unlines, writeFile)
 import System.FilePath ((</>))
@@ -102,66 +94,6 @@ doBackups bin s =
        (A.debInfo . D.binaryDebDescription bin . B.relations . B.depends) %= (++ [[Rel (BinPkgName "anacron") Nothing Nothing]])
        -- depends +++= (bin, Rel (BinPkgName "anacron") Nothing Nothing)
 
-describe :: Monad m => CabalT m Text
-describe =
-    do p <- use A.packageDescription
-       return $
-          debianDescriptionBase p {- <> "\n" <>
-          case typ of
-            Just B.Profiling ->
-                Text.intercalate "\n"
-                        [" .",
-                         " This package provides a library for the Haskell programming language, compiled",
-                         " for profiling.  See http:///www.haskell.org/ for more information on Haskell."]
-            Just B.Development ->
-                Text.intercalate "\n"
-                        [" .",
-                         " This package provides a library for the Haskell programming language.",
-                         " See http:///www.haskell.org/ for more information on Haskell."]
-            Just B.Documentation ->
-                Text.intercalate "\n"
-                        [" .",
-                         " This package provides the documentation for a library for the Haskell",
-                         " programming language.",
-                         " See http:///www.haskell.org/ for more information on Haskell." ]
-            Just B.Exec ->
-                Text.intercalate "\n"
-                        [" .",
-                         " An executable built from the " <> pack (display (pkgName (Cabal.package p))) <> " package."]
-      {-    ServerPackage ->
-                Text.intercalate "\n"
-                        [" .",
-                         " A server built from the " <> pack (display (pkgName pkgId)) <> " package."] -}
-            _ {-Utilities-} ->
-                Text.intercalate "\n"
-                        [" .",
-                         " Files associated with the " <> pack (display (pkgName (Cabal.package p))) <> " package."]
-            -- x -> error $ "Unexpected library package name suffix: " ++ show x
--}
-
--- | The Cabal package has one synopsis and one description field
--- for the entire package, while in a Debian package there is a
--- description field (of which the first line is synopsis) in
--- each binary package.  So the cabal description forms the base
--- of the debian description, each of which is amended.
-debianDescriptionBase :: PackageDescription -> Text
-debianDescriptionBase p =
-    pack $ List.intercalate "\n " $ (synop' : desc)
-    where
-      -- If we have a one line description and no synopsis, use
-      -- the description as the synopsis.
-      synop' = if null synop && length desc /= 1
-               then "WARNING: No synopsis available for package " ++ ppShow (package p)
-               else synop
-      synop :: String
-      -- I don't know why (unwords . words) was applied here.  Maybe I'll find out when
-      -- this version goes into production.  :-/  Ok, now I know, because sometimes the
-      -- short cabal description has more than one line.
-      synop = intercalate " " $ map (dropWhileEnd isSpace) $ lines $ Cabal.synopsis p
-      desc :: [String]
-      desc = List.map addDot . stripWith null $ map (dropWhileEnd isSpace) $ lines $ Cabal.description p
-      addDot line = if null line then "." else line
-
 oldClckwrksSiteFlags :: D.Site -> [String]
 oldClckwrksSiteFlags x =
     [ -- According to the happstack-server documentation this needs a trailing slash.
@@ -172,15 +104,6 @@ oldClckwrksServerFlags x =
     [ -- According to the happstack-server documentation this needs a trailing slash.
       "--base-uri", "http://" ++ D.hostname x ++ ":" ++ show (D.port x) ++ "/"
     , "--http-port", show (D.port x)]
-
-watchAtom :: PackageName -> Text
-#if MIN_VERSION_Cabal(2,0,0)
-watchAtom pkgname =
-    pack $ "version=3\nhttps://hackage.haskell.org/package/" ++ unPackageName pkgname ++ "/distro-monitor .*-([0-9\\.]+)\\.(?:zip|tgz|tbz|txz|(?:tar\\.(?:gz|bz2|xz)))\n"
-#else
-watchAtom (PackageName pkgname) =
-    pack $ "version=3\nhttps://hackage.haskell.org/package/" ++ pkgname ++ "/distro-monitor .*-([0-9\\.]+)\\.(?:zip|tgz|tbz|txz|(?:tar\\.(?:gz|bz2|xz)))\n"
-#endif
 
 siteAtoms :: PackageDescription -> BinPkgName -> D.Site -> CabalInfo -> CabalInfo
 siteAtoms pkgDesc b site =
@@ -353,22 +276,19 @@ backupAtoms b name =
                                , D.sourceDir = Nothing
                                , D.destDir = Just "/etc/cron.hourly" })
 
-execAtoms :: BinPkgName -> D.InstallFile -> CabalInfo -> CabalInfo
-execAtoms b ifile r =
-    over (A.debInfo . D.rulesFragments) (Set.insert (pack ("build" </> ppShow b ++ ":: build-ghc-stamp\n"))) .
-    fileAtoms b ifile $
-    r
+expandWebsite :: Monad m => CabalT m ()
+expandWebsite =
+    do mp <- get >>= return . view (A.debInfo . D.website)
+       pkgDesc <- use A.packageDescription
+       mapM_ (\ (b, site) -> modify (siteAtoms pkgDesc b site)) (Map.toList mp)
 
-fileAtoms :: BinPkgName -> D.InstallFile -> CabalInfo -> CabalInfo
-fileAtoms b installFile' r =
-    fileAtoms' b (D.sourceDir installFile') (D.execName installFile') (D.destDir installFile') (D.destName installFile') r
+expandServer :: Monad m => CabalT m ()
+expandServer =
+    do mp <- get >>= return . view (A.debInfo . D.serverInfo)
+       pkgDesc <- use A.packageDescription
+       mapM_ (\ (b, x) -> modify (serverAtoms pkgDesc b x False)) (Map.toList mp)
 
-fileAtoms' :: BinPkgName -> Maybe FilePath -> String -> Maybe FilePath -> String -> CabalInfo -> CabalInfo
-fileAtoms' b sourceDir' execName' destDir' destName' r =
-    case (sourceDir', execName' == destName') of
-      (Nothing, True) -> execCabalM ((A.debInfo . D.atomSet) %= (Set.insert $ D.InstallCabalExec b execName' d)) r
-      (Just s, True) -> execCabalM ((A.debInfo . D.atomSet) %= (Set.insert $ D.Install b (s </> execName') d)) r
-      (Nothing, False) -> execCabalM ((A.debInfo . D.atomSet) %= (Set.insert $ D.InstallCabalExecTo b execName' (d </> destName'))) r
-      (Just s, False) -> execCabalM ((A.debInfo . D.atomSet) %= (Set.insert $ D.InstallTo b (s </> execName') (d </> destName'))) r
-    where
-      d = fromMaybe "usr/bin" destDir'
+expandBackups :: Monad m => CabalT m ()
+expandBackups =
+    do mp <- get >>= return . view (A.debInfo . D.backups)
+       mapM_ (\ (b, name) -> modify (backupAtoms b name)) (Map.toList mp)

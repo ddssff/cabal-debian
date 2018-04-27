@@ -2,7 +2,10 @@
 {-# LANGUAGE CPP, FlexibleContexts, FlexibleInstances, OverloadedStrings, ScopedTypeVariables #-}
 module Debian.Debianize.Finalize
     ( debianize
+    , debianizeWith
+    , debianizeWebsite
     -- , finalizeDebianization -- external use deprecated - used in test script
+    , watchAtom
     ) where
 
 
@@ -16,10 +19,10 @@ import Control.Monad as List (mapM_)
 import Control.Monad.State (get, modify)
 import Control.Monad.Trans (liftIO, MonadIO)
 import Data.ByteString.Lazy.UTF8 (fromString)
-import Data.Char (toLower)
+import Data.Char (isSpace, toLower)
 import Data.Digest.Pure.MD5 (md5)
 import Data.Function (on)
-import Data.List as List (filter, intercalate, map, nub, null, unlines, maximumBy)
+import Data.List as List (dropWhileEnd, filter, intercalate, map, nub, null, unlines, maximumBy)
 import Data.Map as Map (delete, elems, insertWith, lookup, Map, toList)
 import Data.Maybe (fromMaybe, isJust, fromJust)
 import Data.Monoid ((<>))
@@ -34,10 +37,11 @@ import qualified Debian.Debianize.CabalInfo as A
 import Debian.Debianize.Changelog (dropFutureEntries)
 import qualified Debian.Debianize.DebInfo as D
 import Debian.Debianize.DebianName (debianName, debianNameBase)
-import Debian.Debianize.Goodies (backupAtoms, describe, execAtoms, serverAtoms, siteAtoms, watchAtom)
+import Debian.Debianize.ExecAtoms (execAtoms)
+import Debian.Debianize.Goodies (expandWebsite, expandServer, expandBackups)
 import Debian.Debianize.InputDebian (dataTop, dataDest, inputChangeLog)
 import Debian.Debianize.Monad as Monad (CabalT, liftCabal)
-import Debian.Debianize.Prelude ((.?=))
+import Debian.Debianize.Prelude ((.?=), stripWith)
 import qualified Debian.Debianize.SourceDebDescription as S
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
 import Debian.GHC (compilerPackageName)
@@ -55,14 +59,14 @@ import Distribution.Compiler (CompilerFlavor(GHCJS))
 #endif
 #if MIN_VERSION_Cabal(2,0,0)
 import Distribution.Package (Dependency(..), PackageIdentifier(..), PackageName, mkPackageName, unPackageName)
-import Distribution.PackageDescription as Cabal (allBuildInfo, author, BuildInfo(buildable, extraLibs), Executable(buildInfo, exeName), FlagName, mkFlagName, unFlagName, maintainer, PackageDescription(testSuites))
+import Distribution.PackageDescription as Cabal (allBuildInfo, author, BuildInfo(buildable, extraLibs), Executable(buildInfo, exeName), FlagName, mkFlagName, unFlagName, maintainer, PackageDescription(testSuites, description))
 import Distribution.Types.UnqualComponentName
 import Distribution.Utils.ShortText
 #else
 import Distribution.Package (Dependency(..), PackageIdentifier(..), PackageName(PackageName))
 import Distribution.PackageDescription as Cabal (allBuildInfo, author, BuildInfo(buildable, extraLibs), Executable(buildInfo, exeName), FlagName(FlagName), maintainer, PackageDescription(testSuites))
 #endif
-import qualified Distribution.PackageDescription as Cabal (PackageDescription(dataFiles, executables, library, package))
+import Distribution.PackageDescription as Cabal (PackageDescription(dataFiles, description, executables, library, package, synopsis))
 import Prelude hiding (init, log, map, unlines, unlines, writeFile)
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>), makeRelative, splitFileName, takeDirectory, takeFileName)
@@ -80,19 +84,28 @@ import Text.PrettyPrint.HughesPJClass (Pretty(pPrint))
 -- @customize@ and finalizes the debianization so it is ready to be
 -- output.
 debianize :: (MonadIO m, Functor m) => CabalT m () -> CabalT m ()
-debianize customize =
+debianize = debianizeWith (pure ())
+
+debianizeWebsite :: (MonadIO m, Functor m) => CabalT m () -> CabalT m ()
+debianizeWebsite = debianizeWith (expandWebsite >> expandServer >> expandBackups)
+
+-- | Pass a function with some additional work to do.  I don't know
+-- if this could be done by just summing it with customize - probably.
+-- But I don't want to untangle this right now.
+debianizeWith :: (MonadIO m, Functor m) => CabalT m () -> CabalT m () -> CabalT m ()
+debianizeWith goodies customize =
   do liftCabal inputChangeLog
      customize
-     finalizeDebianization
+     finalizeDebianization goodies
 
 -- | Do some light IO and call finalizeDebianization.
-finalizeDebianization :: (MonadIO m, Functor m) => CabalT m ()
-finalizeDebianization =
+finalizeDebianization :: (MonadIO m, Functor m) => CabalT m () -> CabalT m ()
+finalizeDebianization goodies =
     do date <- liftIO getCurrentLocalRFC822Time
        currentUser <- liftIO getCurrentDebianUser
        debhelperCompat <- liftIO getDebhelperCompatLevel
        setupExists <- or <$> mapM (liftIO . doesFileExist) ["Setup.hs", "Setup.lhs"]
-       finalizeDebianization' date currentUser debhelperCompat setupExists
+       finalizeDebianization' goodies date currentUser debhelperCompat setupExists
        vb <- use (A.debInfo . D.flags . verbosity)
        when (vb >= 3) (get >>= \ x -> liftIO (putStrLn ("\nFinalized Cabal Info: " ++ show x ++ "\n")))
        either (\e -> liftIO $ hPutStrLn stderr ("WARNING: " ++ e)) (\_ -> return ()) =<< use (A.debInfo . D.control . S.maintainer)
@@ -105,8 +118,15 @@ finalizeDebianization =
 -- this function is not idempotent.  (Exported for use in unit tests.)
 -- FIXME: we should be able to run this without a PackageDescription, change
 --        paramter type to Maybe PackageDescription and propagate down thru code
-finalizeDebianization'  :: (MonadIO m, Functor m) => String -> Maybe NameAddr -> Maybe Int -> Bool -> CabalT m ()
-finalizeDebianization' date currentUser debhelperCompat setupExists =
+finalizeDebianization' ::
+    (MonadIO m, Functor m)
+    => CabalT m ()
+    -> String
+    -> Maybe NameAddr
+    -> Maybe Int
+    -> Bool
+    -> CabalT m ()
+finalizeDebianization' goodies date currentUser debhelperCompat setupExists =
     do -- In reality, hcs must be a singleton or many things won't work.  But some day...
        hc <- use (A.debInfo . D.flags . compilerFlavor)
        pkgDesc <- use A.packageDescription
@@ -131,7 +151,7 @@ finalizeDebianization' date currentUser debhelperCompat setupExists =
        finalizeControl currentUser
        finalizeRules
        -- T.license .?= Just (Cabal.license pkgDesc)
-       expandAtoms
+       expandAtoms goodies
        -- Create the binary packages for the web sites, servers, backup packges, and other executables
        use (A.debInfo . D.executable) >>= List.mapM_ (cabalExecBinaryPackage . fst) . Map.toList
        use (A.debInfo . D.backups) >>= List.mapM_ (cabalExecBinaryPackage . fst) . Map.toList
@@ -146,9 +166,18 @@ finalizeDebianization' date currentUser debhelperCompat setupExists =
        putBuildDeps (if allowSelfDeps then id else filterRelations debs) pkgDesc
        -- Sketchy - I think more things that need expanded could be generated by the code
        -- executed since the last expandAtoms.  Anyway, should be idempotent.
-       expandAtoms
+       expandAtoms goodies
        -- Turn atoms related to priority, section, and description into debianization elements
        -- finalizeDescriptions
+
+watchAtom :: PackageName -> Text
+#if MIN_VERSION_Cabal(2,0,0)
+watchAtom pkgname =
+    pack $ "version=3\nhttps://hackage.haskell.org/package/" ++ unPackageName pkgname ++ "/distro-monitor .*-([0-9\\.]+)\\.(?:zip|tgz|tbz|txz|(?:tar\\.(?:gz|bz2|xz)))\n"
+#else
+watchAtom (PackageName pkgname) =
+    pack $ "version=3\nhttps://hackage.haskell.org/package/" ++ pkgname ++ "/distro-monitor .*-([0-9\\.]+)\\.(?:zip|tgz|tbz|txz|(?:tar\\.(?:gz|bz2|xz)))\n"
+#endif
 
 -- | Compute the final values of the BinaryDebDescription record
 -- description fields from the cabal descriptions and the values that
@@ -306,6 +335,66 @@ finalizeControl currentUser =
        desc' <- describe
        (A.debInfo . D.control . S.xDescription) .?= Just desc'
        -- control %= (\ y -> y { D.source = Just src, D.maintainer = Just maint })
+
+describe :: Monad m => CabalT m Text
+describe =
+    do p <- use A.packageDescription
+       return $
+          debianDescriptionBase p {- <> "\n" <>
+          case typ of
+            Just B.Profiling ->
+                Text.intercalate "\n"
+                        [" .",
+                         " This package provides a library for the Haskell programming language, compiled",
+                         " for profiling.  See http:///www.haskell.org/ for more information on Haskell."]
+            Just B.Development ->
+                Text.intercalate "\n"
+                        [" .",
+                         " This package provides a library for the Haskell programming language.",
+                         " See http:///www.haskell.org/ for more information on Haskell."]
+            Just B.Documentation ->
+                Text.intercalate "\n"
+                        [" .",
+                         " This package provides the documentation for a library for the Haskell",
+                         " programming language.",
+                         " See http:///www.haskell.org/ for more information on Haskell." ]
+            Just B.Exec ->
+                Text.intercalate "\n"
+                        [" .",
+                         " An executable built from the " <> pack (display (pkgName (Cabal.package p))) <> " package."]
+      {-    ServerPackage ->
+                Text.intercalate "\n"
+                        [" .",
+                         " A server built from the " <> pack (display (pkgName pkgId)) <> " package."] -}
+            _ {-Utilities-} ->
+                Text.intercalate "\n"
+                        [" .",
+                         " Files associated with the " <> pack (display (pkgName (Cabal.package p))) <> " package."]
+            -- x -> error $ "Unexpected library package name suffix: " ++ show x
+-}
+
+-- | The Cabal package has one synopsis and one description field
+-- for the entire package, while in a Debian package there is a
+-- description field (of which the first line is synopsis) in
+-- each binary package.  So the cabal description forms the base
+-- of the debian description, each of which is amended.
+debianDescriptionBase :: PackageDescription -> Text
+debianDescriptionBase p =
+    pack $ List.intercalate "\n " $ (synop' : desc)
+    where
+      -- If we have a one line description and no synopsis, use
+      -- the description as the synopsis.
+      synop' = if List.null synop && length desc /= 1
+               then "WARNING: No synopsis available for package " ++ ppShow (package p)
+               else synop
+      synop :: String
+      -- I don't know why (unwords . words) was applied here.  Maybe I'll find out when
+      -- this version goes into production.  :-/  Ok, now I know, because sometimes the
+      -- short cabal description has more than one line.
+      synop = List.intercalate " " $ fmap (dropWhileEnd isSpace) $ lines $ synopsis p
+      desc :: [String]
+      desc = List.map addDot . stripWith List.null $ fmap (dropWhileEnd isSpace) $ lines $ Cabal.description p
+      addDot line = if List.null line then "." else line
 
 -- | Make sure there is a changelog entry with the version number and
 -- source package name implied by the debianization.  This means
@@ -559,8 +648,8 @@ makeUtilsPackage pkgDesc hc =
             (Nothing) -> D.execName i
             (Just s) ->  s </> D.execName i
 
-expandAtoms :: Monad m => CabalT m ()
-expandAtoms =
+expandAtoms :: Monad m => CabalT m () -> CabalT m ()
+expandAtoms goodies =
     do hc <- use (A.debInfo . D.flags . compilerFlavor)
        case hc of
          GHC -> (A.debInfo . D.flags . cabalFlagAssignments) %= (Set.union (Set.fromList (flagList "--ghc")))
@@ -581,9 +670,13 @@ expandAtoms =
        expandInstallData dDest
        expandInstallTo
        expandFile
+#if 1
+       goodies
+#else
        expandWebsite
        expandServer
        expandBackups
+#endif
        expandExecutable
     where
       expandApacheSites :: Monad m => CabalT m ()
@@ -669,23 +762,6 @@ expandAtoms =
                    (A.debInfo . D.intermediateFiles) %= Set.insert (tmpPath, text)
                    (A.debInfo . D.atomSet) %= (Set.insert $ D.Install b tmpPath destDir')
             doAtom _ = return ()
-
-      expandWebsite :: Monad m => CabalT m ()
-      expandWebsite =
-          do mp <- get >>= return . view (A.debInfo . D.website)
-             pkgDesc <- use A.packageDescription
-             List.mapM_ (\ (b, site) -> modify (siteAtoms pkgDesc b site)) (Map.toList mp)
-
-      expandServer :: Monad m => CabalT m ()
-      expandServer =
-          do mp <- get >>= return . view (A.debInfo . D.serverInfo)
-             pkgDesc <- use A.packageDescription
-             List.mapM_ (\ (b, x) -> modify (serverAtoms pkgDesc b x False)) (Map.toList mp)
-
-      expandBackups :: Monad m => CabalT m ()
-      expandBackups =
-          do mp <- get >>= return . view (A.debInfo . D.backups)
-             List.mapM_ (\ (b, name) -> modify (backupAtoms b name)) (Map.toList mp)
 
       expandExecutable :: Monad m => CabalT m ()
       expandExecutable =

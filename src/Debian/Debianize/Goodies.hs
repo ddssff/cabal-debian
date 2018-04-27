@@ -238,7 +238,6 @@ logrotate b = do
           (A.debInfo . D.logrotateStanza) %= Map.insertWith mappend b
                               (singleton
                                    (Text.unlines $ [ pack (apacheAccessLog b) <> " {"
-                                                   , "  copytruncate" -- hslogger doesn't notice when the log is rotated, maybe this will help
                                                    , "  weekly"
                                                    , "  rotate 5"
                                                    , "  compress"
@@ -247,7 +246,6 @@ logrotate b = do
           (A.debInfo . D.logrotateStanza) %= Map.insertWith mappend b
                               (singleton
                                    (Text.unlines $ [ pack (apacheErrorLog b) <> " {"
-                                                   , "  copytruncate"
                                                    , "  weekly"
                                                    , "  rotate 5"
                                                    , "  compress"

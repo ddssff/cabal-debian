@@ -1,3 +1,9 @@
+haskell-cabal-debian (4.37) unstable; urgency=medium
+
+  * Decouple the website building code from the rest.
+
+ -- David Fox <dsf@genie>  Fri, 27 Apr 2018 14:28:42 -0700
+
 haskell-cabal-debian (4.36.1) unstable; urgency=medium
 
   * Disable some debug output.

@@ -84,7 +84,7 @@ import Text.PrettyPrint.HughesPJClass (Pretty(pPrint))
 -- @customize@ and finalizes the debianization so it is ready to be
 -- output.
 debianize :: (MonadIO m, Functor m) => CabalT m () -> CabalT m ()
-debianize = debianizeWith (pure ())
+debianize = debianizeWith (return ())
 
 debianizeWebsite :: (MonadIO m, Functor m) => CabalT m () -> CabalT m ()
 debianizeWebsite = debianizeWith (expandWebsite >> expandServer >> expandBackups)

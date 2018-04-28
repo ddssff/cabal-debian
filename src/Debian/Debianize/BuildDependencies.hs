@@ -123,15 +123,9 @@ debianBuildDeps :: (MonadIO m, Functor m) => PackageDescription -> CabalT m D.Re
 debianBuildDeps pkgDesc =
     do hflavor <- use (A.debInfo . D.flags . compilerFlavor)
        let hcs = singleton hflavor -- vestigial
-       let hcTypePairsLibs =
+       let hcTypePairs =
                fold union empty $
-                  Set.map (\ hc' -> Set.map (hc',) $ hcPackageTypesLibs hc') hcs
-       let hcTypePairsBins =
-               fold union empty $
-                  Set.map (\ hc' -> Set.map (hc',) $ hcPackageTypesBins hc') hcs
-       let hcTypePairsTests =
-               fold union empty $
-                  Set.map (\ hc' -> Set.map (hc',) $ hcPackageTypesTests hc') hcs
+                  Set.map (\ hc' -> Set.map (hc',) $ hcPackageTypes hc') hcs
 
        libDeps <- allBuildDepends (maybe [] (return . libBuildInfo) (Cabal.library pkgDesc))
        binDeps <- allBuildDepends (List.map buildInfo (Cabal.executables pkgDesc))
@@ -145,9 +139,9 @@ debianBuildDeps pkgDesc =
        testsStatus <- use (A.debInfo . D.testsStatus)
 
        cDeps <- nub . concat . concat <$> sequence
-            [ mapM (buildDependencies hcTypePairsLibs) libDeps
-            , mapM (buildDependencies hcTypePairsBins) binDeps
-            , mapM (buildDependencies hcTypePairsTests) (if testsStatus /= D.TestsDisable then testDeps else [])
+            [ mapM (buildDependencies hcTypePairs) libDeps
+            , mapM (buildDependencies hcTypePairs) binDeps
+            , mapM (buildDependencies hcTypePairs) (if testsStatus /= D.TestsDisable then testDeps else [])
             ]
 
        bDeps <- use (A.debInfo . D.control . S.buildDepends)
@@ -172,20 +166,24 @@ debianBuildDeps pkgDesc =
                        cDeps
        filterMissing xs
     where
-      hcPackageTypesLibs :: CompilerFlavor -> Set B.PackageType
-      hcPackageTypesLibs GHC = fromList [B.Development, B.Profiling]
+      hcPackageTypes :: CompilerFlavor -> Set B.PackageType
+      hcPackageTypes GHC = fromList [B.Development, B.Profiling]
 #if MIN_VERSION_Cabal(1,22,0)
-      hcPackageTypesLibs GHCJS = fromList [B.Development]
+      hcPackageTypes GHCJS = fromList [B.Development]
 #endif
-      hcPackageTypesLibs hc = error $ "Unsupported compiler flavor: " ++ show hc
+      hcPackageTypes hc = error $ "Unsupported compiler flavor: " ++ show hc
 
-      -- No point in installing profiling packages for the dependencies
-      -- of binaries and test suites
+      -- No point in installing profiling packages for the
+      -- dependencies of binaries and test suites.  (I take it back,
+      -- some executable builds fail if the profiling library isn't
+      -- installed.)
+#if 0
       hcPackageTypesBins :: CompilerFlavor -> Set B.PackageType
-      hcPackageTypesBins _ = singleton B.Development
+      hcPackageTypesBins GHC = singleton [B.Development, B.Profiling]
 
       hcPackageTypesTests :: CompilerFlavor -> Set B.PackageType
-      hcPackageTypesTests _ = singleton B.Development
+      hcPackageTypesTests GHC = singleton [B.Development, B.Profiling]
+#endif
 
 -- | Collect the dependencies required to build any packages that have
 -- architecture "all".

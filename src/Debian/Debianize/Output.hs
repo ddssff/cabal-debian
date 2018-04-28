@@ -77,7 +77,7 @@ runDebianizeScript args =
 -- | Perform whole debianization. You provide your customization,
 -- this function does everything else.
 performDebianization :: CabalT IO () -> IO ()
-performDebianization = performDebianizationWith (pure ())
+performDebianization = performDebianizationWith (return ())
 
 performDebianizationOfWebsite :: CabalT IO () -> IO ()
 performDebianizationOfWebsite = performDebianizationWith expandWebsite

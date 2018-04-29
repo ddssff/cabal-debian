@@ -704,7 +704,7 @@ expandAtoms goodies =
                 (A.debInfo . D.rulesFragments) %= Set.insert
                      (Text.unlines
                         [ pack ("binary-fixup" </> ppShow b) <> "::"
-                        , pack ("\t(cd " <> builddir </> name <> " && find " <> name <.> "jsexe" <> " -type f) |\\\n" <>
+                        , pack ("\t(cd " <> builddir </> name <> " && find -L " <> name <.> "jsexe" <> " -type f) |\\\n" <>
                                        "\t  while read i; do install -Dp " <> builddir </> name </> "$$i debian" </> ppShow b </> makeRelative "/" dest </> "$$i; done\n") ])
 #endif
             doAtom _ _ = return ()

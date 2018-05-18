@@ -17,6 +17,7 @@ import Data.Function (on)
 import Data.List as List (filter, groupBy, intercalate, map, minimumBy, nub, sortBy)
 import Data.Map as Map (lookup, Map)
 import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, listToMaybe, mapMaybe)
+import Data.Monoid ((<>))
 import Data.Set as Set (empty, fold, fromList, map, member, Set, singleton, toList, union)
 import Debian.Debianize.Prelude
 import Debian.Debianize.BasicInfo (buildEnv, compilerFlavor, EnvSet(dependOS))
@@ -122,6 +123,14 @@ mergeCabalDependencies =
 debianBuildDeps :: (MonadIO m, Functor m) => PackageDescription -> CabalT m D.Relations
 debianBuildDeps pkgDesc =
     do hflavor <- use (A.debInfo . D.flags . compilerFlavor)
+       prof <- not <$> use (A.debInfo . D.noProfilingLibrary)
+       let hcPackageTypes :: CompilerFlavor -> Set B.PackageType
+           hcPackageTypes GHC = fromList ([B.Development] <> if prof then [B.Profiling] else [])
+#if MIN_VERSION_Cabal(1,22,0)
+           hcPackageTypes GHCJS = fromList [B.Development]
+#endif
+           hcPackageTypes hc = error $ "Unsupported compiler flavor: " ++ show hc
+
        let hcs = singleton hflavor -- vestigial
        let hcTypePairs =
                fold union empty $
@@ -145,7 +154,6 @@ debianBuildDeps pkgDesc =
             ]
 
        bDeps <- use (A.debInfo . D.control . S.buildDepends)
-       prof <- not <$> use (A.debInfo . D.noProfilingLibrary)
        official <- use (A.debInfo . D.official)
        compat <- use (A.debInfo . D.compat)
        let ghcdev = compilerPackageName hflavor B.Development
@@ -166,13 +174,6 @@ debianBuildDeps pkgDesc =
                        cDeps
        filterMissing xs
     where
-      hcPackageTypes :: CompilerFlavor -> Set B.PackageType
-      hcPackageTypes GHC = fromList [B.Development, B.Profiling]
-#if MIN_VERSION_Cabal(1,22,0)
-      hcPackageTypes GHCJS = fromList [B.Development]
-#endif
-      hcPackageTypes hc = error $ "Unsupported compiler flavor: " ++ show hc
-
       -- No point in installing profiling packages for the
       -- dependencies of binaries and test suites.  (I take it back,
       -- some executable builds fail if the profiling library isn't

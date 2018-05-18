@@ -4,8 +4,8 @@
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 module Debian.Debianize.Goodies
     ( tightDependencyFixup
-    , expandWebsite, doServer
-    , expandServer, doWebsite
+    , expandWebsite, doWebsite
+    , expandServer, doServer
     , expandBackups, doBackups
     , doExecutable
     , oldClckwrksSiteFlags

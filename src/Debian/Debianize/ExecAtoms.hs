@@ -1,7 +1,7 @@
 -- | Things that seem like they could be clients of this library, but
 -- are instead included as part of the library.
 {-# LANGUAGE CPP, FlexibleContexts, OverloadedStrings #-}
-{-# OPTIONS_GHC -Wall -fno-warn-unused-do-bind -ddump-minimal-imports #-}
+{-# OPTIONS_GHC -Wall -fno-warn-unused-do-bind #-}
 module Debian.Debianize.ExecAtoms
     ( execAtoms
     ) where

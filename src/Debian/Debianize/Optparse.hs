@@ -499,7 +499,10 @@ profilingP :: O.Parser ProfilingStatus
 profilingP = O.flag ProfilingEnabled ProfilingDisabled m where
   m = O.help helpMsg
       <> O.long "disable-profiling"
-  helpMsg = "Do not generate profiling (-prof) library package."
+  helpMsg = unlines [
+    "Do not generate profiling (-prof) library package, do not",
+    "add -prof packages to the build dependency list."
+     ]
 
 haddockP :: O.Parser [HaddockStatus]
 haddockP = (: []) <$> (O.flag HaddockEnabled HaddockDisabled m) where

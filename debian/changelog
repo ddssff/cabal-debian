@@ -1,4 +1,4 @@
-haskell-cabal-debian (4.38.1) unstable; urgency=medium
+haskell-cabal-debian (4.38.2) unstable; urgency=medium
 
   * Support for Cabal-2.2
 

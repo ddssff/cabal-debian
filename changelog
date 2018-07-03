@@ -1,3 +1,40 @@
+haskell-cabal-debian (4.38.2) unstable; urgency=medium
+
+  * Support for Cabal-2.2
+
+ -- David Fox <dsf@seereason.com>  Tue, 03 Jul 2018 07:48:47 -0700
+
+haskell-cabal-debian (4.38) unstable; urgency=medium
+
+  * It turns out we now need to install the profiling libraries for
+    executable and test suite build dependencies.
+
+ -- David Fox <dsf@trusty>  Sat, 28 Apr 2018 09:14:20 -0700
+
+haskell-cabal-debian (4.37) unstable; urgency=medium
+
+  * Decouple the website building code from the rest.
+
+ -- David Fox <dsf@genie>  Fri, 27 Apr 2018 14:28:42 -0700
+
+haskell-cabal-debian (4.36.1) unstable; urgency=medium
+
+  * Disable some debug output.
+
+ -- David Fox <dsf@genie>  Wed, 22 Nov 2017 03:42:18 -0800
+
+haskell-cabal-debian (4.36) unstable; urgency=medium
+
+  * Support for Cabal-2
+
+ -- David Fox <dsf@seereason.com>  Fri, 13 Oct 2017 00:11:19 -0700
+
+haskell-cabal-debian (4.35.7) unstable; urgency=low
+
+  * Remove logrotate from standard server package site config.
+
+ -- David Fox <dsf@foxthompson.net>  Sun, 11 Dec 2016 12:26:58 -0800
+
 haskell-cabal-debian (4.35.6) unstable; urgency=low
 
   * Restore ghc-7.6.3 support

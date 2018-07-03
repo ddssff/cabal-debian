@@ -1,3 +1,9 @@
+haskell-cabal-debian (4.38.1) unstable; urgency=medium
+
+  * Support for Cabal-2.2
+
+ -- David Fox <dsf@seereason.com>  Tue, 03 Jul 2018 07:48:47 -0700
+
 haskell-cabal-debian (4.38) unstable; urgency=medium
 
   * It turns out we now need to install the profiling libraries for

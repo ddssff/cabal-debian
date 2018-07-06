@@ -1,2 +1,2 @@
 version=3
-http://hackage.haskell.org/package/cabal-debian/distro-monitor .*-([0-9\.]+)\.(?:zip|tgz|tbz|txz|(?:tar\.(?:gz|bz2|xz)))
+https://hackage.haskell.org/package/cabal-debian/distro-monitor .*-([0-9\.]+)\.(?:zip|tgz|tbz|txz|(?:tar\.(?:gz|bz2|xz)))

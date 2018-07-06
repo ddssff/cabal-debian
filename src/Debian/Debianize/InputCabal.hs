@@ -28,14 +28,21 @@ import Distribution.Compiler (CompilerId)
 import Distribution.Package (Package(packageId))
 import Distribution.PackageDescription as Cabal (PackageDescription)
 import Distribution.PackageDescription.Configuration (finalizePackageDescription)
+#if MIN_VERSION_Cabal(2,2,0)
+import Distribution.PackageDescription.Parsec (readGenericPackageDescription)
+#else
 #if MIN_VERSION_Cabal(2,0,0)
 import Distribution.PackageDescription.Parse (readGenericPackageDescription)
 #else
 import Distribution.PackageDescription.Parse (readPackageDescription)
 #endif
+#endif
 import Distribution.Simple.Utils (defaultPackageDesc, die, setupMessage)
 import Distribution.System as Cabal (buildArch, Platform(..))
 import qualified Distribution.System as Cabal (buildOS)
+#if MIN_VERSION_Cabal(2,2,0)
+import Distribution.Types.GenericPackageDescription (mkFlagAssignment)
+#endif
 import Distribution.Verbosity (Verbosity)
 import Prelude hiding (break, lines, log, null, readFile, sum)
 import System.Directory (doesFileExist, getCurrentDirectory)
@@ -66,7 +73,11 @@ inputCabalization flags =
 #else
         genPkgDesc <- liftIO $ defaultPackageDesc vb >>= readPackageDescription vb
 #endif
+#if MIN_VERSION_Cabal(2,2,0)
+        let finalized = finalizePackageDescription (mkFlagAssignment (toList fs)) (const True) (Platform buildArch Cabal.buildOS) cinfo [] genPkgDesc
+#else
         let finalized = finalizePackageDescription (toList fs) (const True) (Platform buildArch Cabal.buildOS) cinfo [] genPkgDesc
+#endif
         ePkgDesc <- either (return . Left)
                            (\ (pkgDesc, _) -> do liftIO $ bracket (setFileCreationMask 0o022) setFileCreationMask $ \ _ -> autoreconf vb pkgDesc
                                                  return (Right pkgDesc))

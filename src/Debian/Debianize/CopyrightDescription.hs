@@ -44,10 +44,14 @@ import Debian.Pretty (prettyText, ppText)
 import Debug.Trace
 import qualified Distribution.License as Cabal (License(UnknownLicense))
 import qualified Distribution.Package as Cabal
+#if MIN_VERSION_Cabal(2,2,0)
+import qualified Distribution.PackageDescription as Cabal (PackageDescription(licenseFiles, copyright, licenseRaw, package, maintainer))
+#else
 #if MIN_VERSION_Cabal(1,20,0)
 import qualified Distribution.PackageDescription as Cabal (PackageDescription(licenseFiles, copyright, license, package, maintainer))
 #else
 import qualified Distribution.PackageDescription as Cabal (PackageDescription(licenseFile, copyright, license, package, maintainer))
+#endif
 #endif
 import Network.URI (URI, parseURI)
 import Prelude hiding (init, init, log, log, unlines, readFile)
@@ -237,7 +241,11 @@ defaultLicenseDescriptions license = \case
   where
     mkLicenseDescription (path, txt) =
       LicenseDescription {
+#if MIN_VERSION_Cabal(2,2,0)
           _license = fromCabalLicense (Cabal.UnknownLicense path)
+#else
+          _license = fromCabalLicense (Cabal.UnknownLicense path)
+#endif
         , _licenseText = txt
         , _comment = mempty
         }
@@ -254,7 +262,11 @@ defaultCopyrightDescription pkgDesc = do
 #else
   let (debianCopyrightPath, otherLicensePaths) = partition (== "debian/copyright") [Cabal.licenseFile pkgDesc]
 #endif
+#if MIN_VERSION_Cabal(2,2,0)
+      license =  either (\x -> OtherLicense ("SPDX license: " ++ show x)) fromCabalLicense $ Cabal.licenseRaw pkgDesc
+#else
       license = fromCabalLicense $ Cabal.license pkgDesc
+#endif
       pkgname = unPackageName . Cabal.pkgName . Cabal.package $ pkgDesc
       maintainer = Cabal.maintainer $ pkgDesc
   -- This is an @Nothing@ unless debian/copyright is (for some

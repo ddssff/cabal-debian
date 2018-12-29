@@ -136,9 +136,9 @@ debianBuildDeps pkgDesc =
                fold union empty $
                   Set.map (\ hc' -> Set.map (hc',) $ hcPackageTypes hc') hcs
 
-       libDeps <- allBuildDepends (maybe [] (return . libBuildInfo) (Cabal.library pkgDesc))
-       binDeps <- allBuildDepends (List.map buildInfo (Cabal.executables pkgDesc))
-       testDeps <- allBuildDepends (List.map testBuildInfo (Cabal.testSuites pkgDesc))
+       libDeps <- allBuildDepends (maybe [] (filter isBuildable . return . libBuildInfo) (Cabal.library pkgDesc))
+       binDeps <- allBuildDepends (List.map buildInfo (filter isBuildable (Cabal.executables pkgDesc)))
+       testDeps <- allBuildDepends (List.map testBuildInfo (filter isBuildable (Cabal.testSuites pkgDesc)))
 
        -- liftIO (putStrLn ("library dependencies: " ++ show libDeps))
        -- liftIO (putStrLn ("executable dependencies: " ++ show binDeps))
@@ -185,6 +185,18 @@ debianBuildDeps pkgDesc =
       hcPackageTypesTests :: CompilerFlavor -> Set B.PackageType
       hcPackageTypesTests GHC = singleton [B.Development, B.Profiling]
 #endif
+
+class IsBuildable e where
+    isBuildable :: e -> Bool
+
+instance IsBuildable Executable where
+    isBuildable = buildable . buildInfo
+
+instance IsBuildable BuildInfo where
+    isBuildable = buildable
+
+instance IsBuildable TestSuite where
+    isBuildable = buildable . testBuildInfo
 
 -- | Collect the dependencies required to build any packages that have
 -- architecture "all".

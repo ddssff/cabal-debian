@@ -139,6 +139,7 @@ dropRequiredSuffix :: String -> String -> Maybe String
 dropRequiredSuffix suff x =
     let (x', suff') = splitAt (length x - length suff) x in if suff == suff' then Just x' else Nothing
 
+-- | A list of the files in a binary deb
 binPkgFiles :: String -> BinPkgName -> [FilePath]
 binPkgFiles root hcname = lines $ unsafePerformIO (chroot root (readProcess "dpkg" ["-L", unBinPkgName hcname] ""))
 

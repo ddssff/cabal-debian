@@ -19,6 +19,7 @@ module Debian.Debianize.Output
 
 import Control.Exception as E (throw)
 import Control.Lens
+import Control.Monad.Fail (MonadFail)
 import Control.Monad.State (get, put, StateT)
 import Control.Monad.Trans (liftIO, MonadIO)
 import Data.Algorithm.DiffContext (getContextDiff, prettyContextDiff)
@@ -33,7 +34,7 @@ import qualified Debian.Debianize.DebInfo as D
 import Debian.Debianize.Files (debianizationFileMap)
 import Debian.Debianize.InputDebian (inputDebianization)
 import Debian.Debianize.Goodies (expandWebsite)
-import Debian.Debianize.Monad (DebianT, CabalT, evalDebian, evalCabalT)
+import Debian.Debianize.Monad (DebianT, CabalT, evalDebianT, evalCabalT)
 import Debian.Debianize.Prelude (indent, replaceFile, zipMaps)
 import Debian.Debianize.Finalize (debianizeWith)
 import Debian.Debianize.Optparse
@@ -100,7 +101,7 @@ performDebianizationWith goodies custom =
 
 -- | Depending on the options in @atoms@, either validate, describe,
 -- or write the generated debianization.
-finishDebianization :: forall m. (MonadIO m, Functor m) => StateT CabalInfo m ()
+finishDebianization :: forall m. (MonadIO m, MonadFail m, Functor m) => StateT CabalInfo m ()
 finishDebianization = zoom debInfo $
     do new <- get
        case () of
@@ -126,7 +127,7 @@ finishDebianization = zoom debInfo $
 
 
 -- | Write the files of the debianization @d@ to ./debian
-writeDebianization :: (MonadIO m, Functor m) => DebianT m ()
+writeDebianization :: (MonadIO m, MonadFail m, Functor m) => DebianT m ()
 writeDebianization =
     do files <- debianizationFileMap
        liftIO $ mapM_ (uncurry doFile) (Map.toList files)
@@ -138,7 +139,7 @@ writeDebianization =
 
 -- | Return a string describing the debianization - a list of file
 -- names and their contents in a somewhat human readable format.
-describeDebianization :: (MonadIO m, Functor m) => DebianT m String
+describeDebianization :: (MonadIO m, MonadFail m, Functor m) => DebianT m String
 describeDebianization =
     debianizationFileMap >>= return . concatMap (\ (path, text) -> path ++ ": " ++ indent " > " (unpack text)) . Map.toList
 
@@ -160,8 +161,8 @@ mergeDebianization old new =
 -- describing the differences.
 compareDebianization :: D.DebInfo -> D.DebInfo -> [String]
 compareDebianization old new =
-    let oldFiles = evalDebian debianizationFileMap (canonical old)
-        newFiles = evalDebian debianizationFileMap (canonical new) in
+    let ~(Just oldFiles) = evalDebianT debianizationFileMap (canonical old)
+        ~(Just newFiles) = evalDebianT debianizationFileMap (canonical new) in
     elems $ zipMaps doFile oldFiles newFiles
     where
       doFile :: FilePath -> Maybe Text -> Maybe Text -> Maybe String

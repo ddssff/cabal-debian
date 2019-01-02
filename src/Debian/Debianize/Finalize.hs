@@ -16,6 +16,7 @@ import Data.Monoid (mempty)
 import Control.Lens hiding ((<.>))
 import Control.Monad (unless, when)
 import Control.Monad as List (mapM_)
+import Control.Monad.Fail (MonadFail)
 import Control.Monad.State (get, modify)
 import Control.Monad.Trans (liftIO, MonadIO)
 import Data.ByteString.Lazy.UTF8 (fromString)
@@ -83,23 +84,23 @@ import Text.PrettyPrint.HughesPJClass (Pretty(pPrint))
 -- debian/changelog file) from the current directory, then runs
 -- @customize@ and finalizes the debianization so it is ready to be
 -- output.
-debianize :: (MonadIO m, Functor m) => CabalT m () -> CabalT m ()
+debianize :: (MonadIO m, MonadFail m, Functor m) => CabalT m () -> CabalT m ()
 debianize = debianizeWith (return ())
 
-debianizeWebsite :: (MonadIO m, Functor m) => CabalT m () -> CabalT m ()
+debianizeWebsite :: (MonadIO m, MonadFail m, Functor m) => CabalT m () -> CabalT m ()
 debianizeWebsite = debianizeWith (expandWebsite >> expandServer >> expandBackups)
 
 -- | Pass a function with some additional work to do.  I don't know
 -- if this could be done by just summing it with customize - probably.
 -- But I don't want to untangle this right now.
-debianizeWith :: (MonadIO m, Functor m) => CabalT m () -> CabalT m () -> CabalT m ()
+debianizeWith :: (MonadIO m, MonadFail m, Functor m) => CabalT m () -> CabalT m () -> CabalT m ()
 debianizeWith goodies customize =
   do liftCabal inputChangeLog
      customize
      finalizeDebianization goodies
 
 -- | Do some light IO and call finalizeDebianization.
-finalizeDebianization :: (MonadIO m, Functor m) => CabalT m () -> CabalT m ()
+finalizeDebianization :: (MonadIO m, MonadFail m, Functor m) => CabalT m () -> CabalT m ()
 finalizeDebianization goodies =
     do date <- liftIO getCurrentLocalRFC822Time
        currentUser <- liftIO getCurrentDebianUser
@@ -119,7 +120,7 @@ finalizeDebianization goodies =
 -- FIXME: we should be able to run this without a PackageDescription, change
 --        paramter type to Maybe PackageDescription and propagate down thru code
 finalizeDebianization' ::
-    (MonadIO m, Functor m)
+    (MonadIO m, MonadFail m, Functor m)
     => CabalT m ()
     -> String
     -> Maybe NameAddr
@@ -327,7 +328,7 @@ whenEmpty :: [a] -> [a] -> [a]
 whenEmpty d [] = d
 whenEmpty _ l = l
 
-finalizeControl :: (Monad m, Functor m) => Maybe NameAddr -> CabalT m ()
+finalizeControl :: (MonadFail m, Functor m) => Maybe NameAddr -> CabalT m ()
 finalizeControl currentUser =
     do finalizeMaintainer currentUser
        Just src <- use (A.debInfo . D.sourcePackageName)

@@ -12,6 +12,7 @@ import Control.Applicative ((<$>))
 import Data.Monoid (mempty)
 #endif
 import Control.Lens
+import Control.Monad.Fail (MonadFail)
 import Control.Monad.Trans (lift)
 import Control.Monad.Writer (execWriterT, tell, WriterT)
 import Data.Char (isSpace)
@@ -49,7 +50,7 @@ instance Pretty (PP Bool) where
 -- the Debianization produced by finalizeDebianization in the unit
 -- tests.)
 
-debianizationFileMap :: (Monad m, Functor m) => DebianT m (Map FilePath Text)
+debianizationFileMap :: (MonadFail m, Functor m) => DebianT m (Map FilePath Text)
 debianizationFileMap =
     fmap (Map.fromListWithKey (\ k a b -> error $ "Multiple values for " ++ k ++ ":\n  " ++ show a ++ "\n" ++ show b)) $ execWriterT $
     do -- here <- liftIO getCurrentDirectory
@@ -144,7 +145,7 @@ prermFiles =
     where
       pathf name = "debian" </> show (ppPrint name) ++ ".prerm"
 
-rules :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
+rules :: (MonadFail m, Functor m) => FilesT m [(FilePath, Text)]
 rules =
     do Just rh <- lift (use (D.rulesHead))
        rassignments <- lift (use (D.rulesSettings)) >>= return . intercalate "\n"

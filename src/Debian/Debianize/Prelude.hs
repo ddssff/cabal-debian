@@ -62,7 +62,7 @@ import Control.Monad.Reader (ask, ReaderT)
 import Control.Monad.State (get, MonadState, StateT, put)
 import Data.Char (isSpace)
 import Data.List as List (dropWhileEnd, intersperse, isSuffixOf, lines, map)
-import Data.Map as Map (empty, findWithDefault, foldWithKey, fromList, insert, lookup, map, Map)
+import Data.Map as Map (empty, findWithDefault, foldrWithKey, fromList, insert, lookup, map, Map)
 import Data.Maybe (catMaybes, fromJust, fromMaybe, listToMaybe, mapMaybe)
 import Data.Monoid ((<>), mconcat)
 import Data.Set as Set (Set, toList)
@@ -266,7 +266,7 @@ setMapMaybe p = Set.fromList . mapMaybe p . toList
 
 zipMaps :: Ord k => (k -> Maybe a -> Maybe b -> Maybe c) -> Map k a -> Map k b -> Map k c
 zipMaps f m n =
-    foldWithKey h (foldWithKey g Map.empty m) n
+    foldrWithKey h (foldrWithKey g Map.empty m) n
     where
       g k a r = case f k (Just a) (lookup k n) of
                   Just c -> Map.insert k c r              -- Both m and n have entries for k

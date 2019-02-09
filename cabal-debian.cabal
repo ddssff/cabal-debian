@@ -1,5 +1,5 @@
 Name:           cabal-debian
-Version:        4.38.4
+Version:        4.38.5
 Copyright:      Copyright (c) 2007-2014, David Fox, Jeremy Shaw
 License:        BSD3
 License-File:   LICENSE
@@ -150,6 +150,11 @@ flag pretty-112
   Description: prettyclass was merged into pretty-1.1.2
   Default: True
 
+flag local-debian
+  Description: Compile the debian package from local source in ../debian-haskell
+  Default: False
+  Manual: True
+
 Source-Repository head
   type: git
   location: https://github.com/ddssff/cabal-debian
@@ -164,7 +169,6 @@ Library
     Cabal >= 1.18,
     containers,
     data-default,
-    debian >= 3.91,
     deepseq,
     Diff >= 0.3.1,
     directory,
@@ -226,6 +230,45 @@ Library
     Build-Depends: pretty >= 1.1.2
   else
     Build-Depends: pretty < 1.1.2, prettyclass
+  if !flag(local-debian)
+    Build-Depends: debian >= 3.91
+  else
+    Hs-Source-Dirs: ../debian-haskell
+    Build-Depends: bytestring, bzlib, ListLike, QuickCheck, regex-compat, SHA, template-haskell, th-lift, th-orphans, time, zlib
+    Exposed-Modules:
+      Debian.Apt.Index
+      Debian.Apt.Methods
+      Debian.Arch
+      Debian.Changes
+      Debian.Codename
+      Debian.Control
+      Debian.Control.Builder
+      Debian.Control.ByteString
+      Debian.Control.Common
+      Debian.Control.Policy
+      Debian.Control.String
+      Debian.Control.Text
+      Debian.Control.TextLazy
+      Debian.Except
+      Debian.Loc
+      Debian.Pretty
+      Debian.Relation
+      Debian.Relation.ByteString
+      Debian.Relation.Common
+      Debian.Relation.String
+      Debian.Relation.Text
+      Debian.Release
+      Debian.Sources
+      Debian.TH
+      Debian.Time
+      Debian.URI
+      Debian.UTF8
+      Debian.VendorURI
+      Debian.Version
+      Debian.Version.Common
+      Debian.Version.Internal
+      Debian.Version.String
+      Debian.Version.Text
 
 Executable cabal-debian
   Default-Language: Haskell2010

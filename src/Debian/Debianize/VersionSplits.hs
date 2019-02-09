@@ -25,9 +25,10 @@ import Debian.Version (DebianVersion, parseDebianVersion')
 #if MIN_VERSION_Cabal(2,0,0)
 import Distribution.Package (PackageIdentifier(..), PackageName)
 import Distribution.Package (mkPackageName)
-import Distribution.Version (showVersion, Version)
+import Distribution.Pretty (prettyShow)
+import Distribution.Version (Version)
 #else
-import Data.Version (showVersion, Version(Version))
+import Data.Version (Version(Version))
 import Distribution.Package (PackageIdentifier(..), PackageName(..))
 #endif
 import Distribution.Version (anyVersion, earlierVersion, intersectVersionRanges, orLaterVersion, VersionRange)
@@ -102,12 +103,12 @@ packageRangesFromVersionSplits s =
 debianFromCabal :: VersionSplits -> PackageIdentifier -> DebBase
 debianFromCabal s p =
     doSplits s (Just (D.EEQ debVer))
-    where debVer = parseDebianVersion' (showVersion (pkgVersion p))
+    where debVer = parseDebianVersion' (prettyShow (pkgVersion p))
 
 cabalFromDebian' :: Map PackageName VersionSplits -> DebBase -> Version -> PackageIdentifier
 cabalFromDebian' mp base ver =
     PackageIdentifier (cabalFromDebian mp base dver) ver
-    where dver = parseDebianVersion' (showVersion ver)
+    where dver = parseDebianVersion' (prettyShow ver)
 
 -- | Brute force implementation - I'm assuming this is not a huge map.
 cabalFromDebian :: Map PackageName VersionSplits -> DebBase -> DebianVersion -> PackageName
@@ -136,7 +137,7 @@ cabalFromDebian mp base@(DebBase name) ver =
 doSplits :: VersionSplits -> Maybe D.VersionReq -> DebBase
 doSplits s version =
     foldTriples' (\ ltName v geName _ ->
-                           let split = parseDebianVersion' (showVersion v) in
+                           let split = parseDebianVersion' (prettyShow v) in
                                 case version of
                                   Nothing -> geName
                                   Just (D.SLT v') | v' <= split -> ltName

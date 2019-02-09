@@ -30,6 +30,7 @@ import Control.Exception (SomeException, throw, try)
 import Control.Lens (_2, over)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Char (isSpace, toLower, toUpper)
+import Data.Function.Memoize (deriveMemoizable, Memoizable, memoize, memoize2, memoizeFinite)
 import Data.List (intercalate, isPrefixOf)
 import Debian.Debianize.BinaryDebDescription (PackageType(..))
 import Debian.Relation (BinPkgName(BinPkgName))
@@ -39,8 +40,8 @@ import Distribution.Compiler (CompilerFlavor(..), CompilerId(CompilerId))
 import Distribution.Compiler (CompilerInfo(..), unknownCompilerInfo, AbiTag(NoAbiTag))
 #endif
 #if MIN_VERSION_Cabal(2,0,0)
-import Data.Function.Memoize (deriveMemoizable, Memoizable, memoize, memoize2, memoizeFinite)
-import Distribution.Version (mkVersion', mkVersion, showVersion, Version, versionNumbers)
+import Distribution.Pretty (prettyShow)
+import Distribution.Version (mkVersion', mkVersion, Version, versionNumbers)
 import Data.Version (parseVersion)
 import Data.Word (Word64)
 #else
@@ -106,10 +107,10 @@ withCompilerVersion root hc f = either Left (\v -> Right (f v)) (newestAvailable
 -- suitable for using some version of ghc from hvr's compiler repo.
 hvrCompilerPATH :: Version -> String -> String
 hvrCompilerPATH v path0 =
-    intercalate ":" ["/opt/ghc/" ++ showVersion v ++ "/bin",
-                     "/opt/cabal/" ++ showVersion (hvrCabalVersion v) ++ "/bin",
-                     "/opt/happy/" ++ showVersion (hvrHappyVersion v) ++ "/bin",
-                     "/opt/alex/" ++ showVersion (hvrAlexVersion v) ++ "/bin",
+    intercalate ":" ["/opt/ghc/" ++ prettyShow v ++ "/bin",
+                     "/opt/cabal/" ++ prettyShow (hvrCabalVersion v) ++ "/bin",
+                     "/opt/happy/" ++ prettyShow (hvrHappyVersion v) ++ "/bin",
+                     "/opt/alex/" ++ prettyShow (hvrAlexVersion v) ++ "/bin",
                      path0]
 
 -- | What version of Cabal goes with this version of GHC?
@@ -240,7 +241,7 @@ compilerIdFromDebianVersion hc debVersion =
 #endif
     where
       greatestLowerBound :: DebianVersion -> [Version] -> Version
-      greatestLowerBound b xs = last $ takeWhile (\ v -> parseDebianVersion' (showVersion v) < b) xs
+      greatestLowerBound b xs = last $ takeWhile (\ v -> parseDebianVersion' (prettyShow v) < b) xs
 
 -- | General function to build a command line option that reads most
 -- of the possible values for CompilerFlavor.

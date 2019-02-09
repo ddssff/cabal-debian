@@ -59,7 +59,7 @@ type CompilerInfo = CompilerId
 -- in particular, using the dependency environment in the EnvSet, find
 -- the newest available compiler of the requested compiler flavor and
 -- use that information load the configured PackageDescription.
-inputCabalization :: forall m. (MonadIO m, Functor m) => Flags -> WithProcAndSys m (Either String PackageDescription)
+inputCabalization :: forall m. (MonadIO m) => Flags -> WithProcAndSys m (Either String PackageDescription)
 inputCabalization flags =
     getCompInfo flags >>= either (return . Left) (\cinfo -> Right <$> doCompInfo cinfo)
     where

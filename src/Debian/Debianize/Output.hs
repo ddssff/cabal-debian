@@ -101,7 +101,7 @@ performDebianizationWith goodies custom =
 
 -- | Depending on the options in @atoms@, either validate, describe,
 -- or write the generated debianization.
-finishDebianization :: forall m. (MonadIO m, MonadFail m, Functor m) => StateT CabalInfo m ()
+finishDebianization :: forall m. (MonadIO m, MonadFail m) => StateT CabalInfo m ()
 finishDebianization = zoom debInfo $
     do new <- get
        case () of
@@ -127,7 +127,7 @@ finishDebianization = zoom debInfo $
 
 
 -- | Write the files of the debianization @d@ to ./debian
-writeDebianization :: (MonadIO m, MonadFail m, Functor m) => DebianT m ()
+writeDebianization :: (MonadIO m, MonadFail m) => DebianT m ()
 writeDebianization =
     do files <- debianizationFileMap
        liftIO $ mapM_ (uncurry doFile) (Map.toList files)
@@ -139,7 +139,7 @@ writeDebianization =
 
 -- | Return a string describing the debianization - a list of file
 -- names and their contents in a somewhat human readable format.
-describeDebianization :: (MonadIO m, MonadFail m, Functor m) => DebianT m String
+describeDebianization :: (MonadIO m, MonadFail m) => DebianT m String
 describeDebianization =
     debianizationFileMap >>= return . concatMap (\ (path, text) -> path ++ ": " ++ indent " > " (unpack text)) . Map.toList
 

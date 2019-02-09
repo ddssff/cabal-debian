@@ -83,6 +83,7 @@ import Distribution.Package (PackageIdentifier(..), PackageName(..))
 import Distribution.PackageDescription (FlagName(..))
 import Data.Version
 #endif
+import Distribution.Pretty (Pretty(pretty))
 import Distribution.Verbosity (intToVerbosity, Verbosity)
 import GHC.IO.Exception (ExitCode(ExitFailure, ExitSuccess), IOErrorType(InappropriateType, NoSuchThing), IOException(IOError, ioe_description, ioe_type))
 import Prelude hiding (lookup, map)
@@ -91,7 +92,7 @@ import System.FilePath ((</>), dropExtension)
 import System.IO (hSetBinaryMode, IOMode(ReadMode), openFile, withFile)
 import System.IO.Error (catchIOError, isDoesNotExistError)
 import System.Process (readProcessWithExitCode, showCommandForUser)
-import Text.PrettyPrint.HughesPJClass as PP (Pretty(pPrint), text)
+import Text.PrettyPrint.HughesPJClass as PP (text)
 
 curry3 :: ((a, b, c) -> d) -> a -> b -> c -> d
 curry3 f a b c = f (a, b, c)
@@ -110,7 +111,7 @@ buildDebVersionMap =
     return . Map.fromList . catMaybes
 
 (!) :: DebMap -> D.BinPkgName -> DebianVersion
-m ! k = maybe (error ("No version number for " ++ (show . pPrint . PP $ k) ++ " in " ++ show (Map.map (maybe Nothing (Just . prettyDebianVersion)) m))) id (Map.findWithDefault Nothing k m)
+m ! k = maybe (error ("No version number for " ++ (show . pretty . PP $ k) ++ " in " ++ show (Map.map (maybe Nothing (Just . prettyDebianVersion)) m))) id (Map.findWithDefault Nothing k m)
 
 strip :: String -> String
 strip = stripWith isSpace
@@ -205,11 +206,11 @@ readFileMaybe :: FilePath -> IO (Maybe Text)
 readFileMaybe path = (Just <$> readFile' path) `catchIOError` (\ _ -> return Nothing)
 
 showDeps :: D.Relations -> String
-showDeps = show . pPrint . PP
+showDeps = show . pretty . PP
 
 showDeps' :: D.Relations -> String
 showDeps' xss = show $ mconcat $ intersperse (text "\n ") $
-    [pPrint (PP xs) <> text "," | xs <- xss ]
+    [pretty (PP xs) <> text "," | xs <- xss ]
 
 -- | From Darcs.Utils - set the working directory and run an IO operation.
 withCurrentDirectory :: FilePath -> IO a -> IO a
@@ -261,7 +262,7 @@ getDirectoryContents' dir =
       dotFile ".." = True
       dotFile _ = False
 
-setMapMaybe :: (Ord a, Ord b) => (a -> Maybe b) -> Set a -> Set b
+setMapMaybe :: ({-Ord a,-} Ord b) => (a -> Maybe b) -> Set a -> Set b
 setMapMaybe p = Set.fromList . mapMaybe p . toList
 
 zipMaps :: Ord k => (k -> Maybe a -> Maybe b -> Maybe c) -> Map k a -> Map k b -> Map k c
@@ -345,13 +346,13 @@ fromSingleton e multiple s =
       xs -> multiple xs
 
 instance Pretty (PP PackageIdentifier) where
-    pPrint (PP p) = pPrint (PP (pkgName p)) <> text "-" <> pPrint (PP (pkgVersion p))
+    pretty (PP p) = pretty (PP (pkgName p)) <> text "-" <> pretty (PP (pkgVersion p))
 
 instance Pretty (PP PackageName) where
 #if MIN_VERSION_Cabal(2,0,0)
-    pPrint (PP p) = text (unPackageName p)
+    pretty (PP p) = text (unPackageName p)
 #else
-    pPrint (PP (PackageName s)) = text s
+    pretty (PP (PackageName s)) = text s
 #endif
 
 -- | Set @b@ if it currently isNothing and the argument isJust, that is

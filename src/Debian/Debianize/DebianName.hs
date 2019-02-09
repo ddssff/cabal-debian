@@ -30,12 +30,13 @@ import Debian.Version (parseDebianVersion')
 import Distribution.Compiler (CompilerFlavor(..))
 #if MIN_VERSION_Cabal(2,0,0)
 import Distribution.Package (Dependency(..), PackageIdentifier(..), PackageName, unPackageName)
-import Distribution.Version (showVersion, Version)
+import Distribution.Version (Version)
 #else
 import Data.Version (showVersion, Version)
 import Distribution.Package (Dependency(..), PackageIdentifier(..), PackageName(PackageName))
 #endif
 import qualified Distribution.PackageDescription as Cabal (PackageDescription(package))
+import Distribution.Pretty (prettyShow)
 import Prelude hiding (unlines)
 
 data Dependency_
@@ -46,7 +47,7 @@ data Dependency_
     deriving (Eq, Show)
 
 -- | Build the Debian package name for a given package type.
-debianName :: (Monad m, Functor m, PkgName name) => PackageType -> CompilerFlavor -> CabalT m name
+debianName :: (Monad m, PkgName name) => PackageType -> CompilerFlavor -> CabalT m name
 debianName typ hc =
     do base <-
            case (typ, hc) of
@@ -70,7 +71,7 @@ debianNameBase =
 #else
        let pname@(PackageName _) = pkgName pkgId
 #endif
-           version = (Just (D.EEQ (parseDebianVersion' (showVersion (pkgVersion pkgId)))))
+           version = (Just (D.EEQ (parseDebianVersion' (prettyShow (pkgVersion pkgId)))))
        case (nameBase, Map.lookup (pkgName pkgId) nameMap) of
          (Just base, _) -> return base
          (Nothing, Nothing) -> return $ debianBaseName pname

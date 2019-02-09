@@ -23,7 +23,7 @@ import Control.Applicative (many, (<|>))
 import Control.Lens
 import Control.Monad.State.Class (MonadState)
 import Control.Monad.Trans
-import "newtype-generics" Control.Newtype
+import Control.Newtype.Generics
 import Data.Bifunctor (first)
 import Data.Char(toUpper)
 import Data.Foldable (forM_)
@@ -641,7 +641,7 @@ commandLineOptionsParserInfo args = O.info (O.helper <*> commandLineOptionsP) im
 -- of corresponding actions is all great, but now it is pretty easy
 -- to not handle particular field in `BehaviorAdjustment' field and
 -- ghc will not complain.
-handleBehaviorAdjustment :: (MonadIO m, Functor m) => BehaviorAdjustment -> CabalT m ()
+handleBehaviorAdjustment :: (MonadIO m) => BehaviorAdjustment -> CabalT m ()
 handleBehaviorAdjustment (BehaviorAdjustment {..}) = do
  forM_ _cabalEpochMapping $ \(CabalEpochMapping (pkg, num)) -> A.epochMap %= Map.insert pkg num
  zoom A.debInfo $ do

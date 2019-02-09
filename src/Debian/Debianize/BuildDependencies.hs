@@ -11,10 +11,10 @@ import Control.Applicative ((<$>))
 #endif
 import Control.Lens
 import Control.Monad.State (MonadState(get))
-import Control.Monad.Trans (liftIO, MonadIO)
+import Control.Monad.Trans (MonadIO)
 import Data.Char (isSpace, toLower)
 import Data.Function (on)
-import Data.List as List (filter, groupBy, intercalate, map, minimumBy, nub, sortBy)
+import Data.List as List (filter, groupBy, map, minimumBy, nub, sortBy)
 import Data.Map as Map (lookup, Map)
 import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, listToMaybe, mapMaybe)
 import Data.Monoid ((<>))
@@ -39,6 +39,7 @@ import Distribution.Package (Dependency(..), PackageIdentifier(pkgName, pkgVersi
 import Distribution.PackageDescription as Cabal (BuildInfo(..), BuildInfo(buildTools, extraLibs, pkgconfigDepends), Library(..), Executable(..), TestSuite(..))
 import Distribution.PackageDescription (PackageDescription)
 import qualified Distribution.PackageDescription as Cabal (PackageDescription(library, executables, testSuites))
+import Distribution.Pretty (prettyShow)
 #if MIN_VERSION_Cabal(2,0,0)
 import Distribution.Types.LegacyExeDependency (LegacyExeDependency(..))
 import Distribution.Types.PkgconfigDependency (PkgconfigDependency(..))
@@ -120,7 +121,7 @@ mergeCabalDependencies =
 
 -- The haskell-cdbs package contains the hlibrary.mk file with
 -- the rules for building haskell packages.
-debianBuildDeps :: (MonadIO m, Functor m) => PackageDescription -> CabalT m D.Relations
+debianBuildDeps :: (MonadIO m) => PackageDescription -> CabalT m D.Relations
 debianBuildDeps pkgDesc =
     do hflavor <- use (A.debInfo . D.flags . compilerFlavor)
        prof <- not <$> use (A.debInfo . D.noProfilingLibrary)
@@ -200,7 +201,7 @@ instance IsBuildable TestSuite where
 
 -- | Collect the dependencies required to build any packages that have
 -- architecture "all".
-debianBuildDepsIndep :: (MonadIO m, Functor m) => PackageDescription -> CabalT m D.Relations
+debianBuildDepsIndep :: (MonadIO m) => PackageDescription -> CabalT m D.Relations
 debianBuildDepsIndep pkgDesc =
     do hc <- use (A.debInfo . D.flags . compilerFlavor)
        let hcs = singleton hc -- vestigial
@@ -218,7 +219,7 @@ debianBuildDepsIndep pkgDesc =
 -- | The documentation dependencies for a package include the
 -- documentation package for any libraries which are build
 -- dependencies, so we have use to all the cross references.
-docDependencies :: (MonadIO m, Functor m) => Dependency_ -> CabalT m D.Relations
+docDependencies :: (MonadIO m) => Dependency_ -> CabalT m D.Relations
 docDependencies (BuildDepends (Dependency name ranges)) =
     do hc <- use (A.debInfo . D.flags . compilerFlavor)
        let hcs = singleton hc -- vestigial
@@ -229,7 +230,7 @@ docDependencies _ = return []
 -- | The Debian build dependencies for a package include the profiling
 -- libraries and the documentation packages, used for creating cross
 -- references.  Also the packages associated with extra libraries.
-buildDependencies :: (MonadIO m, Functor m) => Set (CompilerFlavor, B.PackageType) -> Dependency_ -> CabalT m D.Relations
+buildDependencies :: (MonadIO m) => Set (CompilerFlavor, B.PackageType) -> Dependency_ -> CabalT m D.Relations
 buildDependencies hcTypePairs (BuildDepends (Dependency name ranges)) =
     use (A.debInfo . D.omitProfVersionDeps) >>= \ omitProfDeps ->
     concat <$> mapM (\ (hc, typ) -> dependencies hc typ name ranges omitProfDeps) (toList hcTypePairs)
@@ -431,10 +432,10 @@ doBundled hc typ name rels =
 debianVersion' :: Monad m => PackageName -> Version -> CabalT m DebianVersion
 debianVersion' name v =
     do atoms <- get
-       return $ parseDebianVersion' (maybe "" (\ n -> show n ++ ":") (Map.lookup name (view A.epochMap atoms)) ++ showVersion v)
+       return $ parseDebianVersion' (maybe "" (\ n -> show n ++ ":") (Map.lookup name (view A.epochMap atoms)) ++ prettyShow v)
 
 debianVersion'' :: CabalInfo -> PackageIdentifier -> DebianVersion
-debianVersion'' atoms i = parseDebianVersion' (maybe "" (\ n -> show n ++ ":") (Map.lookup (pkgName i) (view A.epochMap atoms)) ++ showVersion (pkgVersion i))
+debianVersion'' atoms i = parseDebianVersion' (maybe "" (\ n -> show n ++ ":") (Map.lookup (pkgName i) (view A.epochMap atoms)) ++ prettyShow (pkgVersion i))
 
 data Rels a = And {unAnd :: [Rels a]} | Or {unOr :: [Rels a]} | Rel' {unRel :: a} deriving Show
 

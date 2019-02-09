@@ -75,7 +75,7 @@ instance Canonical CabalInfo where
 
 -- | Given the 'Flags' value read the cabalization and build a new
 -- 'CabalInfo' record.
-newCabalInfo :: (MonadIO m, MonadMask m, Functor m) => Flags -> m (Either String CabalInfo)
+newCabalInfo :: (MonadIO m, MonadMask m{-, Functor m-}) => Flags -> m (Either String CabalInfo)
 newCabalInfo flags' =
     withProcAndSys "/" $ inputCabalization flags' >>= either (return . Left) (\p -> Right <$> doPkgDesc p)
     where

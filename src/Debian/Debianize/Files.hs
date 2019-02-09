@@ -36,12 +36,13 @@ import Debian.Relation (BinPkgName(BinPkgName), Relations)
 import Distribution.PackageDescription (PackageDescription)
 import Prelude hiding (dropWhile, init, log, unlines, writeFile)
 import System.FilePath ((</>))
-import Text.PrettyPrint.HughesPJClass (empty, Pretty(pPrint), text)
+import Text.PrettyPrint.HughesPJClass (empty, text)
+import Distribution.Pretty (Pretty(pretty))
 
 type FilesT m = WriterT [(FilePath, Text)] (DebianT m)
 
 instance Pretty (PP Bool) where
-    pPrint = text . show . unPP
+    pretty = text . show . unPP
 
 -- | Turn the Debianization into a list of files, making sure the text
 -- associated with each path is unique.  Assumes that
@@ -50,7 +51,7 @@ instance Pretty (PP Bool) where
 -- the Debianization produced by finalizeDebianization in the unit
 -- tests.)
 
-debianizationFileMap :: (MonadFail m, Functor m) => DebianT m (Map FilePath Text)
+debianizationFileMap :: (MonadFail m) => DebianT m (Map FilePath Text)
 debianizationFileMap =
     fmap (Map.fromListWithKey (\ k a b -> error $ "Multiple values for " ++ k ++ ":\n  " ++ show a ++ "\n" ++ show b)) $ execWriterT $
     do -- here <- liftIO getCurrentDirectory
@@ -72,18 +73,18 @@ debianizationFileMap =
        tell =<< prermFiles
        tell =<< intermediates
 
-sourceFormatFiles :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
+sourceFormatFiles :: (Monad m) => FilesT m [(FilePath, Text)]
 sourceFormatFiles = do
     fmt <- lift $ use D.sourceFormat
     return $ [("debian/source/format", pack . ppShow $ fmt)]
 
-watchFile :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
+watchFile :: (Monad m) => FilesT m [(FilePath, Text)]
 watchFile = maybe [] (\ x -> [("debian/watch", x)]) <$> (lift $ use D.watch)
 
-intermediates :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
+intermediates :: (Monad m) => FilesT m [(FilePath, Text)]
 intermediates = Set.toList <$> (lift $ use D.intermediateFiles)
 
-installs :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
+installs :: (Monad m) => FilesT m [(FilePath, Text)]
 installs =
     (Map.toList . Map.map unlines . Set.fold doAtom mempty) <$> (lift $ use (D.atomSet))
     where
@@ -91,7 +92,7 @@ installs =
       doAtom _ mp = mp
       pathf name = "debian" </> show (ppPrint name) ++ ".install"
 
-dirs :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
+dirs :: (Monad m) => FilesT m [(FilePath, Text)]
 dirs =
     (Map.toList . Map.map unlines . Set.fold doAtom mempty) <$> (lift $ use D.atomSet)
     where
@@ -99,21 +100,21 @@ dirs =
       doAtom _ mp = mp
       pathf name = "debian" </> show (ppPrint name) ++ ".dirs"
 
-init :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
+init :: (Monad m) => FilesT m [(FilePath, Text)]
 init =
     (Map.toList . mapKeys pathf) <$> (lift $ use D.installInit)
     where
       pathf name = "debian" </> show (ppPrint name) ++ ".init"
 
 -- FIXME - use a map and insertWith, check for multiple entries
-logrotate :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
+logrotate :: (Monad m) => FilesT m [(FilePath, Text)]
 logrotate =
     (Map.toList . Map.map (\ stanzas -> Text.unlines (Set.toList stanzas)) . mapKeys pathf) <$> (lift $ use D.logrotateStanza)
     where
       pathf name = "debian" </> show (ppPrint name) ++ ".logrotate"
 
 -- | Assemble all the links by package and output one file each
-links :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
+links :: (Monad m) => FilesT m [(FilePath, Text)]
 links =
     (Map.toList . Map.map unlines . Set.fold doAtom mempty) <$> (lift $ use D.atomSet)
     where
@@ -121,31 +122,31 @@ links =
       doAtom _ mp = mp
       pathf name = "debian" </> show (ppPrint name) ++ ".links"
 
-postinstFiles :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
+postinstFiles :: (Monad m) => FilesT m [(FilePath, Text)]
 postinstFiles =
      (Map.toList . mapKeys pathf) <$> (lift $ use D.postInst)
     where
       pathf (BinPkgName name) = "debian" </> name <> ".postinst"
 
-postrmFiles :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
+postrmFiles :: (Monad m) => FilesT m [(FilePath, Text)]
 postrmFiles =
     (Map.toList . mapKeys pathf) <$> (lift $ use D.postRm)
     where
       pathf name = "debian" </> show (ppPrint name) ++ ".postrm"
 
-preinstFiles :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
+preinstFiles :: (Monad m) => FilesT m [(FilePath, Text)]
 preinstFiles =
     (Map.toList . mapKeys pathf) <$> (lift $ use D.preInst)
     where
       pathf name = "debian" </> show (ppPrint name) ++ ".preinst"
 
-prermFiles :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
+prermFiles :: (Monad m) => FilesT m [(FilePath, Text)]
 prermFiles =
     (Map.toList . mapKeys pathf) <$> (lift $ use D.preRm)
     where
       pathf name = "debian" </> show (ppPrint name) ++ ".prerm"
 
-rules :: (MonadFail m, Functor m) => FilesT m [(FilePath, Text)]
+rules :: (MonadFail m) => FilesT m [(FilePath, Text)]
 rules =
     do Just rh <- lift (use (D.rulesHead))
        rassignments <- lift (use (D.rulesSettings)) >>= return . intercalate "\n"
@@ -153,28 +154,28 @@ rules =
        rl <- (reverse . Set.toList) <$> lift (use (D.rulesFragments))
        return [("debian/rules", intercalate "\n\n" (filter (not . Text.null) (List.map strip (rh : rassignments : rincludes : rl))) <> "\n")]
 
-changelog :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
+changelog :: (Monad m) => FilesT m [(FilePath, Text)]
 changelog =
     do log <- lift $ use D.changelog
        return [("debian/changelog", pack (show (ppPrint (fromMaybe (error "No changelog in debianization") log))))]
 
-control :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
+control :: (Monad m) => FilesT m [(FilePath, Text)]
 control =
     do d <- lift $ use D.control
        return [("debian/control", prettyText (controlFile d))]
 
-compat :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
+compat :: (Monad m) => FilesT m [(FilePath, Text)]
 compat =
     do t <- lift $ use D.compat
        return [("debian/compat", pack (show (fromMaybe (error "Missing DebCompat atom - is debhelper installed?") $ t) <> "\n"))]
 
-copyright :: (Monad m, Functor m) => FilesT m [(FilePath, Text)]
+copyright :: (Monad m) => FilesT m [(FilePath, Text)]
 copyright =
     do copyrt <- lift $ use (D.copyright)
        return $ maybe [] (\ x -> [("debian/copyright", prettyText x)]) copyrt
 
 instance Pretty (PP (PackageDescription -> IO CopyrightDescription)) where
-    pPrint _ = text "<function>"
+    pretty _ = text "<function>"
 
 controlFile :: S.SourceDebDescription -> Control' String
 controlFile src =

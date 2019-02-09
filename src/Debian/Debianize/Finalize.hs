@@ -1,5 +1,5 @@
 -- | Compute the debianization of a cabal package.
-{-# LANGUAGE CPP, FlexibleContexts, FlexibleInstances, OverloadedStrings, ScopedTypeVariables #-}
+{-# LANGUAGE CPP, FlexibleContexts, FlexibleInstances, OverloadedStrings, ScopedTypeVariables, TemplateHaskell #-}
 module Debian.Debianize.Finalize
     ( debianize
     , debianizeWith
@@ -31,6 +31,7 @@ import Data.Set as Set (difference, filter, fold, fromList, insert, map, null, S
 import Data.Set.Extra as Set (mapM_)
 import Data.Text as Text (intercalate, pack, Text, unlines, unpack)
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(..))
+import Debian.Codename (parseCodename)
 import Debian.Debianize.BasicInfo (cabalFlagAssignments, compilerFlavor, verbosity)
 import qualified Debian.Debianize.BinaryDebDescription as B
 import Debian.Debianize.BuildDependencies (debianBuildDeps, debianBuildDepsIndep)
@@ -51,7 +52,6 @@ import Debian.Policy (getCurrentDebianUser, getDebhelperCompatLevel, haskellMain
 import Debian.Pretty (PP(..), ppShow)
 import Debian.Relation (BinPkgName, BinPkgName(BinPkgName), Relation(Rel), Relations, SrcPkgName(SrcPkgName))
 import qualified Debian.Relation as D (BinPkgName(BinPkgName), Relation(..))
-import Debian.Release (parseReleaseName)
 import Debian.Time (getCurrentLocalRFC822Time)
 import qualified Debian.Version as V (buildDebianVersion, DebianVersion, parseDebianVersion', epoch, version, revision)
 import Distribution.Compiler (CompilerFlavor(GHC))
@@ -59,15 +59,15 @@ import Distribution.Compiler (CompilerFlavor(GHC))
 import Distribution.Compiler (CompilerFlavor(GHCJS))
 #endif
 #if MIN_VERSION_Cabal(2,0,0)
-import Distribution.Package (Dependency(..), PackageIdentifier(..), PackageName, mkPackageName, unPackageName)
+import Distribution.Package (Dependency(..), PackageIdentifier(..), PackageName, unPackageName)
 import Distribution.PackageDescription as Cabal (allBuildInfo, author, BuildInfo(buildable, extraLibs), Executable(buildInfo, exeName), FlagName, mkFlagName, unFlagName, maintainer, PackageDescription(testSuites, description))
 import Distribution.Types.UnqualComponentName
-import Distribution.Utils.ShortText
+--import Distribution.Utils.ShortText
 #else
 import Distribution.Package (Dependency(..), PackageIdentifier(..), PackageName(PackageName))
 import Distribution.PackageDescription as Cabal (allBuildInfo, author, BuildInfo(buildable, extraLibs), Executable(buildInfo, exeName), FlagName(FlagName), maintainer, PackageDescription(testSuites))
 #endif
-import Distribution.PackageDescription as Cabal (PackageDescription(dataFiles, description, executables, library, package, synopsis))
+import Distribution.PackageDescription as Cabal (PackageDescription(dataFiles, {-description,-} executables, library, package, synopsis))
 import Prelude hiding (init, log, map, unlines, unlines, writeFile)
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>), makeRelative, splitFileName, takeDirectory, takeFileName)
@@ -77,30 +77,30 @@ import Text.Parsec.Rfc2822 (NameAddr(..))
 #else
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr(..))
 #endif
-import Text.PrettyPrint.HughesPJClass (Pretty(pPrint))
+import Distribution.Pretty (Pretty(pretty))
 
 -- | @debianize customize@ initializes the CabalT state from the
 -- environment and the cabal package description in (and possibly the
 -- debian/changelog file) from the current directory, then runs
 -- @customize@ and finalizes the debianization so it is ready to be
 -- output.
-debianize :: (MonadIO m, MonadFail m, Functor m) => CabalT m () -> CabalT m ()
+debianize :: (MonadIO m, MonadFail m) => CabalT m () -> CabalT m ()
 debianize = debianizeWith (return ())
 
-debianizeWebsite :: (MonadIO m, MonadFail m, Functor m) => CabalT m () -> CabalT m ()
+debianizeWebsite :: (MonadIO m, MonadFail m) => CabalT m () -> CabalT m ()
 debianizeWebsite = debianizeWith (expandWebsite >> expandServer >> expandBackups)
 
 -- | Pass a function with some additional work to do.  I don't know
 -- if this could be done by just summing it with customize - probably.
 -- But I don't want to untangle this right now.
-debianizeWith :: (MonadIO m, MonadFail m, Functor m) => CabalT m () -> CabalT m () -> CabalT m ()
+debianizeWith :: (MonadIO m, MonadFail m) => CabalT m () -> CabalT m () -> CabalT m ()
 debianizeWith goodies customize =
   do liftCabal inputChangeLog
      customize
      finalizeDebianization goodies
 
 -- | Do some light IO and call finalizeDebianization.
-finalizeDebianization :: (MonadIO m, MonadFail m, Functor m) => CabalT m () -> CabalT m ()
+finalizeDebianization :: (MonadIO m, MonadFail m) => CabalT m () -> CabalT m ()
 finalizeDebianization goodies =
     do date <- liftIO getCurrentLocalRFC822Time
        currentUser <- liftIO getCurrentDebianUser
@@ -120,7 +120,7 @@ finalizeDebianization goodies =
 -- FIXME: we should be able to run this without a PackageDescription, change
 --        paramter type to Maybe PackageDescription and propagate down thru code
 finalizeDebianization' ::
-    (MonadIO m, MonadFail m, Functor m)
+    (MonadIO m, MonadFail m)
     => CabalT m ()
     -> String
     -> Maybe NameAddr
@@ -203,7 +203,7 @@ finalizeDescription bdd =
 --    4. latest version in debian/changelog
 --
 -- The --deb-version argument overrides everything.
-debianVersion :: (Monad m, Functor m) => CabalT m V.DebianVersion
+debianVersion :: (Monad m) => CabalT m V.DebianVersion
 debianVersion =
     do cabalName <- (pkgName . Cabal.package) <$> use A.packageDescription
        (cabalVersion :: V.DebianVersion) <- (V.parseDebianVersion' . ppShow . pkgVersion . Cabal.package) <$> use A.packageDescription
@@ -252,7 +252,7 @@ debianEpoch name = get >>= return . Map.lookup name . view A.epochMap
 -- | Compute and return the debian source package name, based on the
 -- sourcePackageName if it was specified, and constructed from the
 -- cabal name otherwise.
-finalizeSourceName :: (Monad m, Functor m) => B.PackageType -> CabalT m ()
+finalizeSourceName :: (Monad m) => B.PackageType -> CabalT m ()
 finalizeSourceName typ =
     do DebBase debName <- debianNameBase
        hc <- use (A.debInfo . D.flags . compilerFlavor)
@@ -328,7 +328,7 @@ whenEmpty :: [a] -> [a] -> [a]
 whenEmpty d [] = d
 whenEmpty _ l = l
 
-finalizeControl :: (MonadFail m, Functor m) => Maybe NameAddr -> CabalT m ()
+finalizeControl :: (MonadFail m) => Maybe NameAddr -> CabalT m ()
 finalizeControl currentUser =
     do finalizeMaintainer currentUser
        Just src <- use (A.debInfo . D.sourcePackageName)
@@ -381,11 +381,11 @@ describe =
 -- of the debian description, each of which is amended.
 debianDescriptionBase :: PackageDescription -> Text
 debianDescriptionBase p =
-    pack $ List.intercalate "\n " $ (synop' : desc)
+    pack $ List.intercalate "\n " $ (synop' : desc')
     where
       -- If we have a one line description and no synopsis, use
       -- the description as the synopsis.
-      synop' = if List.null synop && length desc /= 1
+      synop' = if List.null synop && length desc' /= 1
                then "WARNING: No synopsis available for package " ++ ppShow (package p)
                else synop
       synop :: String
@@ -393,15 +393,15 @@ debianDescriptionBase p =
       -- this version goes into production.  :-/  Ok, now I know, because sometimes the
       -- short cabal description has more than one line.
       synop = List.intercalate " " $ fmap (dropWhileEnd isSpace) $ lines $ synopsis p
-      desc :: [String]
-      desc = List.map addDot . stripWith List.null $ fmap (dropWhileEnd isSpace) $ lines $ Cabal.description p
+      desc' :: [String]
+      desc' = List.map addDot . stripWith List.null $ fmap (dropWhileEnd isSpace) $ lines $ Cabal.description p
       addDot line = if List.null line then "." else line
 
 -- | Make sure there is a changelog entry with the version number and
 -- source package name implied by the debianization.  This means
 -- either adding an entry or modifying the latest entry (if its
 -- version number is the exact one in our debianization.)
-finalizeChangelog :: (Monad m, Functor m) => String -> Maybe NameAddr -> CabalT m ()
+finalizeChangelog :: (Monad m) => String -> Maybe NameAddr -> CabalT m ()
 finalizeChangelog date currentUser =
     do finalizeMaintainer currentUser
        ver <- debianVersion
@@ -420,16 +420,16 @@ finalizeChangelog date currentUser =
       -- Ensure that the package name is correct in the first log entry.
       fixLog src ver cmts _maint _ (Just (ChangeLog (entry : older)))
           | logVersion entry == ver =
-              let entry' = entry { logPackage = show (pPrint (PP src))
+              let entry' = entry { logPackage = show (pretty (PP src))
                                  , logComments = logComments entry ++ "\n" ++
                                                  (List.unlines $ List.map (("  * " <>) . List.intercalate "\n    " . List.map unpack) (fromMaybe [] cmts))
                                  } in
               Just (ChangeLog (entry' : older))
       -- The newest log entry isn't exactly ver, build a new entry.
       fixLog src ver cmts maint msg log =
-          let entry = Entry { logPackage = show (pPrint (PP src))
+          let entry = Entry { logPackage = show (pretty (PP src))
                                  , logVersion = ver
-                                 , logDists = [parseReleaseName "UNRELEASED"]
+                                 , logDists = [parseCodename "UNRELEASED"]
                                  , logUrgency = "low"
                                  , logComments =
                                      List.unlines $ List.map (("  * " <>) . List.intercalate "\n    " . List.map unpack) (fromMaybe [[msg]] cmts)
@@ -441,7 +441,7 @@ finalizeChangelog date currentUser =
 -- | Convert the extraLibs field of the cabal build info into debian
 -- binary package names and make them dependendencies of the debian
 -- devel package (if there is one.)
-addExtraLibDependencies :: (Monad m, Functor m) => CompilerFlavor -> CabalT m ()
+addExtraLibDependencies :: (Monad m) => CompilerFlavor -> CabalT m ()
 addExtraLibDependencies hc =
     do pkgDesc <- use A.packageDescription
        devName <- debianName B.Development hc
@@ -455,14 +455,14 @@ addExtraLibDependencies hc =
       devDep libMap cab = maybe [[Rel (BinPkgName ("lib" ++ cab ++ "-dev")) Nothing Nothing]] id (Map.lookup cab libMap)
 
 -- | Applies a few settings to official packages (unless already set)
-checkOfficialSettings :: (Monad m, Functor m) => CompilerFlavor -> CabalT m ()
+checkOfficialSettings :: (Monad m) => CompilerFlavor -> CabalT m ()
 checkOfficialSettings flavor =
     do o <- use (A.debInfo . D.official)
        when o $ case flavor of
                   GHC -> officialSettings
                   _ -> error $ "There is no official packaging for " ++ show flavor
 
-officialSettings :: (Monad m, Functor m) => CabalT m ()
+officialSettings :: (Monad m) => CabalT m ()
 officialSettings = do
     pkgDesc <- use A.packageDescription
 #if MIN_VERSION_Cabal(2,0,0)
@@ -489,7 +489,7 @@ officialSettings = do
               , S.VCSGit  "https://salsa.debian.org/haskell-team/DHG_packages.git"
               ])
 
-putBuildDeps :: (MonadIO m, Functor m) => (Relations -> Relations) -> PackageDescription -> CabalT m ()
+putBuildDeps :: (MonadIO m) => (Relations -> Relations) -> PackageDescription -> CabalT m ()
 putBuildDeps finalizeRelations pkgDesc =
     do deps <- debianBuildDeps pkgDesc >>= return . finalizeRelations
        depsIndep <- debianBuildDepsIndep pkgDesc >>= return . finalizeRelations
@@ -534,7 +534,7 @@ binaryPackageRelations b typ = zoom A.debInfo $ do
       B.provides %= (anyrel "${haskell:Provides}" :)
 
 -- | Add the library paragraphs for a particular compiler flavor.
-librarySpecs :: (Monad m, Functor m) => PackageDescription -> CompilerFlavor -> CabalT m ()
+librarySpecs :: (Monad m) => PackageDescription -> CompilerFlavor -> CabalT m ()
 librarySpecs pkgDesc hc =
     do let dev = isJust (Cabal.library pkgDesc)
        doc <- get >>= return . not . view (A.debInfo . D.noDocumentationLibrary)
@@ -543,7 +543,7 @@ librarySpecs pkgDesc hc =
        when (dev && prof && hc == GHC) (librarySpec Any B.Profiling hc)
        when (dev && doc) (docSpecsParagraph hc)
 
-docSpecsParagraph :: (Monad m, Functor m) => CompilerFlavor -> CabalT m ()
+docSpecsParagraph :: (Monad m) => CompilerFlavor -> CabalT m ()
 docSpecsParagraph hc =
     do b <- debianName B.Documentation hc
        binaryPackageRelations b B.Documentation
@@ -553,7 +553,7 @@ docSpecsParagraph hc =
        (A.debInfo . D.binaryDebDescription b . B.binarySection) .?= Just (MainSection "doc")
        (A.debInfo . D.binaryDebDescription b . B.description) .?= Just desc
 
-librarySpec :: (Monad m, Functor m) => PackageArchitectures -> B.PackageType -> CompilerFlavor -> CabalT m ()
+librarySpec :: (Monad m) => PackageArchitectures -> B.PackageType -> CompilerFlavor -> CabalT m ()
 librarySpec arch typ hc =
     do b <- debianName typ hc
        binaryPackageRelations b typ
@@ -577,7 +577,7 @@ desc = Text.intercalate "\n "
 -- files, assign them to the packages returned by the
 -- utilsPackageNames lens, and make sure those packages are in the
 -- source deb description.
-makeUtilsPackage :: forall m. (Monad m, Functor m) => PackageDescription -> CompilerFlavor -> CabalT m ()
+makeUtilsPackage :: forall m. (Monad m) => PackageDescription -> CompilerFlavor -> CabalT m ()
 makeUtilsPackage pkgDesc hc =
     do -- Files the cabal package expects to be installed
        -- Files that are already assigned to any binary deb
@@ -770,7 +770,7 @@ expandAtoms goodies =
              List.mapM_ (\ (b, f) -> modify (execAtoms b f)) (Map.toList mp)
 
 -- | Add the normal default values to the rules files.
-finalizeRules :: (MonadIO m, Functor m) => CabalT m ()
+finalizeRules :: (MonadIO m) => CabalT m ()
 finalizeRules =
     do DebBase b <- debianNameBase
        hc <- use (A.debInfo . D.flags . compilerFlavor)

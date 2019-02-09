@@ -19,10 +19,11 @@ import Distribution.Compiler (CompilerFlavor(..))
 #endif
 import Distribution.License (License(..))
 import Distribution.PackageDescription (Executable(..), PackageDescription(package))
+import Distribution.Pretty (prettyShow)
 import Distribution.Simple.Compiler (Compiler(..))
 import Distribution.Version (foldVersionRange', VersionRange(..))
 #if MIN_VERSION_Cabal(2,0,0)
-import Distribution.Version (showVersion, Version)
+import Distribution.Version (Version)
 #else
 import Data.Version (showVersion, Version(..))
 #endif
@@ -36,7 +37,8 @@ import Text.Parsec.Rfc2822 (NameAddr(..))
 #else
 import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr(..))
 #endif
-import Text.PrettyPrint.HughesPJClass (hcat, Pretty(pPrint), text)
+import Text.PrettyPrint.HughesPJClass (hcat, text)
+import Distribution.Pretty (Pretty(pretty))
 
 deriving instance Typeable Compiler
 deriving instance Typeable CompilerId
@@ -101,16 +103,16 @@ deriving instance Typeable Language
 -- Convert from license to RPM-friendly description.  The strings are
 -- taken from TagsCheck.py in the rpmlint distribution.
 instance Pretty (PP License) where
-    pPrint (PP (GPL _)) = text "GPL"
-    pPrint (PP (LGPL _)) = text "LGPL"
-    pPrint (PP BSD3) = text "BSD"
-    pPrint (PP BSD4) = text "BSD-like"
-    pPrint (PP PublicDomain) = text "Public Domain"
-    pPrint (PP AllRightsReserved) = text "Proprietary"
-    pPrint (PP OtherLicense) = text "Non-distributable"
-    pPrint (PP MIT) = text "MIT"
-    pPrint (PP (UnknownLicense _)) = text "Unknown"
-    pPrint (PP x) = text (show x)
+    pretty (PP (GPL _)) = text "GPL"
+    pretty (PP (LGPL _)) = text "LGPL"
+    pretty (PP BSD3) = text "BSD"
+    pretty (PP BSD4) = text "BSD-like"
+    pretty (PP PublicDomain) = text "Public Domain"
+    pretty (PP AllRightsReserved) = text "Proprietary"
+    pretty (PP OtherLicense) = text "Non-distributable"
+    pretty (PP MIT) = text "MIT"
+    pretty (PP (UnknownLicense _)) = text "Unknown"
+    pretty (PP x) = text (show x)
 
 deriving instance Data NameAddr
 deriving instance Typeable NameAddr
@@ -120,24 +122,24 @@ deriving instance Read NameAddr
 -- changelog entry, it *must* have a name followed by an email address
 -- in angle brackets.
 instance Pretty (PP NameAddr) where
-    pPrint (PP x) = text (fromMaybe (nameAddr_addr x) (nameAddr_name x) ++ " <" ++ nameAddr_addr x ++ ">")
-    -- pPrint x = text (maybe (nameAddr_addr x) (\ n -> n ++ " <" ++ nameAddr_addr x ++ ">") (nameAddr_name x))
+    pretty (PP x) = text (fromMaybe (nameAddr_addr x) (nameAddr_name x) ++ " <" ++ nameAddr_addr x ++ ">")
+    -- pretty x = text (maybe (nameAddr_addr x) (\ n -> n ++ " <" ++ nameAddr_addr x ++ ">") (nameAddr_name x))
 
 instance Pretty (PP [NameAddr]) where
-    pPrint = hcat . intersperse (text ", ") . map (pPrint . PP) . unPP
+    pretty = hcat . intersperse (text ", ") . map (pretty . PP) . unPP
 
 instance Pretty (PP VersionRange) where
-    pPrint (PP range) =
+    pretty (PP range) =
         foldVersionRange'
           (text "*")
-          (\ v -> text "=" <> pPrint (PP v))
-          (\ v -> text ">" <> pPrint (PP v))
-          (\ v -> text "<" <> pPrint (PP v))
-          (\ v -> text ">=" <> pPrint (PP v))
-          (\ v -> text "<=" <> pPrint (PP v))
-          (\ x _ -> text "=" <> pPrint (PP x) <> text ".*") -- not exactly right
+          (\ v -> text "=" <> pretty (PP v))
+          (\ v -> text ">" <> pretty (PP v))
+          (\ v -> text "<" <> pretty (PP v))
+          (\ v -> text ">=" <> pretty (PP v))
+          (\ v -> text "<=" <> pretty (PP v))
+          (\ x _ -> text "=" <> pretty (PP x) <> text ".*") -- not exactly right
 #if MIN_VERSION_Cabal(2,0,0)
-          (\ v _ -> text " >= " <> pPrint (PP v)) -- maybe this will do?
+          (\ v _ -> text " >= " <> pretty (PP v)) -- maybe this will do?
 #endif
           (\ x y -> text "(" <> x <> text " || " <> y <> text ")")
           (\ x y -> text "(" <> x <> text " && " <> y <> text ")")
@@ -145,7 +147,7 @@ instance Pretty (PP VersionRange) where
           range
 
 instance Pretty (PP Version) where
-    pPrint = text . showVersion . unPP
+    pretty = text . prettyShow . unPP
 
 instance Pretty (PP URI) where
-    pPrint = text . show . unPP
+    pretty = text . show . unPP

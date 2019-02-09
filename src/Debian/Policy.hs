@@ -69,11 +69,12 @@ import Text.Parsec.Rfc2822 (address, NameAddr(..))
 #else
 import Text.ParserCombinators.Parsec.Rfc2822 (address, NameAddr(..))
 #endif
-import Text.PrettyPrint.HughesPJClass (Pretty(pPrint), text)
+import Text.PrettyPrint.HughesPJClass (text)
+import Distribution.Pretty (Pretty(pretty))
 import Text.Read (readMaybe)
 
 databaseDirectory :: BinPkgName -> String
-databaseDirectory x = "/srv" </> show (pPrint . PP $ x)
+databaseDirectory x = "/srv" </> show (pretty . PP $ x)
 
 dataDirectory :: PackageDescription -> String
 dataDirectory pkgDesc = "/usr/share" </> showPkgName (pkgName (package pkgDesc))
@@ -84,7 +85,7 @@ dataDirectory pkgDesc = "/usr/share" </> showPkgName (pkgName (package pkgDesc))
       fixchar c   = c
 
 apacheLogDirectory :: BinPkgName -> String
-apacheLogDirectory x =  "/var/log/apache2/" ++ show (pPrint . PP $ x)
+apacheLogDirectory x =  "/var/log/apache2/" ++ show (pretty . PP $ x)
 
 apacheErrorLog :: BinPkgName -> String
 apacheErrorLog x = apacheLogDirectory x </> errorLogBaseName
@@ -93,7 +94,7 @@ apacheAccessLog :: BinPkgName -> String
 apacheAccessLog x = apacheLogDirectory x </> accessLogBaseName
 
 serverLogDirectory :: BinPkgName -> String
-serverLogDirectory x = "/var/log/" ++ show (pPrint . PP $ x)
+serverLogDirectory x = "/var/log/" ++ show (pretty . PP $ x)
 
 serverAppLog :: BinPkgName -> String
 serverAppLog x = serverLogDirectory x </> appLogBaseName
@@ -131,8 +132,8 @@ getDebhelperCompatLevel =
 data StandardsVersion = StandardsVersion Int Int Int (Maybe Int) deriving (Eq, Ord, Show, Data, Typeable)
 
 instance Pretty (PP StandardsVersion) where
-    pPrint (PP (StandardsVersion a b c (Just d))) = text (show a) <> text "." <> text (show b) <> text "." <> text (show c) <> text "." <> text (show d)
-    pPrint (PP (StandardsVersion a b c Nothing)) = text (show a) <> text "." <> text (show b) <> text "." <> text (show c)
+    pretty (PP (StandardsVersion a b c (Just d))) = text (show a) <> text "." <> text (show b) <> text "." <> text (show c) <> text "." <> text (show d)
+    pretty (PP (StandardsVersion a b c Nothing)) = text (show a) <> text "." <> text (show b) <> text "." <> text (show c)
 
 -- | Assumes debian-policy is installed
 getDebianStandardsVersion :: IO (Maybe StandardsVersion)
@@ -156,8 +157,8 @@ data SourceFormat
     deriving (Eq, Ord, Show, Data, Typeable)
 
 instance Pretty (PP SourceFormat) where
-    pPrint (PP Quilt3) = text "3.0 (quilt)\n"
-    pPrint (PP Native3) = text "3.0 (native)\n"
+    pretty (PP Quilt3) = text "3.0 (quilt)\n"
+    pretty (PP Native3) = text "3.0 (native)\n"
 
 readSourceFormat :: Text -> Either Text SourceFormat
 readSourceFormat s =
@@ -185,7 +186,7 @@ readPriority s =
       x -> error $ "Invalid priority string: " ++ show x
 
 instance Pretty (PP PackagePriority) where
-    pPrint = text . map toLower . show . unPP
+    pretty = text . map toLower . show . unPP
 
 -- | The architectures for which a binary deb can be built.
 data PackageArchitectures
@@ -195,9 +196,9 @@ data PackageArchitectures
     deriving (Read, Eq, Ord, Show, Data, Typeable)
 
 instance Pretty (PP PackageArchitectures) where
-    pPrint (PP All) = text "all"
-    pPrint (PP Any) = text "any"
-    pPrint (PP (Names xs)) = text $ intercalate " " xs
+    pretty (PP All) = text "all"
+    pretty (PP Any) = text "any"
+    pretty (PP (Names xs)) = text $ intercalate " " xs
 
 parsePackageArchitectures :: String -> PackageArchitectures
 parsePackageArchitectures "all" = All
@@ -219,8 +220,8 @@ readSection s =
       (a, _) -> MainSection a
 
 instance Pretty (PP Section) where
-    pPrint (PP (MainSection sec)) = text sec
-    pPrint (PP (AreaSection area sec)) = pPrint (PP area) <> text "/" <> text sec
+    pretty (PP (MainSection sec)) = text sec
+    pretty (PP (AreaSection area sec)) = pretty (PP area) <> text "/" <> text sec
 
 data MultiArch = MANo | MASame | MAForeign | MAAllowed
     deriving (Read, Eq, Ord, Show, Data, Typeable)
@@ -235,10 +236,10 @@ readMultiArch s =
       x -> error $ "Invalid Multi-Arch string: " ++ show x
 
 instance Pretty (PP MultiArch) where
-    pPrint (PP MANo) = text "no"
-    pPrint (PP MASame) = text "same"
-    pPrint (PP MAForeign) = text "foreign"
-    pPrint (PP MAAllowed) = text "allowed"
+    pretty (PP MANo) = text "no"
+    pretty (PP MASame) = text "same"
+    pretty (PP MAForeign) = text "foreign"
+    pretty (PP MAAllowed) = text "allowed"
 
 -- Is this really all that is allowed here?  Doesn't Ubuntu have different areas?
 data Area
@@ -248,9 +249,9 @@ data Area
     deriving (Read, Eq, Ord, Show, Data, Typeable)
 
 instance Pretty (PP Area) where
-    pPrint (PP Main) = text "main"
-    pPrint (PP Contrib) = text "contrib"
-    pPrint (PP NonFree) = text "non-free"
+    pretty (PP Main) = text "main"
+    pretty (PP Contrib) = text "contrib"
+    pretty (PP NonFree) = text "non-free"
 
 {-
 Create a debian maintainer field from the environment variables:
@@ -363,37 +364,37 @@ data License
 -- We need a license parse function that converts these strings back
 -- into License values.
 instance Pretty License where
-    pPrint Public_Domain = text "public-domain"
-    pPrint Apache = text "Apache"
-    pPrint Artistic = text "Artistic"
-    pPrint BSD_2_Clause = text "BSD2"
-    pPrint BSD_3_Clause = text "BSD3"
-    pPrint BSD_4_Clause = text "BSD4"
-    pPrint ISC = text "ISC"
-    pPrint CC_BY = text "CC-BY"
-    pPrint CC_BY_SA = text "CC-BY-SA"
-    pPrint CC_BY_ND = text "CC-BY-ND"
-    pPrint CC_BY_NC = text "CC-BY-NC"
-    pPrint CC_BY_NC_SA = text "CC-BY-NC-SA"
-    pPrint CC_BY_NC_ND = text "CC-BY-NC-ND"
-    pPrint CC0 = text "CC0"
-    pPrint CDDL = text "CDDL"
-    pPrint CPL = text "CPL"
-    pPrint EFL = text "EFL"
-    pPrint Expat = text "Expat"
-    pPrint GPL = text "GPL"
-    pPrint LGPL = text "LGPL"
-    pPrint GFDL = text "GFDL"
-    pPrint GFDL_NIV = text "GFDL-NIV"
-    pPrint LPPL = text "LPPL"
-    pPrint MPL = text "MPL"
-    pPrint Perl = text "Perl"
-    pPrint Python = text "Python"
-    pPrint QPL = text "QPL"
-    pPrint W3C = text "W3C"
-    pPrint Zlib = text "Zlib"
-    pPrint Zope = text "Zope"
-    pPrint (OtherLicense s) = text s
+    pretty Public_Domain = text "public-domain"
+    pretty Apache = text "Apache"
+    pretty Artistic = text "Artistic"
+    pretty BSD_2_Clause = text "BSD2"
+    pretty BSD_3_Clause = text "BSD3"
+    pretty BSD_4_Clause = text "BSD4"
+    pretty ISC = text "ISC"
+    pretty CC_BY = text "CC-BY"
+    pretty CC_BY_SA = text "CC-BY-SA"
+    pretty CC_BY_ND = text "CC-BY-ND"
+    pretty CC_BY_NC = text "CC-BY-NC"
+    pretty CC_BY_NC_SA = text "CC-BY-NC-SA"
+    pretty CC_BY_NC_ND = text "CC-BY-NC-ND"
+    pretty CC0 = text "CC0"
+    pretty CDDL = text "CDDL"
+    pretty CPL = text "CPL"
+    pretty EFL = text "EFL"
+    pretty Expat = text "Expat"
+    pretty GPL = text "GPL"
+    pretty LGPL = text "LGPL"
+    pretty GFDL = text "GFDL"
+    pretty GFDL_NIV = text "GFDL-NIV"
+    pretty LPPL = text "LPPL"
+    pretty MPL = text "MPL"
+    pretty Perl = text "Perl"
+    pretty Python = text "Python"
+    pretty QPL = text "QPL"
+    pretty W3C = text "W3C"
+    pretty Zlib = text "Zlib"
+    pretty Zope = text "Zope"
+    pretty (OtherLicense s) = text s
 
 -- | Convert the Cabal license to a Debian license.  I would welcome input
 -- on how to make this more correct.

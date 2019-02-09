@@ -1,3 +1,10 @@
+haskell-cabal-debian (4.38.5) unstable; urgency=medium
+
+  * Use Cabal's pretty printer, there is a corresponding change
+    to the debian package.
+
+ -- David Fox <dsf@seereason.com>  Tue, 12 Feb 2019 16:50:15 -0800
+
 haskell-cabal-debian (4.38.2) unstable; urgency=medium
 
   * Support for Cabal-2.2

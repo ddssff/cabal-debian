@@ -55,7 +55,8 @@ import qualified Distribution.PackageDescription as Cabal (PackageDescription(li
 #endif
 import Network.URI (URI, parseURI)
 import Prelude hiding (init, init, log, log, unlines, readFile)
-import Text.PrettyPrint.HughesPJClass (Pretty(pPrint), text)
+import Text.PrettyPrint.HughesPJClass (text)
+import Distribution.Pretty (Pretty(pretty))
 
 unPackageName :: Cabal.PackageName -> String
 #if MIN_VERSION_Cabal(2,0,0)
@@ -98,8 +99,8 @@ data FilesOrLicenseDescription
 
 instance Pretty CopyrightDescription where
     -- Special case encodes free format debian/copyright file
-    pPrint x@(CopyrightDescription {_summaryComment = Just t}) | x {_summaryComment = Nothing} == def = text (List.dropWhileEnd isSpace (unpack t) <> "\n")
-    pPrint x = pPrint . toControlFile $ x
+    pretty x@(CopyrightDescription {_summaryComment = Just t}) | x {_summaryComment = Nothing} == def = text (List.dropWhileEnd isSpace (unpack t) <> "\n")
+    pretty x = pretty . toControlFile $ x
 
 instance Default CopyrightDescription where
     def = CopyrightDescription

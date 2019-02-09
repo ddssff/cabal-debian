@@ -42,7 +42,7 @@ execCabalT action atoms = execStateT action atoms
 evalCabalT :: Monad m => CabalT m a -> CabalInfo -> m a
 evalCabalT action atoms = evalStateT action atoms
 
-runCabalT :: Monad m => CabalT m a -> CabalInfo -> m (a, CabalInfo)
+runCabalT :: CabalT m a -> CabalInfo -> m (a, CabalInfo)
 runCabalT action atoms = runStateT action atoms
 
 execCabalM :: CabalM a -> CabalInfo -> CabalInfo

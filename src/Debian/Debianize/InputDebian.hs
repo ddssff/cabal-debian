@@ -41,7 +41,7 @@ import Debian.Policy (parseMaintainer, parsePackageArchitectures, parseStandards
 import Debian.Relation (BinPkgName(..), parseRelations, Relations, SrcPkgName(..))
 --import Debug.Trace (trace)
 #if MIN_VERSION_Cabal(2,0,0)
-import Distribution.Package (PackageIdentifier(..), PackageName(..), unPackageName)
+import Distribution.Package (PackageIdentifier(..), unPackageName)
 #else
 import Distribution.Package (PackageIdentifier(..), PackageName(..))
 #endif

@@ -1,5 +1,5 @@
 Name:           cabal-debian
-Version:        4.38.5
+Version:        4.38.6
 Copyright:      Copyright (c) 2007-2014, David Fox, Jeremy Shaw
 License:        BSD3
 License-File:   LICENSE
@@ -151,7 +151,7 @@ flag pretty-112
   Default: True
 
 flag local-debian
-  Description: Compile the debian package from local source in ../debian-haskell
+  Description: Compile the debian package from local source in ../debian-haskell/src
   Default: False
   Manual: True
 
@@ -231,9 +231,9 @@ Library
   else
     Build-Depends: pretty < 1.1.2, prettyclass
   if !flag(local-debian)
-    Build-Depends: debian >= 3.91
+    Hs-Source-Dirs: ../debian-haskell/src
+    Build-Depends: debian >= 3.95
   else
-    Hs-Source-Dirs: ../debian-haskell
     Build-Depends: bytestring, bzlib, ListLike, QuickCheck, regex-compat, SHA, template-haskell, th-lift, th-orphans, time, zlib
     Exposed-Modules:
       Debian.Apt.Index
@@ -279,7 +279,7 @@ Executable cabal-debian
     base,
     cabal-debian,
     Cabal >= 1.18,
-    debian >= 3.91,
+    debian >= 3.95,
     lens,
     mtl,
     pretty,
@@ -301,7 +301,7 @@ Test-Suite cabal-debian-tests
     cabal-debian,
     Cabal >= 1.16,
     containers,
-    debian >= 3.91,
+    debian >= 3.95,
     Diff >= 0.3.1,
     directory,
     filepath,

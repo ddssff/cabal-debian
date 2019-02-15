@@ -1,3 +1,9 @@
+haskell-cabal-debian (4.38.6) unstable; urgency=medium
+
+  * Changes due to changes in debian 3.95
+
+ -- David Fox <dsf@trusty>  Fri, 15 Feb 2019 15:22:09 -0800
+
 haskell-cabal-debian (4.38.5) unstable; urgency=medium
 
   * Use Cabal's pretty printer, there is a corresponding change

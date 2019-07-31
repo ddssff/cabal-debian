@@ -478,7 +478,7 @@ officialSettings = do
 
         let packagesURI = "https://salsa.debian.org/haskell-team/DHG_packages/tree/master/p/" <> pack src
         zoom D.control $ do
-           S.standardsVersion .?= Just (parseStandardsVersion "4.1.1")
+           S.standardsVersion .?= Just (parseStandardsVersion "4.4.0")
 #if MIN_VERSION_Cabal(2,0,0)
            S.homepage .?= Just ("https://hackage.haskell.org/package/" <> pack (unPackageName cabal))
 #else
@@ -779,7 +779,7 @@ finalizeRules =
        (A.debInfo . D.rulesSettings) %= (++ ["DEB_CABAL_PACKAGE = " <> pack b])
        (A.debInfo . D.rulesSettings) %= (++ ["DEB_DEFAULT_COMPILER = " <> pack hcdeb])
        flags <- (flagString . Set.toList) <$> use (A.debInfo . D.flags . cabalFlagAssignments)
-       unless (List.null flags) ((A.debInfo . D.rulesSettings) %= (++ ["DEB_SETUP_GHC6_CONFIGURE_ARGS = " <> pack flags]))
+       unless (List.null flags) ((A.debInfo . D.rulesSettings) %= (++ ["DEB_SETUP_GHC_CONFIGURE_ARGS = " <> pack flags]))
        (A.debInfo . D.rulesIncludes) %= (++ ["include /usr/share/cdbs/1/rules/debhelper.mk",
                                              "include /usr/share/cdbs/1/class/hlibrary.mk"])
 

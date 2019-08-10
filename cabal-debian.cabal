@@ -146,10 +146,6 @@ Extra-Source-Files:
   test-data/artvaluereport2/output/debian/source/format
 Tested-With: GHC ==8.8.1 || ==8.6.5 || ==8.4.4 || ==8.2.2
 
-flag pretty-112
-  Description: prettyclass was merged into pretty-1.1.2
-  Default: True
-
 Source-Repository head
   type: git
   location: https://github.com/clinty/cabal-debian
@@ -177,6 +173,7 @@ Library
     network-uri,
     newtype-generics >= 0.4,
     parsec >= 3,
+    pretty >= 1.1.2,
     process,
     pureMD5,
     regex-tdfa,
@@ -222,10 +219,6 @@ Library
     System.Git
   Other-Modules:
     Debian.Orphans
-  if flag(pretty-112)
-    Build-Depends: pretty >= 1.1.2
-  else
-    Build-Depends: pretty < 1.1.2, prettyclass
 
 Executable cabal-debian
   Default-Language: Haskell2010
@@ -239,12 +232,8 @@ Executable cabal-debian
     debian >= 3.95,
     lens,
     mtl,
-    pretty,
+    pretty >= 1.1.2,
     Unixutils >= 1.53
-  if flag(pretty-112)
-    Build-Depends: pretty >= 1.1.2
-  else
-    Build-Depends: pretty < 1.1.2, prettyclass
 
 Test-Suite cabal-debian-tests
   Buildable: False
@@ -265,9 +254,6 @@ Test-Suite cabal-debian-tests
     hsemail,
     HUnit,
     lens,
+    pretty >= 1.1.2,
     process,
     text
-  if flag(pretty-112)
-    Build-Depends: pretty >= 1.1.2
-  else
-    Build-Depends: pretty < 1.1.2, prettyclass

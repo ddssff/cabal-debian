@@ -150,11 +150,6 @@ flag pretty-112
   Description: prettyclass was merged into pretty-1.1.2
   Default: True
 
-flag local-debian
-  Description: Compile the debian package from local source in ../debian-haskell/src
-  Default: False
-  Manual: True
-
 Source-Repository head
   type: git
   location: https://github.com/clinty/cabal-debian

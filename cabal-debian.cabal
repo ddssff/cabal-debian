@@ -1,12 +1,12 @@
 Name:           cabal-debian
-Version:        4.38.6
-Copyright:      Copyright (c) 2007-2014, David Fox, Jeremy Shaw
+Version:        4.38.7
+Copyright:      Copyright (c) 2007-2014, David Fox, Jeremy Shaw; 2017-2019 Clint Adams
 License:        BSD3
 License-File:   LICENSE
 Author:         David Fox <dsf@seereason.com>
 Category:       Debian, Distribution, System
-Maintainer:     David Fox <dsf@seereason.com>
-Homepage:       https://github.com/ddssff/cabal-debian
+Maintainer:     Clint Adams <clint@debian.org>
+Homepage:       https://github.com/clinty/cabal-debian
 Build-Type:     Simple
 Synopsis:       Create a Debianization for a Cabal package
 Description:
@@ -157,7 +157,7 @@ flag local-debian
 
 Source-Repository head
   type: git
-  location: https://github.com/ddssff/cabal-debian
+  location: https://github.com/clinty/cabal-debian
 
 Library
   Default-Language: Haskell2010

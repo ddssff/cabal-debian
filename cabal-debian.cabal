@@ -192,7 +192,8 @@ Library
     Unixutils >= 1.53,
     utf8-string,
     optparse-applicative >= 0.11,
-    ansi-wl-pprint == 0.6.*
+    ansi-wl-pprint == 0.6.*,
+    debian >= 3.95
   Exposed-Modules:
     Data.Maybe.Extended
     Debian.GHC
@@ -230,45 +231,6 @@ Library
     Build-Depends: pretty >= 1.1.2
   else
     Build-Depends: pretty < 1.1.2, prettyclass
-  if !flag(local-debian)
-    Hs-Source-Dirs: ../debian-haskell/src
-    Build-Depends: debian >= 3.95
-  else
-    Build-Depends: bytestring, bzlib, ListLike, QuickCheck, regex-compat, SHA, template-haskell, th-lift, th-orphans, time, zlib
-    Exposed-Modules:
-      Debian.Apt.Index
-      Debian.Apt.Methods
-      Debian.Arch
-      Debian.Changes
-      Debian.Codename
-      Debian.Control
-      Debian.Control.Builder
-      Debian.Control.ByteString
-      Debian.Control.Common
-      Debian.Control.Policy
-      Debian.Control.String
-      Debian.Control.Text
-      Debian.Control.TextLazy
-      Debian.Except
-      Debian.Loc
-      Debian.Pretty
-      Debian.Relation
-      Debian.Relation.ByteString
-      Debian.Relation.Common
-      Debian.Relation.String
-      Debian.Relation.Text
-      Debian.Release
-      Debian.Sources
-      Debian.TH
-      Debian.Time
-      Debian.URI
-      Debian.UTF8
-      Debian.VendorURI
-      Debian.Version
-      Debian.Version.Common
-      Debian.Version.Internal
-      Debian.Version.String
-      Debian.Version.Text
 
 Executable cabal-debian
   Default-Language: Haskell2010

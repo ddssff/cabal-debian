@@ -27,10 +27,12 @@ import Distribution.Compiler (CompilerId)
 #endif
 import Distribution.Package (Package(packageId))
 import Distribution.PackageDescription as Cabal (PackageDescription)
-import Distribution.PackageDescription.Configuration (finalizePackageDescription)
 #if MIN_VERSION_Cabal(2,2,0)
+import Distribution.PackageDescription.Configuration (finalizePD)
 import Distribution.PackageDescription.Parsec (readGenericPackageDescription)
+import Distribution.Types.ComponentRequestedSpec (ComponentRequestedSpec(ComponentRequestedSpec))
 #else
+import Distribution.PackageDescription.Configuration (finalizePackageDescription)
 #if MIN_VERSION_Cabal(2,0,0)
 import Distribution.PackageDescription.Parse (readGenericPackageDescription)
 #else
@@ -74,7 +76,7 @@ inputCabalization flags =
         genPkgDesc <- liftIO $ defaultPackageDesc vb >>= readPackageDescription vb
 #endif
 #if MIN_VERSION_Cabal(2,2,0)
-        let finalized = finalizePackageDescription (mkFlagAssignment (toList fs)) (const True) (Platform buildArch Cabal.buildOS) cinfo [] genPkgDesc
+        let finalized = finalizePD (mkFlagAssignment (toList fs)) (ComponentRequestedSpec True False) (const True) (Platform buildArch Cabal.buildOS) cinfo [] genPkgDesc
 #else
         let finalized = finalizePackageDescription (toList fs) (const True) (Platform buildArch Cabal.buildOS) cinfo [] genPkgDesc
 #endif

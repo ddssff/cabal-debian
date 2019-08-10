@@ -69,8 +69,8 @@ before_install:
 install:
   - ${CABAL} --version
   - echo "$(${HC} --version) [$(${HC} --print-project-git-commit-id 2> /dev/null || echo '?')]"
-  - TEST=--enable-tests
-  - BENCH=--enable-benchmarks
+  - TEST=--disable-tests
+  - BENCH=--disable-benchmarks
   - HEADHACKAGE=false
   - rm -f $CABALHOME/config
   - |
@@ -104,7 +104,6 @@ install:
   - ${CABAL} v2-freeze $WITHCOMPILER ${TEST} ${BENCH} | color_cabal_output
   - "cat cabal.project.freeze | sed -E 's/^(constraints: *| *)//' | sed 's/any.//'"
   - rm  cabal.project.freeze
-  - ${CABAL} v2-build $WITHCOMPILER ${TEST} ${BENCH} --dep -j2 all | color_cabal_output
   - ${CABAL} v2-build $WITHCOMPILER --disable-tests --disable-benchmarks --dep -j2 all | color_cabal_output
 script:
   - DISTDIR=$(mktemp -d /tmp/dist-test.XXXX)
@@ -128,11 +127,6 @@ script:
   # Building...
   # this builds all libraries and executables (without tests/benchmarks)
   - ${CABAL} v2-build $WITHCOMPILER --disable-tests --disable-benchmarks all | color_cabal_output
-  # Building with tests and benchmarks...
-  # build & run tests, build benchmarks
-  - ${CABAL} v2-build $WITHCOMPILER ${TEST} ${BENCH} all | color_cabal_output
-  # Testing...
-  - ${CABAL} v2-test $WITHCOMPILER ${TEST} ${BENCH} all | color_cabal_output
   # cabal check...
   - (cd ${PKGDIR_cabal_debian} && ${CABAL} -vnormal check)
   # haddock...

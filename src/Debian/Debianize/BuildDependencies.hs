@@ -391,12 +391,12 @@ doBundled typ name hc rels = do
         -- library (which, if pver is Nothing, will certainly
         -- result in an error which needs to be corrected in
         -- the packaging.)
-        let compilerDependency = if isJust pver && (checkVersionReq req pver || (dname == naiveDebianName && conflictsWithHC naiveDebianName)) then comp else []
+        let compilerDependency = if isJust pver && (checkVersionReq req pver || dname == naiveDebianName) then comp else []
         -- The library package can satisfy the dependency if
         -- the compiler doesn't provide a version, or if the
         -- compiler doesn't conflict with the package's
         -- debian name.
-        let libraryDependency = if isNothing pver || dname /= naiveDebianName || not (conflictsWithHC naiveDebianName) then [rel] else []
+        let libraryDependency = if isNothing pver || dname /= naiveDebianName then [rel] else []
         -- Is the version number in the library dependency newer than
         -- the compiler version?  If so it should appear to its left,
         -- otherwise to its right.
@@ -405,28 +405,6 @@ doBundled typ name hc rels = do
                    Just (D.LTE lver) | Just lver < pver -> compilerDependency ++ libraryDependency
                    Just (D.EEQ lver) | Just lver < pver -> compilerDependency ++ libraryDependency
                    _ -> libraryDependency ++ compilerDependency
-      -- FIXME: we are assuming here that ghc conflicts with all the
-      -- library packages it provides but it no longer conflicts with
-      -- libghc-cabal-dev.  We can now check these conflicts using the
-      -- new functions in Bundled.
-      conflictsWithHC (BinPkgName "libghc-cabal-dev") = False
-      conflictsWithHC (BinPkgName "libghc-cabal-prof") = False
-      conflictsWithHC (BinPkgName "libghc-cabal-doc") = False
-      conflictsWithHC _ = True
-
-{-
-doBundled :: Monad m =>
-             B.PackageType  -- Documentation, Profiling, Development...
-          -> PackageName    -- Cabal package name
-          -> [D.Relation]   -- Original set of debian dependencies
-          -> CabalT m [D.Relation] -- Modified debian dependencies accounting for the packages the compiler provides
-doBundled hc typ name rels =
-    concat <$> mapM doRel rels
-    where
-      doRel :: Monad m => D.Relation -> CabalT m [D.Relation]
-      doRel rel@(D.Rel dname req _) = do
-        hc <- use
--}
 
 -- Convert a cabal version to a debian version, adding an epoch number if requested
 debianVersion' :: Monad m => PackageName -> Version -> CabalT m DebianVersion

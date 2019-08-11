@@ -120,14 +120,10 @@ debianPackageVersion name =
       parseDebianVersion'' "" = Nothing
       parseDebianVersion'' s = Just (parseDebianVersion' s)
 
--- | The version number of the installed debhelper package is the
--- highest acceptable value for compat in a debian/control file.  If
--- the package doesn't explicitly set an (acceptable) compat value we
--- can use the value returned by this function, assuming debhelper is
--- installed.
+-- | With the current state of CDBS, anything above 10 breaks, so
+-- for now we force this to 10.
 getDebhelperCompatLevel :: IO (Maybe Int)
-getDebhelperCompatLevel =
-    debianPackageVersion "debhelper" >>= return . fmap (min 9 . read . takeWhile (/= '.') . version)
+getDebhelperCompatLevel = return (Just 10)
 
 data StandardsVersion = StandardsVersion Int Int Int (Maybe Int) deriving (Eq, Ord, Show, Data, Typeable)
 

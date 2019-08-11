@@ -144,7 +144,7 @@ Extra-Source-Files:
   test-data/artvaluereport2/output/debian/artvaluereport2-backups.install
   test-data/artvaluereport2/output/debian/copyright
   test-data/artvaluereport2/output/debian/source/format
-Tested-With: GHC ==8.8.1 || ==8.6.5 || ==8.4.4 || ==8.2.2
+Tested-With: GHC ==8.6.5 || ==8.4.4 || ==8.2.2
 
 Source-Repository head
   type: git

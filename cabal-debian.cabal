@@ -177,7 +177,6 @@ Library
     process,
     pureMD5,
     regex-tdfa,
-    set-extra,
     syb,
     text,
     unix,

@@ -28,7 +28,6 @@ import Data.Map as Map (delete, elems, insertWith, lookup, Map, toList)
 import Data.Maybe (fromMaybe, isJust, fromJust)
 import Data.Monoid ((<>))
 import Data.Set as Set (difference, filter, fold, fromList, insert, map, null, Set, singleton, toList, union, unions)
-import Data.Set.Extra as Set (mapM_)
 import Data.Text as Text (intercalate, pack, Text, unlines, unpack)
 import Debian.Changes (ChangeLog(..), ChangeLogEntry(..))
 import Debian.Codename (parseCodename)
@@ -641,8 +640,8 @@ makeUtilsPackage pkgDesc hc =
          (A.debInfo . D.binaryDebDescription b . B.binarySection) .?= Just (MainSection "misc")
          binaryPackageRelations b B.Utilities
        -- Add the unassigned files to the utils packages
-       Set.mapM_ (\ (foo, bar) -> (A.debInfo . D.atomSet) %= (Set.insert $ D.InstallData b foo bar)) utilsDataMissing
-       Set.mapM_ (\ name -> (A.debInfo . D.atomSet) %= (Set.insert $ D.InstallCabalExec b name "usr/bin")) utilsExecMissing
+       mapM_ (\ (foo, bar) -> (A.debInfo . D.atomSet) %= (Set.insert $ D.InstallData b foo bar)) utilsDataMissing
+       mapM_ (\ name -> (A.debInfo . D.atomSet) %= (Set.insert $ D.InstallCabalExec b name "usr/bin")) utilsExecMissing
     where
       ename i =
           case D.sourceDir i of
@@ -694,7 +693,7 @@ expandAtoms goodies =
       expandInstallCabalExecs :: Monad m => FilePath -> CabalT m ()
       expandInstallCabalExecs builddir = do
         hc <- use (A.debInfo . D.flags . compilerFlavor)
-        use (A.debInfo . D.atomSet) >>= Set.mapM_ (doAtom hc)
+        use (A.debInfo . D.atomSet) >>= mapM_ (doAtom hc)
           where
             doAtom :: Monad m => CompilerFlavor -> D.Atom -> CabalT m ()
             doAtom GHC (D.InstallCabalExec b name dest) = (A.debInfo . D.atomSet) %= (Set.insert $ D.Install b (builddir </> name </> name) dest)
@@ -714,7 +713,7 @@ expandAtoms goodies =
       expandInstallCabalExecTo :: Monad m => FilePath -> CabalT m ()
       expandInstallCabalExecTo builddir = do
         hc <- use (A.debInfo . D.flags . compilerFlavor)
-        use (A.debInfo . D.atomSet) >>= Set.mapM_ (doAtom hc)
+        use (A.debInfo . D.atomSet) >>= mapM_ (doAtom hc)
           where
             doAtom :: Monad m => CompilerFlavor -> D.Atom -> CabalT m ()
             doAtom GHC (D.InstallCabalExecTo b name dest) =

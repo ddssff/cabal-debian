@@ -38,7 +38,6 @@ import Debian.Version (DebianVersion)
 import Distribution.Package (PackageName)
 import Distribution.PackageDescription as Cabal (PackageDescription(homepage))
 import Prelude hiding (init, init, log, log, null)
-import System.Unix.Mount (withProcAndSys)
 
 -- | Bits and pieces of information about the mapping from cabal package
 -- names and versions to debian package names and versions.  In essence,
@@ -77,7 +76,7 @@ instance Canonical CabalInfo where
 -- 'CabalInfo' record.
 newCabalInfo :: (MonadIO m, MonadMask m{-, Functor m-}) => Flags -> m (Either String CabalInfo)
 newCabalInfo flags' =
-    withProcAndSys "/" $ inputCabalization flags' >>= either (return . Left) (\p -> Right <$> doPkgDesc p)
+    inputCabalization flags' >>= either (return . Left) (\p -> Right <$> doPkgDesc p)
     where
       doPkgDesc pkgDesc = do
         copyrt <- liftIO $ defaultCopyrightDescription pkgDesc

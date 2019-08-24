@@ -20,7 +20,7 @@ import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, listToMaybe, mapMayb
 import Data.Monoid ((<>))
 import Data.Set as Set (empty, fold, fromList, map, member, Set, singleton, toList, union)
 import Debian.Debianize.Prelude
-import Debian.Debianize.BasicInfo (buildEnv, compilerFlavor, EnvSet(dependOS))
+import Debian.Debianize.BasicInfo (compilerFlavor)
 import Debian.Debianize.Bundled (builtIn)
 import qualified Debian.Debianize.DebInfo as D
 import Debian.Debianize.DebianName (mkPkgName, mkPkgName')
@@ -376,11 +376,10 @@ doBundled typ name hc rels = do
       doRel hcname rel@(D.Rel dname req _) = do
         let comp = maybe [] (\x -> [D.Rel x Nothing Nothing]) hcname
         -- gver <- use ghcVersion
-        root <- use (A.debInfo . D.flags . buildEnv) >>= return . dependOS
         -- Look at what version of the package is provided by the compiler.
         atoms <- get
         -- What version of this package (if any) does the compiler provide?
-        let relInfo = builtIn hc root
+        let relInfo = builtIn hc
             pver = listToMaybe $ fmap (debianVersion'' atoms) (filter ((== name) . pkgName) relInfo)
         -- The name this library would have if it was in the compiler conflicts list.
         let naiveDebianName = mkPkgName hc name typ

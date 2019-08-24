@@ -12,7 +12,7 @@ import Control.Monad.Trans (MonadIO, liftIO)
 import Control.Applicative ((<$>))
 #endif
 import Data.Set as Set (toList)
-import Debian.Debianize.BasicInfo (Flags, buildEnv, dependOS, verbosity, compilerFlavor, cabalFlagAssignments)
+import Debian.Debianize.BasicInfo (Flags, verbosity, compilerFlavor, cabalFlagAssignments)
 import Debian.Debianize.Prelude (intToVerbosity')
 #if MIN_VERSION_Cabal(1,22,0)
 import Debian.GHC (getCompilerInfo)
@@ -51,7 +51,6 @@ import System.Directory (doesFileExist, getCurrentDirectory)
 import System.Exit (ExitCode(..))
 import System.Posix.Files (setFileCreationMask)
 import System.Process (system)
-import System.Unix.Mount (WithProcAndSys)
 
 #if !MIN_VERSION_Cabal(1,22,0)
 type CompilerInfo = CompilerId
@@ -61,11 +60,11 @@ type CompilerInfo = CompilerId
 -- in particular, using the dependency environment in the EnvSet, find
 -- the newest available compiler of the requested compiler flavor and
 -- use that information load the configured PackageDescription.
-inputCabalization :: forall m. (MonadIO m) => Flags -> WithProcAndSys m (Either String PackageDescription)
+inputCabalization :: forall m. (MonadIO m) => Flags -> m (Either String PackageDescription)
 inputCabalization flags =
     getCompInfo flags >>= either (return . Left) (\cinfo -> Right <$> doCompInfo cinfo)
     where
-      doCompInfo :: CompilerInfo -> WithProcAndSys m PackageDescription
+      doCompInfo :: CompilerInfo -> m PackageDescription
       doCompInfo cinfo = do
         -- Load a GenericPackageDescription from the current directory
         -- and from that create a finalized PackageDescription for the
@@ -91,15 +90,13 @@ inputCabalization flags =
       vb = intToVerbosity' $ view verbosity flags
       fs = view cabalFlagAssignments flags
 
-getCompInfo :: MonadIO m => Flags -> WithProcAndSys m (Either String CompilerInfo)
+getCompInfo :: MonadIO m => Flags -> m (Either String CompilerInfo)
 getCompInfo flags =
 #if MIN_VERSION_Cabal(1,22,0)
-              getCompilerInfo root (view compilerFlavor flags)
+              getCompilerInfo (view compilerFlavor flags)
 #else
-              return $ newestAvailableCompilerId root (view compilerFlavor flags)
+              return $ newestAvailableCompilerId (view compilerFlavor flags)
 #endif
-    where
-      root = dependOS $ view buildEnv flags
 
 -- | Run the package's configuration script.
 autoreconf :: Verbosity -> Cabal.PackageDescription -> IO ()

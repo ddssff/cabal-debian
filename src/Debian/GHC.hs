@@ -9,11 +9,6 @@ module Debian.GHC
     -- , ghcNewestAvailableVersion'
     -- , ghcNewestAvailableVersion
     -- , compilerIdFromDebianVersion
-    , hvrCabalVersion
-    , hvrHappyVersion
-    , hvrAlexVersion
-    , hvrCompilerPATH
-    , isHVRCompilerPackage
     , withModifiedPATH
     -- , CompilerChoice(..), hcVendor, hcFlavor
     , compilerPackageName
@@ -25,13 +20,12 @@ module Debian.GHC
 #if !MIN_VERSION_base(4,8,0)
 import Control.Applicative ((<$>))
 #endif
-import Control.DeepSeq (force)
 import Control.Exception (SomeException, throw, try)
 import Control.Lens (_2, over)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Char (isSpace, toLower, toUpper)
-import Data.Function.Memoize (deriveMemoizable, Memoizable, memoize, memoize2, memoizeFinite)
-import Data.List (intercalate, isPrefixOf)
+import Data.Function.Memoize (deriveMemoizable, Memoizable, memoize, memoizeFinite)
+import Data.List (intercalate)
 import Debian.Debianize.BinaryDebDescription (PackageType(..))
 import Debian.Relation (BinPkgName(BinPkgName))
 import Debian.Version (DebianVersion, parseDebianVersion')
@@ -49,7 +43,6 @@ import Data.Function.Memoize (deriveMemoizable, memoize, memoize2)
 import Data.Version (showVersion, Version(..), parseVersion)
 #endif
 import System.Console.GetOpt (ArgDescr(ReqArg), OptDescr(..))
-import System.Directory (doesDirectoryExist)
 import System.Environment (getEnv)
 import System.Exit (ExitCode(ExitFailure, ExitSuccess))
 -- import System.IO (hPutStrLn, stderr)
@@ -57,8 +50,6 @@ import System.IO.Error (isDoesNotExistError)
 import System.IO.Unsafe (unsafePerformIO)
 import System.Process (readProcess, showCommandForUser, readProcessWithExitCode)
 import System.Posix.Env (setEnv)
-import System.Unix.Chroot (useEnv, fchroot)
-import System.Unix.Mount (WithProcAndSys)
 import Text.ParserCombinators.ReadP (readP_to_S)
 import Text.Read (readMaybe)
 import Text.Regex.TDFA ((=~))
@@ -70,27 +61,6 @@ $(deriveMemoizable ''CompilerFlavor)
 $(deriveMemoizable ''Version)
 $(deriveMemoizable ''BinPkgName)
 
--- | Up until now cabal-debian only worked with Debian's or Ubuntu's
--- ghc debs, which have binary package names ghc, ghc-prof, ghc-doc,
--- etc.  This type is intended to add support for Herbert Valerio
--- Riedel's (hvr's) repository of several different versions of ghc
--- and supporting tools happy, alex and cabal.  These have different
--- binary package names, and the packages put the executables in
--- different locations than the Debian (and Ubuntu) packages.  This
--- option is activated when a directory such as /opt/ghc/8.0.1/bin is
--- present in $PATH and a ghc executable is found there.
---
--- This function decides whether a deb name is that of one of
--- debian/ubuntu's ghc packages or one of hvr's.  If it is an hvr
--- package it returns the version number embedded in its name.
-isHVRCompilerPackage :: CompilerFlavor -> BinPkgName -> Maybe Version
-isHVRCompilerPackage hc (BinPkgName name) =
-    case isPrefixOf prefix name of
-      True -> toVersion (takeWhile (/= '-') (drop (length prefix) name))
-      False -> Nothing
-      where
-        prefix = map toLower (show hc) ++ "-"
-
 toVersion :: String -> Maybe Version
 toVersion s = case filter (all isSpace . snd) (readP_to_S parseVersion s) of
 #if MIN_VERSION_Cabal(2,0,0)
@@ -100,56 +70,8 @@ toVersion s = case filter (all isSpace . snd) (readP_to_S parseVersion s) of
 #endif
                 _ -> Nothing
 
-withCompilerVersion :: FilePath -> CompilerFlavor -> (DebianVersion -> a) -> Either String a
-withCompilerVersion root hc f = either Left (\v -> Right (f v)) (newestAvailableCompiler root hc)
-
--- | Return the a string containing the PATH environment variable value
--- suitable for using some version of ghc from hvr's compiler repo.
-hvrCompilerPATH :: Version -> String -> String
-hvrCompilerPATH v path0 =
-    intercalate ":" ["/opt/ghc/" ++ prettyShow v ++ "/bin",
-                     "/opt/cabal/" ++ prettyShow (hvrCabalVersion v) ++ "/bin",
-                     "/opt/happy/" ++ prettyShow (hvrHappyVersion v) ++ "/bin",
-                     "/opt/alex/" ++ prettyShow (hvrAlexVersion v) ++ "/bin",
-                     path0]
-
--- | What version of Cabal goes with this version of GHC?
-hvrCabalVersion :: Version -> Version
-#if MIN_VERSION_Cabal(2,0,0)
-hvrCabalVersion v =
-  case versionNumbers v of
-    (m : n : _) | (m == 7 && n <= 7) || m < 7 -> mkVersion [1,16]
-    (7 : n : _) | n <= 9 -> mkVersion [1,18]
-    (7 : _) -> mkVersion [1,22]
-    _ -> mkVersion [1,24]
-#else
-hvrCabalVersion (Version (m : n : _) _) | (m == 7 && n <= 7) || m < 7 = Version [1,16] []
-hvrCabalVersion (Version (7 : n : _) _) | n <= 9 = Version [1,18] []
-hvrCabalVersion (Version (7 : _) _) = Version [1,22] []
-hvrCabalVersion _ = Version [1,24] []
-#endif
-
--- | What version of Happy goes with this version of GHC?
-hvrHappyVersion :: Version -> Version
-#if MIN_VERSION_Cabal(2,0,0)
-hvrHappyVersion v =
-    case versionNumbers v of
-      (m : n : _) | (m == 7 && n <= 3) || m < 7 -> mkVersion [1,19,3]
-      (7 : n : _) | n <= 2 -> mkVersion [1,19,3]
-      _ -> mkVersion [1,19,5]
-#else
-hvrHappyVersion (Version (m : n : _) _) | (m == 7 && n <= 3) || m < 7 = Version [1,19,3] []
-hvrHappyVersion (Version (7 : n : _) _) | n <= 2 = Version [1,19,3] []
-hvrHappyVersion _ = Version [1,19,5] []
-#endif
-
--- | What version of Alex goes with this version of GHC?
-hvrAlexVersion :: Version -> Version
-#if MIN_VERSION_Cabal(2,0,0)
-hvrAlexVersion _ = mkVersion [3,1,7]
-#else
-hvrAlexVersion _ = Version [3,1,7] []
-#endif
+withCompilerVersion :: CompilerFlavor -> (DebianVersion -> a) -> Either String a
+withCompilerVersion hc f = either Left (\v -> Right (f v)) (newestAvailableCompiler hc)
 
 withModifiedPATH :: MonadIO m => (String -> String) -> m a -> m a
 withModifiedPATH f action = do
@@ -163,68 +85,53 @@ withModifiedPATH f action = do
   return r
 
 -- | Memoized version of newestAvailable'
-newestAvailable :: FilePath -> BinPkgName -> Either String DebianVersion
-newestAvailable root pkg =
-    memoize2 f pkg root
+newestAvailable :: BinPkgName -> Either String DebianVersion
+newestAvailable pkg = memoize f pkg
     where
-      f :: BinPkgName -> FilePath -> Either String DebianVersion
-      f pkg' root' = unsafePerformIO (newestAvailable' root' pkg')
+      f :: BinPkgName -> Either String DebianVersion
+      f pkg' = unsafePerformIO (newestAvailable' pkg')
 
--- | Look up the newest version of a deb available in the given changeroot.
-newestAvailable' :: FilePath -> BinPkgName -> IO (Either String DebianVersion)
-newestAvailable' root (BinPkgName name) = do
-  exists <- doesDirectoryExist root
-  case exists of
-    False -> return $ Left $ "newestAvailable: no such environment: " ++ show root
-    True -> do
-      versions <- try $ chroot root $
-                    (readProcess "apt-cache" ["showpkg", name] "" >>=
-                    return . dropWhile (/= "Versions: ") . lines) :: IO (Either SomeException [String])
+-- | Look up the newest version of a deb available
+newestAvailable' :: BinPkgName -> IO (Either String DebianVersion)
+newestAvailable' (BinPkgName name) = do
+      versions <- try $ (readProcess "apt-cache" ["showpkg", name] "" >>=
+                  return . dropWhile (/= "Versions: ") . lines) :: IO (Either SomeException [String])
       case versions of
-        Left e -> return $ Left $ "newestAvailable failed in " ++ show root ++ ": " ++ show e
+        Left e -> return $ Left $ "newestAvailable failed: " ++ show e
         Right (_ : versionLine : _) -> return . Right . parseDebianVersion' . takeWhile (/= ' ') $ versionLine
         Right x -> return $ Left $ "Unexpected result from apt-cache showpkg: " ++ show x
-        where
-          chroot "/" = id
-          chroot _ = useEnv root (return . force)
 
-newestAvailableCompiler :: FilePath -> CompilerFlavor -> Either String DebianVersion
-newestAvailableCompiler root hc = maybe (Left "No compiler package") (newestAvailable root) (compilerPackageName hc Development)
+newestAvailableCompiler :: CompilerFlavor -> Either String DebianVersion
+newestAvailableCompiler hc = maybe (Left "No compiler package") newestAvailable (compilerPackageName hc Development)
 
-newestAvailableCompilerId :: FilePath -> CompilerFlavor -> Either String CompilerId
-newestAvailableCompilerId root hc = either Left (Right . compilerIdFromDebianVersion hc) (newestAvailableCompiler root hc)
+newestAvailableCompilerId :: CompilerFlavor -> Either String CompilerId
+newestAvailableCompilerId hc = either Left (Right . compilerIdFromDebianVersion hc) (newestAvailableCompiler hc)
 
 {-
 -- | The IO portion of ghcVersion.  For there to be no version of ghc
 -- available is an exceptional condition, it has been standard in
 -- Debian and Ubuntu for a long time.
-ghcNewestAvailableVersion :: CompilerFlavor -> FilePath -> IO DebianVersion
-ghcNewestAvailableVersion hc root = do
-  exists <- doesDirectoryExist root
-  when (not exists) (error $ "ghcVersion: no such environment: " ++ show root)
+ghcNewestAvailableVersion :: CompilerFlavor -> IO DebianVersion
+ghcNewestAvailableVersion hc = do
   versions <- try $ chroot $
                 (readProcess "apt-cache" ["showpkg", map toLower (show hc)] "" >>=
                 return . dropWhile (/= "Versions: ") . lines) :: IO (Either SomeException [String])
   case versions of
-    Left e -> error $ "ghcNewestAvailableVersion failed in " ++ show root ++ ": " ++ show e
+    Left e -> error $ "ghcNewestAvailableVersion failed in: " ++ show e
     Right (_ : versionLine : _) -> return . parseDebianVersion . takeWhile (/= ' ') $ versionLine
-    _ -> error $ "No version of ghc available in " ++ show root
-    where
-      chroot = case root of
-                 "/" -> id
-                 _ -> useEnv root (return . force)
+    _ -> error $ "No version of ghc available"
 
 -- | Memoize the CompilerId built for the newest available version of
 -- the compiler package so we don't keep running apt-cache showpkg
 -- over and over.
-ghcNewestAvailableVersion' :: CompilerFlavor -> FilePath -> CompilerId
-ghcNewestAvailableVersion' hc root =
-    memoize f (hc, root)
+ghcNewestAvailableVersion' :: CompilerFlavor -> CompilerId
+ghcNewestAvailableVersion' hc =
+    memoize f hc
     where
       f :: (CompilerFlavor, FilePath) -> CompilerId
-      f (hc', root) = unsafePerformIO (g hc' root)
-      g hc root = do
-        ver <- ghcNewestAvailableVersion hc root
+      f hc' = unsafePerformIO (g hc')
+      g hc = do
+        ver <- ghcNewestAvailableVersion hc
         let cid = compilerIdFromDebianVersion ver
         -- hPutStrLn stderr ("GHC Debian version: " ++ show ver ++ ", Compiler ID: " ++ show cid)
         return cid
@@ -293,15 +200,6 @@ compilerPackage GHCJS = filePackage "ghcjs"
 #endif
 compilerPackage x = error $ "compilerPackage - unsupported CompilerFlavor: " ++ show x
 
-{-
-compilerExecutable :: CompilerFlavor -> String
-compilerExecutable GHC = "ghc"
-#if MIN_VERSION_Cabal(1,22,0)
-compilerExecutable GHCJS = "ghcjs"
-#endif
-compilerExecutable x = error $ "compilerExecutable - unexpected flavor: " ++ show x
--}
-
 filePackage :: FilePath -> Maybe BinPkgName
 filePackage = memoize f
     where
@@ -326,9 +224,8 @@ which bin = do
 -- compiler into the chroot if necessary and ask it for its version
 -- number.  This has the benefit of working for ghcjs, which doesn't
 -- make the base ghc version available in the version number.
-getCompilerInfo :: MonadIO m => FilePath -> CompilerFlavor -> WithProcAndSys m (Either String CompilerInfo)
-getCompilerInfo "/" flavor = liftIO $ getCompilerInfo' flavor
-getCompilerInfo root flavor = liftIO $ fchroot root $ getCompilerInfo' flavor
+getCompilerInfo :: MonadIO m => CompilerFlavor -> m (Either String CompilerInfo)
+getCompilerInfo flavor = liftIO $ getCompilerInfo' flavor
 
 getCompilerInfo' :: CompilerFlavor -> IO (Either String CompilerInfo)
 getCompilerInfo' flavor = do

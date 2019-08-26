@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, DeriveDataTypeable, RankNTypes, ScopedTypeVariables, StandaloneDeriving, TemplateHaskell #-}
+{-# LANGUAGE CPP, RankNTypes, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wall -fno-warn-orphans #-}
 module Debian.GHC
     ( withCompilerVersion
@@ -22,9 +22,9 @@ import Control.Applicative ((<$>))
 #endif
 import Control.Exception (SomeException, throw, try)
 import Control.Lens (_2, over)
+import Control.Monad ((<=<))
 import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Char (isSpace, toLower, toUpper)
-import Data.Function.Memoize (deriveMemoizable, Memoizable, memoize, memoizeFinite)
 import Data.List (intercalate)
 import Debian.Debianize.BinaryDebDescription (PackageType(..))
 import Debian.Relation (BinPkgName(BinPkgName))
@@ -37,9 +37,7 @@ import Distribution.Compiler (CompilerInfo(..), unknownCompilerInfo, AbiTag(NoAb
 import Distribution.Pretty (prettyShow)
 import Distribution.Version (mkVersion', mkVersion, Version, versionNumbers)
 import Data.Version (parseVersion)
-import Data.Word (Word64)
 #else
-import Data.Function.Memoize (deriveMemoizable, memoize, memoize2)
 import Data.Version (showVersion, Version(..), parseVersion)
 #endif
 import System.Console.GetOpt (ArgDescr(ReqArg), OptDescr(..))
@@ -47,19 +45,12 @@ import System.Environment (getEnv)
 import System.Exit (ExitCode(ExitFailure, ExitSuccess))
 -- import System.IO (hPutStrLn, stderr)
 import System.IO.Error (isDoesNotExistError)
-import System.IO.Unsafe (unsafePerformIO)
 import System.Process (readProcess, showCommandForUser, readProcessWithExitCode)
 import System.Posix.Env (setEnv)
 import Text.ParserCombinators.ReadP (readP_to_S)
 import Text.Read (readMaybe)
 import Text.Regex.TDFA ((=~))
-
-#if MIN_VERSION_Cabal(2,0,0)
-instance Memoizable Word64 where memoize = memoizeFinite
-#endif
-$(deriveMemoizable ''CompilerFlavor)
-$(deriveMemoizable ''Version)
-$(deriveMemoizable ''BinPkgName)
+import UnliftIO.Memoize (memoizeMVar, runMemoized, Memoized)
 
 toVersion :: String -> Maybe Version
 toVersion s = case filter (all isSpace . snd) (readP_to_S parseVersion s) of
@@ -70,8 +61,8 @@ toVersion s = case filter (all isSpace . snd) (readP_to_S parseVersion s) of
 #endif
                 _ -> Nothing
 
-withCompilerVersion :: CompilerFlavor -> (DebianVersion -> a) -> Either String a
-withCompilerVersion hc f = either Left (\v -> Right (f v)) (newestAvailableCompiler hc)
+withCompilerVersion :: CompilerFlavor -> (DebianVersion -> a) -> IO (Either String a)
+withCompilerVersion hc f = newestAvailableCompiler hc >>= \nac -> return (fmap f nac)
 
 withModifiedPATH :: MonadIO m => (String -> String) -> m a -> m a
 withModifiedPATH f action = do
@@ -85,27 +76,26 @@ withModifiedPATH f action = do
   return r
 
 -- | Memoized version of newestAvailable'
-newestAvailable :: BinPkgName -> Either String DebianVersion
-newestAvailable pkg = memoize f pkg
+newestAvailable :: BinPkgName -> IO (Memoized (Either String DebianVersion))
+newestAvailable pkg = memoizeMVar (f pkg)
     where
-      f :: BinPkgName -> Either String DebianVersion
-      f pkg' = unsafePerformIO (newestAvailable' pkg')
+      f :: BinPkgName -> IO (Either String DebianVersion)
+      f = newestAvailable'
 
 -- | Look up the newest version of a deb available
 newestAvailable' :: BinPkgName -> IO (Either String DebianVersion)
 newestAvailable' (BinPkgName name) = do
-      versions <- try $ (readProcess "apt-cache" ["showpkg", name] "" >>=
-                  return . dropWhile (/= "Versions: ") . lines) :: IO (Either SomeException [String])
+      versions <- try $ dropWhile (/= "Versions: ") . lines <$> readProcess "apt-cache" ["showpkg", name] "" :: IO (Either SomeException [String])
       case versions of
         Left e -> return $ Left $ "newestAvailable failed: " ++ show e
         Right (_ : versionLine : _) -> return . Right . parseDebianVersion' . takeWhile (/= ' ') $ versionLine
         Right x -> return $ Left $ "Unexpected result from apt-cache showpkg: " ++ show x
 
-newestAvailableCompiler :: CompilerFlavor -> Either String DebianVersion
-newestAvailableCompiler hc = maybe (Left "No compiler package") newestAvailable (compilerPackageName hc Development)
+newestAvailableCompiler :: CompilerFlavor -> IO (Either String DebianVersion)
+newestAvailableCompiler hc = maybe (return (Left "No compiler package")) (runMemoized <=< newestAvailable) =<< compilerPackageName hc Development
 
-newestAvailableCompilerId :: CompilerFlavor -> Either String CompilerId
-newestAvailableCompilerId hc = either Left (Right . compilerIdFromDebianVersion hc) (newestAvailableCompiler hc)
+newestAvailableCompilerId :: CompilerFlavor -> IO (Either String CompilerId)
+newestAvailableCompilerId hc = fmap (compilerIdFromDebianVersion hc) <$> newestAvailableCompiler hc
 
 {-
 -- | The IO portion of ghcVersion.  For there to be no version of ghc
@@ -173,9 +163,10 @@ debName hc =
 
 -- | Compute the compiler package names by finding out what package
 -- contains the corresponding executable.
-compilerPackageName :: CompilerFlavor -> PackageType -> Maybe BinPkgName
-compilerPackageName hc typ =
-    maybe Nothing (Just . finish) (compilerPackage hc)
+compilerPackageName :: CompilerFlavor -> PackageType -> IO (Maybe BinPkgName)
+compilerPackageName hc typ = do
+    mcp <- compilerPackage hc
+    return $ fmap finish mcp
     where
       finish (BinPkgName hcname) =
           let isDebian = map toLower (show hc) == hcname in
@@ -193,18 +184,18 @@ compilerPackageName hc typ =
             (GHC, Profiling, _) -> BinPkgName (hcname ++ "-prof")
             _ -> BinPkgName hcname
 
-compilerPackage :: CompilerFlavor -> Maybe BinPkgName
-compilerPackage GHC = filePackage "ghc"
+compilerPackage :: CompilerFlavor -> IO (Maybe BinPkgName)
+compilerPackage GHC = filePackage "ghc" >>= runMemoized
 #if MIN_VERSION_Cabal(1,22,0)
-compilerPackage GHCJS = filePackage "ghcjs"
+compilerPackage GHCJS = filePackage "ghcjs" >>= runMemoized
 #endif
 compilerPackage x = error $ "compilerPackage - unsupported CompilerFlavor: " ++ show x
 
-filePackage :: FilePath -> Maybe BinPkgName
-filePackage = memoize f
+filePackage :: FilePath -> IO (Memoized (Maybe BinPkgName))
+filePackage = memoizeMVar . f
     where
-      f :: FilePath -> Maybe BinPkgName
-      f p = unsafePerformIO (which p >>= maybe (return Nothing) (\x -> package <$> readProcess "dpkg-query" ["-S", x] ""))
+      f :: FilePath -> IO (Maybe BinPkgName)
+      f p = which p >>= maybe (return Nothing) (\x -> package <$> readProcess "dpkg-query" ["-S", x] "")
       package :: String -> Maybe BinPkgName
       package s =
           case s =~ "^(.*): .*$" :: (String, String, String, [String]) of
@@ -212,8 +203,7 @@ filePackage = memoize f
             _ -> Nothing
 
 which :: String -> IO (Maybe FilePath)
-which bin = do
-  (toPath . over _2 lines) <$> readProcessWithExitCode "which" [bin] ""
+which bin = toPath . over _2 lines <$> readProcessWithExitCode "which" [bin] ""
     where
       toPath :: (ExitCode, [String], String) -> Maybe String
       toPath (ExitSuccess, [path], _) = Just path

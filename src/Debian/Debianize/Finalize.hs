@@ -529,8 +529,7 @@ binaryPackageRelations b typ = zoom A.debInfo $ do
     B.breaks     .= []
     B.builtUsing .= []
 
-    unless (typ == B.Documentation) $ do
-      B.provides %= (anyrel "${haskell:Provides}" :)
+    unless (typ == B.Documentation) $ B.provides %= (anyrel "${haskell:Provides}" :)
 
 -- | Add the library paragraphs for a particular compiler flavor.
 librarySpecs :: (Monad m) => PackageDescription -> CompilerFlavor -> CabalT m ()
@@ -645,8 +644,8 @@ makeUtilsPackage pkgDesc hc =
     where
       ename i =
           case D.sourceDir i of
-            (Nothing) -> D.execName i
-            (Just s) ->  s </> D.execName i
+            Nothing -> D.execName i
+            Just s ->  s </> D.execName i
 
 expandAtoms :: Monad m => CabalT m () -> CabalT m ()
 expandAtoms goodies =
@@ -773,11 +772,12 @@ finalizeRules :: (MonadIO m) => CabalT m ()
 finalizeRules =
     do DebBase b <- debianNameBase
        hc <- use (A.debInfo . D.flags . compilerFlavor)
-       let BinPkgName hcdeb = maybe (error "No compiler package") id (compilerPackageName hc B.Development)
+       cpn <- liftIO $ compilerPackageName hc B.Development
+       let BinPkgName hcdeb = fromMaybe (error "No compiler package") cpn
        (A.debInfo . D.rulesHead) .?= Just "#!/usr/bin/make -f"
        (A.debInfo . D.rulesSettings) %= (++ ["DEB_CABAL_PACKAGE = " <> pack b])
        (A.debInfo . D.rulesSettings) %= (++ ["DEB_DEFAULT_COMPILER = " <> pack hcdeb])
-       flags <- (flagString . Set.toList) <$> use (A.debInfo . D.flags . cabalFlagAssignments)
+       flags <- flagString . Set.toList <$> use (A.debInfo . D.flags . cabalFlagAssignments)
        unless (List.null flags) ((A.debInfo . D.rulesSettings) %= (++ ["DEB_SETUP_GHC_CONFIGURE_ARGS = " <> pack flags]))
        (A.debInfo . D.rulesIncludes) %= (++ ["include /usr/share/cdbs/1/rules/debhelper.mk",
                                              "include /usr/share/cdbs/1/class/hlibrary.mk"])
@@ -808,7 +808,7 @@ flagList = List.map tagWithValue . words
 
 flagString :: [(FlagName, Bool)] -> String
 #if MIN_VERSION_Cabal(2,0,0)
-flagString = List.intercalate " " . List.map (\ (s, sense) -> "-f" ++ (if sense then "" else "-") ++ unFlagName s)
+flagString = unwords . List.map (\ (s, sense) -> "-f" ++ (if sense then "" else "-") ++ unFlagName s)
 #else
-flagString = List.intercalate " " . List.map (\ (FlagName s, sense) -> "-f" ++ (if sense then "" else "-") ++ s)
+flagString = unwords . List.map (\ (FlagName s, sense) -> "-f" ++ (if sense then "" else "-") ++ s)
 #endif

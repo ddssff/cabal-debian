@@ -6,7 +6,7 @@
 -- *That* is done using the debianNameMap of CabalInfo, which is
 -- built using the mapCabal, splitCabal, and remapCabal functions.
 
-{-# LANGUAGE CPP, FlexibleContexts, ScopedTypeVariables, StandaloneDeriving, TemplateHaskell #-}
+{-# LANGUAGE CPP, FlexibleContexts, ScopedTypeVariables #-}
 module Debian.Debianize.Bundled
     ( builtIn
     -- * Utilities
@@ -24,8 +24,8 @@ module Debian.Debianize.Bundled
 import Control.Applicative ((<$>), (<*>))
 #endif
 import Control.Exception (SomeException, try)
+import Control.Monad ((<=<))
 import Data.Char (isAlphaNum, toLower)
-import Data.Function.Memoize (memoize, memoize2)
 import Data.List (groupBy, intercalate, isPrefixOf, stripPrefix)
 import Data.Maybe (listToMaybe, mapMaybe)
 import Data.Set as Set (difference, fromList)
@@ -46,11 +46,11 @@ import Distribution.Simple.Compiler (CompilerFlavor(GHCJS))
 #else
 import Distribution.Compiler (CompilerFlavor)
 #endif
-import System.IO.Unsafe (unsafePerformIO)
 import System.Process (readProcess, showCommandForUser)
 import Test.HUnit (assertEqual, Test(TestList, TestCase))
 import Text.ParserCombinators.ReadP (char, endBy1, munch1, ReadP, readP_to_S)
 import Text.Regex.TDFA ((=~))
+import UnliftIO.Memoize (memoizeMVar, Memoized, runMemoized)
 
 #if MIN_VERSION_base(4,8,0)
 #if !MIN_VERSION_Cabal(2,0,0)
@@ -74,10 +74,11 @@ makeVersion ns = Version ns []
 -- This is done by looking for .conf files beneath a package.conf.d
 -- directory and parsing the name.  (Probably better to actually read
 -- the .conf file.)
-builtIn :: CompilerFlavor -> [PackageIdentifier]
-builtIn hc =
-  let Just hcname = (hcExecutablePath hc >>= hcBinPkgName) in
-  aptCacheProvides hcname
+builtIn :: CompilerFlavor -> IO [PackageIdentifier]
+builtIn hc = do
+  Just hep <- hcExecutablePath hc >>= runMemoized
+  Just hcname <- hcBinPkgName hep >>= runMemoized
+  runMemoized =<< aptCacheProvides hcname
 
 -- | Convert CompilerFlavor to an executable name in a way that works
 -- for at least the cases we are interested in.  This might need to be
@@ -86,90 +87,76 @@ hcExecutable :: CompilerFlavor -> String
 hcExecutable = map toLower . show
 
 -- | Use which(1) to determine full path name to haskell compiler executable
-hcExecutablePath :: CompilerFlavor -> Maybe FilePath
-hcExecutablePath = memoize $ \hc ->
-  listToMaybe $ lines $ unsafePerformIO $ readProcess "which" [hcExecutable hc] ""
+hcExecutablePath :: CompilerFlavor -> IO (Memoized (Maybe FilePath))
+hcExecutablePath hc = memoizeMVar (listToMaybe . lines <$> readProcess "which" [hcExecutable hc] "")
 
-hcVersion :: CompilerFlavor -> Maybe Version
-hcVersion hc =
-    let Just hcpath = hcExecutablePath hc in
-    maybe Nothing parseVersion' $
-     listToMaybe $
-     lines $
-     unsafePerformIO $
-     readProcess hcpath
+hcVersion :: CompilerFlavor -> IO (Maybe Version)
+hcVersion hc = do
+    Just hcpath <- runMemoized =<< hcExecutablePath hc
+    ver <- readProcess hcpath
                  [case hc of
 #if MIN_VERSION_Cabal(1,22,0)
                     GHCJS -> "--numeric-ghc-version"
 #endif
                     _ -> "--numeric-version"]
                  ""
+    return $ maybe Nothing parseVersion' (listToMaybe (lines ver))
 
 -- | Use dpkg -S to convert the executable path to a debian binary
 -- package name.
-hcBinPkgName :: FilePath -> Maybe BinPkgName
-hcBinPkgName = memoize $ \path ->
-  let s = unsafePerformIO (readProcess "dpkg" ["-S", path] "") in
-  case map (takeWhile (/= ':')) (lines s) of
+hcBinPkgName :: FilePath -> IO (Memoized (Maybe BinPkgName))
+hcBinPkgName path = memoizeMVar $ do
+  s <- readProcess "dpkg" ["-S", path] ""
+  return $ case map (takeWhile (/= ':')) (lines s) of
     [] -> Nothing
     [name] -> Just (BinPkgName name)
     _ -> error $ "Unexpected output from " ++ showCommandForUser "dpkg" ["-S", path] ++ ": ++ " ++ show s
 
 -- | What built in libraries does this haskell compiler provide?
-aptCacheProvides :: BinPkgName -> [PackageIdentifier]
-aptCacheProvides = memoize aptCacheProvides'
-    where
-      aptCacheProvides' hcname =
-        {-trace ("aptCacheProvides " ++ show hcname ++ " -> " ++ show pis)-}
-          packageIdentifiers hcname
+aptCacheProvides :: BinPkgName -> IO (Memoized [PackageIdentifier])
+aptCacheProvides = memoizeMVar . packageIdentifiers
 
-packageIdentifiers :: BinPkgName -> [PackageIdentifier]
+packageIdentifiers :: BinPkgName -> IO [PackageIdentifier]
 packageIdentifiers hcname =
-    (mapMaybe parsePackageIdentifier' .
-     mapMaybe (dropRequiredSuffix ".conf") .
-     map last .
-     filter (elem "package.conf.d") .
-     map (groupBy (\a b -> (a == '/') == (b == '/')))) (binPkgFiles hcname)
+    mapMaybe parsePackageIdentifier' .
+    mapMaybe (dropRequiredSuffix ".conf" . last) .
+    filter (elem "package.conf.d") .
+    map (groupBy (\a b -> (a == '/') == (b == '/'))) <$> binPkgFiles hcname
 
 dropRequiredSuffix :: String -> String -> Maybe String
 dropRequiredSuffix suff x =
     let (x', suff') = splitAt (length x - length suff) x in if suff == suff' then Just x' else Nothing
 
 -- | A list of the files in a binary deb
-binPkgFiles :: BinPkgName -> [FilePath]
-binPkgFiles hcname = lines $ unsafePerformIO (readProcess "dpkg" ["-L", unBinPkgName hcname] "")
+binPkgFiles :: BinPkgName -> IO [FilePath]
+binPkgFiles hcname = lines <$> readProcess "dpkg" ["-L", unBinPkgName hcname] ""
 
-{-
-takeBetween :: (a -> Bool) -> (a -> Bool) -> [a] -> [a]
-takeBetween startPred endPred = takeWhile (not . endPred) . dropWhile startPred . dropWhile (not . startPred)
--}
-
-aptCacheConflicts :: String -> DebianVersion -> [BinPkgName]
+aptCacheConflicts :: String -> DebianVersion -> IO [BinPkgName]
 aptCacheConflicts hcname ver =
-    either (\ _ -> []) (mapMaybe doLine . lines) (aptCacheDepends hcname (show (prettyDebianVersion ver)))
+    either (const []) (mapMaybe doLine . lines) <$> (runMemoized =<< aptCacheDepends hcname (show (prettyDebianVersion ver)))
     where
       doLine s = case s =~ "^[ ]*Conflicts:[ ]*<(.*)>$" :: (String, String, String, [String]) of
                    (_, _, _, [name]) -> Just (BinPkgName name)
                    _ -> Nothing
 
-aptCacheDepends :: String -> String -> Either SomeException String
-aptCacheDepends =
-    memoize2 (\hcname ver -> unsafePerformIO (try (readProcess "apt-cache" ["depends", hcname ++ "=" ++ ver] "")))
+aptCacheDepends :: String -> String -> IO (Memoized (Either SomeException String))
+aptCacheDepends hcname ver =
+    memoizeMVar (try (readProcess "apt-cache" ["depends", hcname ++ "=" ++ ver] ""))
 
-aptVersions :: BinPkgName -> [DebianVersion]
-aptVersions hcname =
-    either (\ _ -> []) (map parseDebianVersion' . filter (/= "") . map (takeWhile (/= ' ')) . takeWhile (not . isPrefixOf "Reverse Depends:") . drop 1 . dropWhile (not . isPrefixOf "Versions:") . lines) (aptCacheShowPkg hcname)
+aptVersions :: BinPkgName -> IO [DebianVersion]
+aptVersions =
+    return . either (const []) (map parseDebianVersion' . filter (/= "") . map (takeWhile (/= ' ')) . takeWhile (not . isPrefixOf "Reverse Depends:") . drop 1 . dropWhile (not . isPrefixOf "Versions:") . lines) <=< (runMemoized <=< aptCacheShowPkg)
 
-aptCacheShowPkg :: BinPkgName -> Either SomeException String
-aptCacheShowPkg =
-    memoize (\hcname -> unsafePerformIO (try (readProcess "apt-cache" ["showpkg", unBinPkgName hcname] "")))
+aptCacheShowPkg :: BinPkgName -> IO (Memoized (Either SomeException String))
+aptCacheShowPkg hcname =
+    memoizeMVar (try (readProcess "apt-cache" ["showpkg", unBinPkgName hcname] ""))
 
 -- | A package identifier is a package name followed by a dash and
 -- then a version number.  A package name, according to the cabal
 -- users guide "can use letters, numbers and hyphens, but not spaces."
 -- So be it.
 parsePackageIdentifier :: ReadP PackageIdentifier
-parsePackageIdentifier = do
+parsePackageIdentifier =
 #if MIN_VERSION_Cabal(2,0,0)
   makeId <$> ((,) <$> endBy1 (munch1 isAlphaNum) (char '-') <*> parseCabalVersion)
     where
@@ -210,16 +197,16 @@ tests = TestList [ TestCase (assertEqual "Bundled1"
                                Nothing
                                (parseMaybe parsePackageIdentifier "HUnit-1.2.3 "))
                  , TestCase $ do
-                     ghc <- (head . lines) <$> readProcess "which" ["ghc"] ""
+                     ghc <- head . lines <$> readProcess "which" ["ghc"] ""
                      let ver = fmap (takeWhile (/= '/')) (stripPrefix "/opt/ghc/" ghc)
-                     let expected =
-                             (Set.fromList
+                     acp <- runMemoized =<< aptCacheProvides (BinPkgName ("ghc" ++ maybe "" ("-" ++) ver))
+                     let expected = Set.fromList
                                 -- This is the package list for ghc-7.10.3
                                 ["array", "base", "binary", "bin-package-db", "bytestring", "Cabal",
                                  "containers", "deepseq", "directory", "filepath", "ghc", "ghc-prim",
                                  "haskeline", "hoopl", "hpc", "integer-gmp", "pretty", "process",
-                                 "template-haskell", "terminfo", "time", "transformers", "unix", "xhtml"])
-                         actual = Set.fromList (map (unPackageName . pkgName) (aptCacheProvides (BinPkgName ("ghc" ++ maybe "" ("-" ++) ver))))
+                                 "template-haskell", "terminfo", "time", "transformers", "unix", "xhtml"]
+                         actual = Set.fromList (map (unPackageName . pkgName) acp)
                          missing (Just "8.0.1") = Set.fromList ["bin-package-db"]
                          missing (Just "8.0.2") = Set.fromList ["bin-package-db"]
                          missing _ = mempty

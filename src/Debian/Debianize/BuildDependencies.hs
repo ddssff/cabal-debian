@@ -46,7 +46,7 @@ import Distribution.Pretty (prettyShow)
 import Distribution.Types.LegacyExeDependency (LegacyExeDependency(..))
 import Distribution.Types.PkgconfigDependency (PkgconfigDependency(..))
 #endif
-import Distribution.Version (anyVersion, asVersionIntervals, earlierVersion, foldVersionRange', fromVersionIntervals, intersectVersionRanges, isNoVersion, laterVersion, orEarlierVersion, orLaterVersion, toVersionIntervals, unionVersionRanges, VersionRange, withinVersion)
+import Distribution.Version (anyVersion, asVersionIntervals, fromVersionIntervals, intersectVersionRanges, isNoVersion, toVersionIntervals, unionVersionRanges, VersionRange, withinVersion)
 import Distribution.Version.Invert (invertVersionRange)
 import Prelude hiding (init, log, map, unlines, unlines, writeFile)
 import System.Directory (findExecutable)
@@ -91,15 +91,10 @@ allBuildDepends buildInfos =
       (mergeCabalDependencies $ mapMaybe convertPkgconfig $  concatMap pkgconfigDepends buildInfos)
       (concatMap extraLibs buildInfos)
     where
-#if MIN_VERSION_Cabal(2,0,0)
       convertLegacy :: LegacyExeDependency -> Maybe Dependency
       convertLegacy = const Nothing
       convertPkgconfig :: PkgconfigDependency -> Maybe Dependency
       convertPkgconfig = const Nothing
-#else
-      convertLegacy = Just
-      convertPkgconfig = Just
-#endif
       allBuildDepends' :: Monad m => [Dependency] -> [Dependency] -> [Dependency] -> [String] -> CabalT m [Dependency_]
       allBuildDepends' buildDepends' buildTools' pkgconfigDepends' extraLibs' =
           do atoms <- get
@@ -120,7 +115,7 @@ mergeCabalDependencies =
     where
       dependencyPackage (Dependency x _) = x
 
--- The haskell-cdbs package contains the hlibrary.mk file with
+-- The haskell-devscripts-minimal package contains the hlibrary.mk file with
 -- the rules for building haskell packages.
 debianBuildDeps :: (MonadIO m) => PackageDescription -> CabalT m D.Relations
 debianBuildDeps pkgDesc =
@@ -141,12 +136,6 @@ debianBuildDeps pkgDesc =
        libDeps <- allBuildDepends (maybe [] (filter isBuildable . return . libBuildInfo) (Cabal.library pkgDesc))
        binDeps <- allBuildDepends (List.map buildInfo (filter isBuildable (Cabal.executables pkgDesc)))
        testDeps <- allBuildDepends (List.map testBuildInfo (filter isBuildable (Cabal.testSuites pkgDesc)))
-
-       -- liftIO (putStrLn ("library dependencies: " ++ show libDeps))
-       -- liftIO (putStrLn ("executable dependencies: " ++ show binDeps))
-       -- liftIO (putStrLn (intercalate "\n  " ("executables:" :  fmap show (Cabal.executables pkgDesc))))
-       -- liftIO (putStrLn ("test suite dependencies: " ++ show testDeps))
-
        testsStatus <- use (A.debInfo . D.testsStatus)
 
        cDeps <- nub . concat . concat <$> sequence
@@ -305,28 +294,25 @@ dependencies hc typ name cabalRange omitProfVersionDeps =
           case isNoVersion range''' of
             True -> return Nothing
             False ->
-                Just <$> foldVersionRange'
-                          (return $ Rel' (D.Rel dname Nothing Nothing))
-                          (debianVersion' name >=> \ dv -> return $ Rel' (D.Rel dname (Just (D.EEQ dv)) Nothing))
-                          (debianVersion' name >=> \ dv -> return $ Rel' (D.Rel dname (Just (D.SGR dv)) Nothing))
-                          (debianVersion' name >=> \ dv -> return $ Rel' (D.Rel dname (Just (D.SLT dv)) Nothing))
-                          (debianVersion' name >=> \ dv -> return $ Rel' (D.Rel dname (Just (D.GRE dv)) Nothing))
-                          (debianVersion' name >=> \ dv -> return $ Rel' (D.Rel dname (Just (D.LTE dv)) Nothing))
-#if MIN_VERSION_Cabal(2,0,0)
-                          (\ x y -> debianVersion' name x >>= \ dvx ->
-                                    debianVersion' name y >>= \ dvy ->
-                                    return $ And [Rel' (D.Rel dname (Just (D.GRE dvx)) Nothing),
-                                                  Rel' (D.Rel dname (Just (D.SLT dvy)) Nothing)])
-#endif
-                          (\ x y -> debianVersion' name x >>= \ dvx ->
-                                    debianVersion' name y >>= \ dvy ->
-                                    return $ And [Rel' (D.Rel dname (Just (D.GRE dvx)) Nothing),
-                                                  Rel' (D.Rel dname (Just (D.SLT dvy)) Nothing)])
-                          (\ x y -> x >>= \ x' -> y >>= \ y' -> return $ Or [x', y'])
-                          (\ x y -> x >>= \ x' -> y >>= \ y' -> return $ And [x', y'])
-                          id
-                          range'''
+                Just <$> (cataVersionRange rangeToRange . normaliseVersionRange) range'''
           where
+            rangeToRange AnyVersionF                     = return $ Rel' (D.Rel dname Nothing Nothing)
+            rangeToRange (ThisVersionF v)                = (debianVersion' name >=> \ dv -> return $ Rel' (D.Rel dname (Just (D.EEQ dv)) Nothing)) v
+            rangeToRange (LaterVersionF v)               = (debianVersion' name >=> \ dv -> return $ Rel' (D.Rel dname (Just (D.SGR dv)) Nothing)) v
+            rangeToRange (EarlierVersionF v)             = (debianVersion' name >=> \ dv -> return $ Rel' (D.Rel dname (Just (D.SLT dv)) Nothing)) v
+            rangeToRange (OrLaterVersionF v)             = (debianVersion' name >=> \ dv -> return $ Rel' (D.Rel dname (Just (D.GRE dv)) Nothing)) v
+            rangeToRange (OrEarlierVersionF v)           = (debianVersion' name >=> \ dv -> return $ Rel' (D.Rel dname (Just (D.LTE dv)) Nothing)) v
+            rangeToRange (WildcardVersionF v)            = (\ x y -> debianVersion' name x >>= \ dvx ->
+                                    debianVersion' name y >>= \ dvy ->
+                                    return $ And [Rel' (D.Rel dname (Just (D.GRE dvx)) Nothing),
+                                                  Rel' (D.Rel dname (Just (D.SLT dvy)) Nothing)]) v (wildcardUpperBound v)
+            rangeToRange (MajorBoundVersionF v)          = (\ x y -> debianVersion' name x >>= \ dvx ->
+                                    debianVersion' name y >>= \ dvy ->
+                                    return $ And [Rel' (D.Rel dname (Just (D.GRE dvx)) Nothing),
+                                                  Rel' (D.Rel dname (Just (D.SLT dvy)) Nothing)]) v (majorUpperBound v)
+            rangeToRange (UnionVersionRangesF v1 v2)     = (\ x y -> x >>= \ x' -> y >>= \ y' -> return $ Or [x', y']) v1 v2
+            rangeToRange (IntersectVersionRangesF v1 v2) = (\ x y -> x >>= \ x' -> y >>= \ y' -> return $ And [x', y']) v1 v2
+            rangeToRange (VersionRangeParensF v)         = v
             -- Choose the simpler of the two
             range''' = canon (simpler range' range'')
             -- Unrestrict the range for versions that we know don't exist for this debian package
@@ -337,21 +323,9 @@ dependencies hc typ name cabalRange omitProfVersionDeps =
             -- a wildcard because the resulting debian version numbers have
             -- various suffixes added.
       cabalRange' | typ `elem` noVersionPackageType = anyVersion
-                  | otherwise = foldVersionRange'
-            anyVersion
-            withinVersion  -- <- Here we are turning equals into wildcard
-            laterVersion
-            earlierVersion
-            orLaterVersion
-            orEarlierVersion
-            (\ lb ub -> intersectVersionRanges (orLaterVersion lb) (earlierVersion ub))
-#if MIN_VERSION_Cabal(2,0,0)
-            (\ lb ub -> intersectVersionRanges (orLaterVersion lb) (earlierVersion ub))
-#endif
-            unionVersionRanges
-            intersectVersionRanges
-            id
-            cabalRange
+                  | otherwise = (hyloVersionRange tweak projectVersionRange . normaliseVersionRange) cabalRange
+      tweak (ThisVersionF v) = withinVersion v
+      tweak vr = embedVersionRange vr
       noVersionPackageType = (if omitProfVersionDeps then [B.Profiling] else []) ++ [B.Documentation]
       simpler v1 v2 = minimumBy (compare `on` (length . asVersionIntervals)) [v1, v2]
       -- Simplify a VersionRange

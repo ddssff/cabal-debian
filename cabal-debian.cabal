@@ -157,7 +157,7 @@ Library
   Build-Depends:
     base < 5,
     bifunctors,
-    Cabal >= 1.18,
+    Cabal >= 2.2,
     containers,
     data-default,
     deepseq,
@@ -226,7 +226,7 @@ Executable cabal-debian
   Build-Depends:
     base,
     cabal-debian,
-    Cabal >= 1.18,
+    Cabal >= 2.2,
     debian >= 3.95,
     lens,
     mtl,
@@ -242,7 +242,7 @@ Test-Suite cabal-debian-tests
   Build-Depends:
     base < 5,
     cabal-debian,
-    Cabal >= 1.16,
+    Cabal >= 2.2,
     containers,
     debian >= 3.95,
     Diff >= 0.3.1,

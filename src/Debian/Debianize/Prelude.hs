@@ -38,19 +38,8 @@ module Debian.Debianize.Prelude
     , fromSingleton
     , (.?=)
     , escapeDebianWildcards
-#if MIN_VERSION_Cabal(2,0,0)
-    -- Cabal has its own Version type starting in 2.0.0.0
     , module Distribution.Version
     , module Distribution.Package
-#else
-    , module Data.Version
-    , mkFlagName
-    , mkPackageName
-    , mkVersion
-    , mkVersion'
-    , versionNumbers
-    , unPackageName
-#endif
     ) where
 
 
@@ -75,14 +64,8 @@ import Debian.Pretty (PP(PP))
 import qualified Debian.Relation as D (BinPkgName(BinPkgName), Relations)
 import Debian.Relation.Common ()
 import Debian.Version (DebianVersion, parseDebianVersion', prettyDebianVersion)
-#if MIN_VERSION_Cabal(2,0,0)
 import Distribution.Package (PackageIdentifier(..), PackageName, mkPackageName, unPackageName)
 import Distribution.Version
-#else
-import Distribution.Package (PackageIdentifier(..), PackageName(..))
-import Distribution.PackageDescription (FlagName(..))
-import Data.Version
-#endif
 import Distribution.Pretty (Pretty(pretty))
 import Distribution.Verbosity (intToVerbosity, Verbosity)
 import GHC.IO.Exception (ExitCode(ExitFailure, ExitSuccess), IOErrorType(InappropriateType, NoSuchThing), IOException(IOError, ioe_description, ioe_type))
@@ -349,11 +332,7 @@ instance Pretty (PP PackageIdentifier) where
     pretty (PP p) = pretty (PP (pkgName p)) <> text "-" <> pretty (PP (pkgVersion p))
 
 instance Pretty (PP PackageName) where
-#if MIN_VERSION_Cabal(2,0,0)
     pretty (PP p) = text (unPackageName p)
-#else
-    pretty (PP (PackageName s)) = text s
-#endif
 
 -- | Set @b@ if it currently isNothing and the argument isJust, that is
 --  1. Nothing happens if the argument isNothing
@@ -366,20 +345,3 @@ escapeDebianWildcards :: String -> String
 escapeDebianWildcards (c : more) | elem c "[]" = '\\' : c : escapeDebianWildcards more
 escapeDebianWildcards (c : more) = c : escapeDebianWildcards more
 escapeDebianWildcards "" = ""
-
-#if !MIN_VERSION_Cabal(2,0,0)
-mkFlagName :: String -> FlagName
-mkFlagName = FlagName
-mkPackageName :: String -> PackageName
-mkPackageName = PackageName
-mkVersion :: [Int] -> Version
-mkVersion ns = Version ns []
-mkVersion' :: Version -> Version
-mkVersion' = id
-versionNumbers :: Version -> [Int]
-versionNumbers (Version ns _) = ns
-#if !MIN_VERSION_Cabal(1,22,0)
-unPackageName :: PackageName -> String
-unPackageName (PackageName x) = x
-#endif
-#endif

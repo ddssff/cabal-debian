@@ -18,7 +18,7 @@ import Data.Char (isSpace, toLower)
 import Data.Function (on)
 import Data.List as List (filter, groupBy, map, minimumBy, nub, sortBy)
 import Data.Map as Map (lookup, Map)
-import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, listToMaybe, mapMaybe)
+import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, listToMaybe, mapMaybe, maybeToList)
 import Data.Monoid ((<>))
 import Data.Set as Set (empty, fold, fromList, map, member, Set, singleton, toList, union)
 import Debian.Debianize.Prelude
@@ -38,8 +38,7 @@ import qualified Debian.Relation as D (BinPkgName(BinPkgName), Relation(..), Rel
 import Debian.Version (DebianVersion, parseDebianVersion')
 import Distribution.Compiler (CompilerFlavor(..))
 import Distribution.Package (Dependency(..), PackageIdentifier(pkgName, pkgVersion), PackageName)
-import Distribution.PackageDescription as Cabal (BuildInfo(..), BuildInfo(buildTools, extraLibs, pkgconfigDepends), Library(..), Executable(..), TestSuite(..))
-import Distribution.PackageDescription (PackageDescription)
+import Distribution.PackageDescription as Cabal (BuildInfo(..), BuildInfo(buildTools, extraLibs, pkgconfigDepends), Library(..), Executable(..), TestSuite(..), SetupBuildInfo(..), PackageDescription(setupBuildInfo))
 import qualified Distribution.PackageDescription as Cabal (PackageDescription(library, executables, testSuites))
 import Distribution.Pretty (prettyShow)
 #if MIN_VERSION_Cabal(2,0,0)
@@ -108,6 +107,9 @@ allBuildDepends buildInfos =
           concatMap (\ cab -> fromMaybe [[D.Rel (D.BinPkgName ("lib" ++ List.map toLower cab ++ "-dev")) Nothing Nothing]]
                                         (Map.lookup cab (view (A.debInfo . D.extraLibMap) atoms)))
 
+setupBuildDepends :: SetupBuildInfo -> [Dependency_]
+setupBuildDepends = List.map BuildDepends . setupDepends
+
 -- | Take the intersection of all the dependencies on a given package name
 mergeCabalDependencies :: [Dependency] -> [Dependency]
 mergeCabalDependencies =
@@ -123,15 +125,14 @@ debianBuildDeps pkgDesc =
        prof <- not <$> use (A.debInfo . D.noProfilingLibrary)
        let hcPackageTypes :: CompilerFlavor -> Set B.PackageType
            hcPackageTypes GHC = fromList ([B.Development] <> if prof then [B.Profiling] else [])
-#if MIN_VERSION_Cabal(1,22,0)
            hcPackageTypes GHCJS = fromList [B.Development]
-#endif
            hcPackageTypes hc = error $ "Unsupported compiler flavor: " ++ show hc
 
        let hcs = singleton hflavor -- vestigial
-       let hcTypePairs =
+           hcTypePairs =
                fold union empty $
                   Set.map (\ hc' -> Set.map (hc',) $ hcPackageTypes hc') hcs
+           setupDeps = concat . maybeToList . fmap setupBuildDepends . setupBuildInfo $ pkgDesc
 
        libDeps <- allBuildDepends (maybe [] (filter isBuildable . return . libBuildInfo) (Cabal.library pkgDesc))
        binDeps <- allBuildDepends (List.map buildInfo (filter isBuildable (Cabal.executables pkgDesc)))
@@ -141,6 +142,7 @@ debianBuildDeps pkgDesc =
        cDeps <- nub . concat . concat <$> sequence
             [ mapM (buildDependencies hcTypePairs) libDeps
             , mapM (buildDependencies hcTypePairs) binDeps
+            , mapM (buildDependencies hcTypePairs) setupDeps
             , mapM (buildDependencies hcTypePairs) (if testsStatus /= D.TestsDisable then testDeps else [])
             ]
 
@@ -155,11 +157,6 @@ debianBuildDeps pkgDesc =
                         D.Rel (D.BinPkgName "haskell-devscripts") (Just $ D.GRE $ parseDebianVersion' ("0.13" :: String)) Nothing],
                        anyrel "cdbs"] ++
                       (ghcrel ++ ghcrelprof) ++
-{-
-#if MIN_VERSION_Cabal(1,22,0)
-                      (if member GHCJS (Set.map _hcFlavor hcs) then [anyrel (compilerPackageName hflavor B.Development)] else []) ++
-#endif
--}
                        bDeps ++
                        cDeps
        filterMissing xs

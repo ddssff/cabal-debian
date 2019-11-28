@@ -52,13 +52,13 @@ import Control.Monad.State (get, MonadState, StateT, put)
 import Data.Char (isSpace)
 import Data.List as List (dropWhileEnd, intersperse, isSuffixOf, lines, map)
 import Data.Map as Map (empty, findWithDefault, foldrWithKey, fromList, insert, lookup, map, Map)
-import Data.Maybe (catMaybes, fromJust, fromMaybe, listToMaybe, mapMaybe)
+import Data.Maybe (fromJust, fromMaybe, listToMaybe, mapMaybe)
 import Data.Monoid ((<>), mconcat)
 import Data.Set as Set (Set, toList)
 import qualified Data.Set as Set (findMin, fromList, null, size)
 import Data.Text as Text (lines, Text, unpack)
 import Data.Text.IO (hGetContents)
-import Debian.Control (Field'(Field), lookupP, parseControl, stripWS, unControl)
+import Debian.Control (stripWS)
 import Debian.Orphans ()
 import Debian.Pretty (PP(PP))
 import qualified Debian.Relation as D (BinPkgName(BinPkgName), Relations)
@@ -74,7 +74,7 @@ import System.Directory (doesDirectoryExist, doesFileExist, getCurrentDirectory,
 import System.FilePath ((</>), dropExtension)
 import System.IO (hSetBinaryMode, IOMode(ReadMode), openFile, withFile)
 import System.IO.Error (catchIOError, isDoesNotExistError)
-import System.Process (readProcessWithExitCode, showCommandForUser)
+import System.Process (readProcess, readProcessWithExitCode, showCommandForUser)
 import Text.PrettyPrint.HughesPJClass as PP (text)
 
 curry3 :: ((a, b, c) -> d) -> a -> b -> c -> d
@@ -82,16 +82,12 @@ curry3 f a b c = f (a, b, c)
 
 type DebMap = Map D.BinPkgName (Maybe DebianVersion)
 
--- | Read and parse the status file for installed debian packages: @/var/lib/dpkg/status@
+-- | Query versions of installed packages
 buildDebVersionMap :: IO DebMap
 buildDebVersionMap =
-    readFile "/var/lib/dpkg/status" >>=
-    return . either (const []) unControl . parseControl "/var/lib/dpkg/status" >>=
-    mapM (\ p -> case (lookupP "Package" p, lookupP "Version" p) of
-                   (Just (Field (_, name)), Just (Field (_, version))) ->
-                       return (Just (D.BinPkgName (stripWS name), Just (parseDebianVersion' (stripWS version))))
-                   _ -> return Nothing) >>=
-    return . Map.fromList . catMaybes
+    Map.fromList . List.map lineToKV . Prelude.lines <$> readProcess "dpkg-query" ["--showformat", "${Package}\\t${Version}\\n"] ""
+    where
+        lineToKV = bimap (D.BinPkgName . stripWS) (Just . parseDebianVersion' . stripWS) . span (/= '\t')
 
 (!) :: DebMap -> D.BinPkgName -> DebianVersion
 m ! k = maybe (error ("No version number for " ++ (show . pretty . PP $ k) ++ " in " ++ show (Map.map (maybe Nothing (Just . prettyDebianVersion)) m))) id (Map.findWithDefault Nothing k m)

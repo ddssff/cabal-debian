@@ -50,18 +50,19 @@ import Control.Monad (when)
 import Control.Monad.Reader (ask, ReaderT)
 import Control.Monad.State (get, MonadState, StateT, put)
 import Data.Char (isSpace)
-import Data.List as List (dropWhileEnd, intersperse, isSuffixOf, lines, map)
-import Data.Map as Map (empty, findWithDefault, foldrWithKey, fromList, insert, lookup, map, Map)
+import Data.List as List (dropWhileEnd, intersperse, lines, map)
+import Data.Map (Map)
+import qualified Data.Map as Map
 import Data.Maybe (fromJust, fromMaybe, listToMaybe, mapMaybe)
 import Data.Monoid ((<>), mconcat)
 import Data.Set as Set (Set, toList)
 import qualified Data.Set as Set (findMin, fromList, null, size)
-import Data.Text as Text (lines, Text, unpack)
+import Data.Text as Text (Text, unpack)
 import Data.Text.IO (hGetContents)
 import Debian.Control (stripWS)
 import Debian.Orphans ()
 import Debian.Pretty (PP(PP))
-import qualified Debian.Relation as D (BinPkgName(BinPkgName), Relations)
+import qualified Debian.Relation as D (BinPkgName(..), Relations)
 import Debian.Relation.Common ()
 import Debian.Version (DebianVersion, parseDebianVersion', prettyDebianVersion)
 import Distribution.Package (PackageIdentifier(..), PackageName, mkPackageName, unPackageName)
@@ -69,9 +70,9 @@ import Distribution.Version
 import Distribution.Pretty (Pretty(pretty))
 import Distribution.Verbosity (intToVerbosity, Verbosity)
 import GHC.IO.Exception (ExitCode(ExitFailure, ExitSuccess), IOErrorType(InappropriateType, NoSuchThing), IOException(IOError, ioe_description, ioe_type))
-import Prelude hiding (lookup, map)
+import Prelude hiding (map)
 import System.Directory (doesDirectoryExist, doesFileExist, getCurrentDirectory, getDirectoryContents, removeDirectory, removeFile, renameFile, setCurrentDirectory)
-import System.FilePath ((</>), dropExtension)
+import System.FilePath ((</>))
 import System.IO (hSetBinaryMode, IOMode(ReadMode), openFile, withFile)
 import System.IO.Error (catchIOError, isDoesNotExistError)
 import System.Process (readProcess, readProcessWithExitCode, showCommandForUser)
@@ -150,19 +151,18 @@ removeIfExists x = removeFileIfExists x >> removeDirectoryIfExists x
 dpkgFileMap :: IO (Map FilePath (Set D.BinPkgName))
 dpkgFileMap =
     do
-      let fp = "/var/lib/dpkg/info"
-      names <- getDirectoryContents fp >>= return . filter (isSuffixOf ".list")
-      let paths = List.map (fp </>) names
-      -- Read strictly to make sure we consume all the files and don't
-      -- hold tons of open file descriptors.
-      files <- mapM (strictReadF Text.lines) paths
-      return $ Map.fromList $ zip (List.map dropExtension names) (List.map (Set.fromList . List.map (D.BinPkgName . unpack)) $ files)
+      installedPackages <- Map.keys <$> buildDebVersionMap
+
+      files <- mapM (listFiles . D.unBinPkgName) installedPackages
+      return $ Map.fromList $ zip (List.map D.unBinPkgName installedPackages) (List.map (Set.fromList . List.map D.BinPkgName) $ files)
+    where
+        listFiles pkg = Prelude.lines <$> readProcess "dpkg-query" ["--listfiles", pkg] ""
 
 -- |Given a path, return the name of the package that owns it.
 debOfFile :: FilePath -> ReaderT (Map FilePath (Set D.BinPkgName)) IO (Maybe D.BinPkgName)
 debOfFile path =
     do mp <- ask
-       return $ testPath (lookup path mp)
+       return $ testPath (Map.lookup path mp)
     where
       -- testPath :: Maybe (Set FilePath) -> Maybe FilePath
       testPath Nothing = Nothing
@@ -246,12 +246,12 @@ setMapMaybe p = Set.fromList . mapMaybe p . toList
 
 zipMaps :: Ord k => (k -> Maybe a -> Maybe b -> Maybe c) -> Map k a -> Map k b -> Map k c
 zipMaps f m n =
-    foldrWithKey h (foldrWithKey g Map.empty m) n
+    Map.foldrWithKey h (Map.foldrWithKey g Map.empty m) n
     where
-      g k a r = case f k (Just a) (lookup k n) of
+      g k a r = case f k (Just a) (Map.lookup k n) of
                   Just c -> Map.insert k c r              -- Both m and n have entries for k
                   Nothing -> r                            -- Only m has an entry for k
-      h k b r = case lookup k m of
+      h k b r = case Map.lookup k m of
                   Nothing -> case f k Nothing (Just b) of
                                Just c -> Map.insert k c r -- Only n has an entry for k
                                Nothing -> r

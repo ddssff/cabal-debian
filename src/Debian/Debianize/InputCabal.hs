@@ -39,7 +39,7 @@ import Distribution.PackageDescription.Parse (readGenericPackageDescription)
 import Distribution.PackageDescription.Parse (readPackageDescription)
 #endif
 #endif
-import Distribution.Simple.Utils (defaultPackageDesc, die, setupMessage)
+import Distribution.Simple.Utils (defaultPackageDesc, die', setupMessage)
 import Distribution.System as Cabal (buildArch, Platform(..))
 import qualified Distribution.System as Cabal (buildOS)
 #if MIN_VERSION_Cabal(2,2,0)
@@ -109,4 +109,4 @@ autoreconf verbose pkgDesc = do
             ret <- system "autoreconf"
             case ret of
               ExitSuccess -> return ()
-              ExitFailure n -> die ("autoreconf failed with status " ++ show n)
+              ExitFailure n -> die' verbose ("autoreconf failed with status " ++ show n)

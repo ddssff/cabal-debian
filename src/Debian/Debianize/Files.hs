@@ -1,6 +1,6 @@
 -- | Convert a Debianization into a list of files that can then be
 -- written out.
-{-# LANGUAGE CPP, FlexibleContexts, FlexibleInstances, OverloadedStrings, ScopedTypeVariables, TupleSections #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances, OverloadedStrings, ScopedTypeVariables, TupleSections #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Debian.Debianize.Files
     ( debianizationFileMap

@@ -1,5 +1,5 @@
 -- | The basic information required to load a Cabal or Debian package description.
-{-# LANGUAGE CPP, DeriveDataTypeable, TemplateHaskell #-}
+{-# LANGUAGE DeriveDataTypeable, TemplateHaskell #-}
 module Debian.Debianize.BasicInfo
     ( -- * Types
       Flags(..)

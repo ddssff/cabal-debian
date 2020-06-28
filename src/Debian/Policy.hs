@@ -1,6 +1,6 @@
 -- | Code pulled out of cabal-debian that straightforwardly implements
 -- parts of the Debian policy manual, or other bits of Linux standards.
-{-# LANGUAGE CPP, DeriveDataTypeable, FlexibleInstances, OverloadedStrings #-}
+{-# LANGUAGE DeriveDataTypeable, FlexibleInstances, OverloadedStrings #-}
 module Debian.Policy
     ( -- * Paths
       databaseDirectory

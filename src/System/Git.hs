@@ -1,6 +1,6 @@
 -- | Git related functions that belong in some other package.
 
-{-# LANGUAGE CPP, ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module System.Git
     ( gitResetHard

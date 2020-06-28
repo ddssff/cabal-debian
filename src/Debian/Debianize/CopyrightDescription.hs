@@ -1,5 +1,5 @@
 -- | <https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/>
-{-# LANGUAGE CPP, DeriveDataTypeable, FlexibleInstances, OverloadedStrings, ScopedTypeVariables, TemplateHaskell, TupleSections, LambdaCase #-}
+{-# LANGUAGE DeriveDataTypeable, FlexibleInstances, OverloadedStrings, ScopedTypeVariables, TemplateHaskell, TupleSections, LambdaCase #-}
 module Debian.Debianize.CopyrightDescription
     ( CopyrightDescription(..)
     , FilesOrLicenseDescription(..)

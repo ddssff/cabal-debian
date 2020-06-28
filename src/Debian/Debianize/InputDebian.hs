@@ -1,5 +1,5 @@
 -- | Read an existing Debianization from a directory file.
-{-# LANGUAGE CPP, DeriveDataTypeable, FlexibleInstances, ScopedTypeVariables, TypeSynonymInstances #-}
+{-# LANGUAGE DeriveDataTypeable, FlexibleInstances, ScopedTypeVariables, TypeSynonymInstances #-}
 {-# OPTIONS_GHC -Wall -fno-warn-orphans #-}
 module Debian.Debianize.InputDebian
     ( inputDebianization

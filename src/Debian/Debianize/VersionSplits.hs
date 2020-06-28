@@ -1,6 +1,6 @@
 -- | Convert between cabal and debian package names based on version
 -- number ranges.
-{-# LANGUAGE CPP, DeriveDataTypeable, FlexibleInstances, MultiParamTypeClasses, TypeSynonymInstances #-}
+{-# LANGUAGE DeriveDataTypeable, FlexibleInstances, MultiParamTypeClasses, TypeSynonymInstances #-}
 module Debian.Debianize.VersionSplits
     ( DebBase(DebBase, unDebBase)
     -- * Combinators for VersionSplits

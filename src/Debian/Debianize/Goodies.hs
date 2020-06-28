@@ -1,6 +1,6 @@
 -- | Things that seem like they could be clients of this library, but
 -- are instead included as part of the library.
-{-# LANGUAGE CPP, FlexibleContexts, OverloadedStrings #-}
+{-# LANGUAGE FlexibleContexts, OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 module Debian.Debianize.Goodies
     ( tightDependencyFixup

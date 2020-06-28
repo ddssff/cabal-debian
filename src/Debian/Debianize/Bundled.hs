@@ -6,7 +6,7 @@
 -- *That* is done using the debianNameMap of CabalInfo, which is
 -- built using the mapCabal, splitCabal, and remapCabal functions.
 
-{-# LANGUAGE CPP, FlexibleContexts, ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleContexts, ScopedTypeVariables #-}
 module Debian.Debianize.Bundled
     ( builtIn
     -- * Utilities

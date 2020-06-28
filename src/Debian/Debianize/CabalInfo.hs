@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, DeriveDataTypeable, OverloadedStrings, TemplateHaskell #-}
+{-# LANGUAGE DeriveDataTypeable, OverloadedStrings, TemplateHaskell #-}
 {-# OPTIONS_GHC -Wall #-}
 module Debian.Debianize.CabalInfo
     ( -- * Types

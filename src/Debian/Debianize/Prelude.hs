@@ -1,6 +1,6 @@
 -- | Functions and instances used by but not related to cabal-debian.
 -- These could conceivably be moved into more general libraries.
-{-# LANGUAGE CPP, FlexibleContexts, FlexibleInstances, Rank2Types, ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances, Rank2Types, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wall -fno-warn-orphans #-}
 module Debian.Debianize.Prelude
     ( curry3

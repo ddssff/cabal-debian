@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -Wall #-}
 module Debian.Debianize.Monad
     ( CabalInfo

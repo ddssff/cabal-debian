@@ -1,5 +1,5 @@
 -- | Input the Cabal package description.
-{-# LANGUAGE CPP, DeriveDataTypeable, ScopedTypeVariables, TemplateHaskell #-}
+{-# LANGUAGE DeriveDataTypeable, ScopedTypeVariables, TemplateHaskell #-}
 module Debian.Debianize.InputCabal
     ( inputCabalization
     ) where

@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, DeriveDataTypeable, FlexibleInstances, TemplateHaskell, TypeSynonymInstances #-}
+{-# LANGUAGE DeriveDataTypeable, FlexibleInstances, TemplateHaskell, TypeSynonymInstances #-}
 module Debian.Debianize.SourceDebDescription
     ( SourceDebDescription
     , newSourceDebDescription

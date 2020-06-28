@@ -27,11 +27,7 @@ import Data.Set as Set (fromList, Set, union)
 import Debian.Debianize.Prelude (read')
 import Debian.Orphans ()
 import Distribution.Compiler (CompilerFlavor(..))
-#if MIN_VERSION_Cabal(2,0,0)
 import Distribution.PackageDescription as Cabal (FlagName, mkFlagName)
-#else
-import Distribution.PackageDescription as Cabal (FlagName(FlagName))
-#endif
 import Prelude hiding (break, lines, log, null, readFile, sum)
 import System.Console.GetOpt (ArgDescr(ReqArg, NoArg), OptDescr(Option))
 import System.FilePath ((</>))
@@ -101,9 +97,7 @@ flagOptions =
       Option "" ["roundtrip"] (NoArg (roundtrip .= True))
              "Rountrip a debianization to normalize it",
       Option "" ["ghc"] (NoArg (compilerFlavor .= GHC)) "Generate packages for GHC - same as --with-compiler GHC",
-#if MIN_VERSION_Cabal(1,22,0)
       Option "" ["ghcjs"] (NoArg (compilerFlavor .= GHCJS)) "Generate packages for GHCJS - same as --with-compiler GHCJS",
-#endif
       Option "" ["hugs"] (NoArg (compilerFlavor .= Hugs)) "Generate packages for Hugs - same as --with-compiler GHC",
       Option "" ["with-compiler"] (ReqArg (\ s -> maybe (error $ "Invalid compiler id: " ++ show s)
                                                         (\ hc -> compilerFlavor .= hc)
@@ -122,10 +116,5 @@ flagOptions =
 -- Lifted from Distribution.Simple.Setup, since it's not exported.
 flagList :: String -> [(FlagName, Bool)]
 flagList = map tagWithValue . words
-#if MIN_VERSION_Cabal(2,0,0)
   where tagWithValue ('-':name) = (mkFlagName (map toLower name), False)
         tagWithValue name       = (mkFlagName (map toLower name), True)
-#else
-  where tagWithValue ('-':name) = (FlagName (map toLower name), False)
-        tagWithValue name       = (FlagName (map toLower name), True)
-#endif

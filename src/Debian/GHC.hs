@@ -12,9 +12,7 @@ module Debian.GHC
     , withModifiedPATH
     -- , CompilerChoice(..), hcVendor, hcFlavor
     , compilerPackageName
-#if MIN_VERSION_Cabal(1,22,0)
     , getCompilerInfo
-#endif
     ) where
 
 #if !MIN_VERSION_base(4,8,0)
@@ -30,16 +28,10 @@ import Debian.Debianize.BinaryDebDescription (PackageType(..))
 import Debian.Relation (BinPkgName(BinPkgName))
 import Debian.Version (DebianVersion, parseDebianVersion')
 import Distribution.Compiler (CompilerFlavor(..), CompilerId(CompilerId))
-#if MIN_VERSION_Cabal(1,22,0)
 import Distribution.Compiler (CompilerInfo(..), unknownCompilerInfo, AbiTag(NoAbiTag))
-#endif
-#if MIN_VERSION_Cabal(2,0,0)
 import Distribution.Pretty (prettyShow)
 import Distribution.Version (mkVersion', mkVersion, Version, versionNumbers)
 import Data.Version (parseVersion)
-#else
-import Data.Version (showVersion, Version(..), parseVersion)
-#endif
 import System.Console.GetOpt (ArgDescr(ReqArg), OptDescr(..))
 import System.Environment (getEnv)
 import System.Exit (ExitCode(ExitFailure, ExitSuccess))
@@ -54,11 +46,7 @@ import UnliftIO.Memoize (memoizeMVar, runMemoized, Memoized)
 
 toVersion :: String -> Maybe Version
 toVersion s = case filter (all isSpace . snd) (readP_to_S parseVersion s) of
-#if MIN_VERSION_Cabal(2,0,0)
                 [(v, _)] -> Just (mkVersion' v)
-#else
-                [(v, _)] -> Just v
-#endif
                 _ -> Nothing
 
 withCompilerVersion :: CompilerFlavor -> (DebianVersion -> a) -> IO (Either String a)
@@ -129,13 +117,8 @@ ghcNewestAvailableVersion' hc =
 
 compilerIdFromDebianVersion :: CompilerFlavor -> DebianVersion -> CompilerId
 compilerIdFromDebianVersion hc debVersion =
-#if MIN_VERSION_Cabal(2,0,0)
     let ds = versionNumbers (greatestLowerBound debVersion (map (\ d -> mkVersion [d]) [0..])) in
     CompilerId hc (greatestLowerBound debVersion (map (\ d -> mkVersion (ds ++ [d])) [0..]))
-#else
-    let (Version ds ts) = greatestLowerBound debVersion (map (\ d -> Version [d] []) [0..]) in
-    CompilerId hc (greatestLowerBound debVersion (map (\ d -> Version (ds ++ [d]) ts) [0..]))
-#endif
     where
       greatestLowerBound :: DebianVersion -> [Version] -> Version
       greatestLowerBound b xs = last $ takeWhile (\ v -> parseDebianVersion' (prettyShow v) < b) xs
@@ -186,9 +169,7 @@ compilerPackageName hc typ = do
 
 compilerPackage :: CompilerFlavor -> IO (Maybe BinPkgName)
 compilerPackage GHC = filePackage "ghc" >>= runMemoized
-#if MIN_VERSION_Cabal(1,22,0)
 compilerPackage GHCJS = filePackage "ghcjs" >>= runMemoized
-#endif
 compilerPackage x = error $ "compilerPackage - unsupported CompilerFlavor: " ++ show x
 
 filePackage :: FilePath -> IO (Memoized (Maybe BinPkgName))
@@ -209,7 +190,6 @@ which bin = toPath . over _2 lines <$> readProcessWithExitCode "which" [bin] ""
       toPath (ExitSuccess, [path], _) = Just path
       toPath _ = Nothing
 
-#if MIN_VERSION_Cabal(1,22,0)
 -- | IO based alternative to newestAvailableCompilerId - install the
 -- compiler into the chroot if necessary and ask it for its version
 -- number.  This has the benefit of working for ghcjs, which doesn't
@@ -228,14 +208,12 @@ getCompilerInfo' flavor = do
     Right (_, out, _) -> do
       let compilerId = maybe (error $ "Parse error in version string: " ++ show out) (CompilerId flavor) (toVersion out)
       compilerCompat <- case flavor of
-#if MIN_VERSION_Cabal(1,22,0)
                           GHCJS -> do
                             (r' :: Either IOError (ExitCode, String, String)) <- try $ readProcessWithExitCode (hcCommand flavor) ["--numeric-ghc-version"] ""
                             case r' of
                               Right (ExitSuccess, out', _) ->
                                   maybe (error $ "getCompilerInfo - parse error in version string: " ++ show out') (return . Just . (: []) . CompilerId GHC) (toVersion out')
                               _ -> error "getCompilerInfo - failure computing compilerCompat"
-#endif
                           _ -> return Nothing
       return $ Right $ (unknownCompilerInfo compilerId NoAbiTag) {compilerInfoCompat = compilerCompat}
 
@@ -249,8 +227,5 @@ processErrorMessage _msg _cmd _args (ExitSuccess, _out, _err) = ""
 
 hcCommand :: CompilerFlavor -> String
 hcCommand GHC = "ghc"
-#if MIN_VERSION_Cabal(1,22,0)
 hcCommand GHCJS = "ghcjs"
-#endif
 hcCommand flavor = error $ "hcCommand - unexpected CompilerFlavor: " ++ show flavor
-#endif

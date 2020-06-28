@@ -40,11 +40,7 @@ import Debian.Orphans ()
 import Debian.Policy (parseMaintainer, parsePackageArchitectures, parseStandardsVersion, parseUploaders, readPriority, readSection, readMultiArch, readSourceFormat, Section(..))
 import Debian.Relation (BinPkgName(..), parseRelations, Relations, SrcPkgName(..))
 --import Debug.Trace (trace)
-#if MIN_VERSION_Cabal(2,0,0)
 import Distribution.Package (PackageIdentifier(..), unPackageName)
-#else
-import Distribution.Package (PackageIdentifier(..), PackageName(..))
-#endif
 import qualified Distribution.PackageDescription as Cabal (dataDir, PackageDescription(package))
 import Prelude hiding (break, lines, log, null, readFile, sum, words)
 import System.Directory (doesFileExist)
@@ -300,12 +296,7 @@ readDir p line = installDir p (unpack line)
 dataDest :: Monad m => CabalT m FilePath
 dataDest = do
   d <- use packageDescription
-#if MIN_VERSION_Cabal(2,0,0)
   return $ "usr/share" </> (unPackageName $ pkgName $ Cabal.package d)
-#else
-  return $ "usr/share" </> ((\ (PackageName x) -> x) $ pkgName $ Cabal.package d)
-
-#endif
 -- | Where to look for the data-files
 dataTop :: Monad m => CabalT m FilePath
 dataTop = do

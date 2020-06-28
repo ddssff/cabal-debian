@@ -33,41 +33,15 @@ import Debian.GHC ({-instance Memoizable CompilerFlavor-})
 import Debian.Relation (BinPkgName(..))
 import Debian.Relation.ByteString ()
 import Debian.Version (DebianVersion, parseDebianVersion', prettyDebianVersion)
-#if MIN_VERSION_Cabal(2,0,0)
 import Distribution.Package (mkPackageName, PackageIdentifier(..), unPackageName)
 import Data.Version (parseVersion)
 import Distribution.Version(mkVersion, mkVersion', Version)
-#else
-import Data.Version (parseVersion, Version(..))
-import Distribution.Package (PackageIdentifier(..), PackageName(..))
-#endif
-#if MIN_VERSION_Cabal(1,22,0)
 import Distribution.Simple.Compiler (CompilerFlavor(GHCJS))
-#else
-import Distribution.Compiler (CompilerFlavor)
-#endif
 import System.Process (readProcess, showCommandForUser)
 import Test.HUnit (assertEqual, Test(TestList, TestCase))
 import Text.ParserCombinators.ReadP (char, endBy1, munch1, ReadP, readP_to_S)
 import Text.Regex.TDFA ((=~))
 import UnliftIO.Memoize (memoizeMVar, Memoized, runMemoized)
-
-#if MIN_VERSION_base(4,8,0)
-#if !MIN_VERSION_Cabal(2,0,0)
-import Data.Version (makeVersion)
-#else
-#endif
-#else
-import Data.Monoid (mempty)
-
-#if !MIN_VERSION_Cabal(1,22,0)
-unPackageName :: PackageName -> String
-unPackageName (PackageName s) = s
-#endif
-
-makeVersion :: [Int] -> Version
-makeVersion ns = Version ns []
-#endif
 
 -- | Find out what version, if any, of a cabal library is built into
 -- the newest version of haskell compiler hc in environment root.
@@ -95,9 +69,7 @@ hcVersion hc = do
     Just hcpath <- runMemoized =<< hcExecutablePath hc
     ver <- readProcess hcpath
                  [case hc of
-#if MIN_VERSION_Cabal(1,22,0)
                     GHCJS -> "--numeric-ghc-version"
-#endif
                     _ -> "--numeric-version"]
                  ""
     return $ maybe Nothing parseVersion' (listToMaybe (lines ver))
@@ -157,41 +129,26 @@ aptCacheShowPkg hcname =
 -- So be it.
 parsePackageIdentifier :: ReadP PackageIdentifier
 parsePackageIdentifier =
-#if MIN_VERSION_Cabal(2,0,0)
   makeId <$> ((,) <$> endBy1 (munch1 isAlphaNum) (char '-') <*> parseCabalVersion)
     where
       makeId :: ([String], Version) -> PackageIdentifier
       makeId (xs, v) = PackageIdentifier {pkgName = mkPackageName (intercalate "-" xs), pkgVersion = v}
-#else
-  makeId <$> ((,) <$> endBy1 (munch1 isAlphaNum) (char '-') <*> parseVersion)
-    where
-      makeId :: ([String], Version) -> PackageIdentifier
-      makeId (xs, v) = PackageIdentifier {pkgName = PackageName (intercalate "-" xs), pkgVersion = v}
-#endif
 
 parseMaybe :: ReadP a -> String -> Maybe a
 parseMaybe p = listToMaybe . map fst . filter ((== "") . snd) . readP_to_S p
 
 parseVersion' :: String -> Maybe Version
-#if MIN_VERSION_Cabal(2,0,0)
 parseVersion' = parseMaybe parseCabalVersion
 
 parseCabalVersion :: ReadP Version
 parseCabalVersion = fmap mkVersion' parseVersion
-#else
-parseVersion' = parseMaybe parseVersion
-#endif
 
 parsePackageIdentifier' :: String -> Maybe PackageIdentifier
 parsePackageIdentifier' = parseMaybe parsePackageIdentifier
 
 tests :: Test
 tests = TestList [ TestCase (assertEqual "Bundled1"
-#if MIN_VERSION_Cabal(2,0,0)
                                (Just (PackageIdentifier (mkPackageName "HUnit") (mkVersion [1,2,3])))
-#else
-                               (Just (PackageIdentifier (PackageName "HUnit") (makeVersion [1,2,3])))
-#endif
                                (parseMaybe parsePackageIdentifier "HUnit-1.2.3"))
                  , TestCase (assertEqual "Bundled2"
                                Nothing

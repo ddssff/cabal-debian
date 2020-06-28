@@ -22,15 +22,10 @@ import Debian.Debianize.Interspersed (foldTriples, Interspersed(leftmost, pairs,
 import Debian.Orphans ()
 import qualified Debian.Relation as D (VersionReq(..))
 import Debian.Version (DebianVersion, parseDebianVersion')
-#if MIN_VERSION_Cabal(2,0,0)
 import Distribution.Package (PackageIdentifier(..), PackageName)
 import Distribution.Package (mkPackageName)
 import Distribution.Pretty (prettyShow)
 import Distribution.Version (Version)
-#else
-import Data.Version (Version(Version))
-import Distribution.Package (PackageIdentifier(..), PackageName(..))
-#endif
 import Distribution.Version (anyVersion, earlierVersion, intersectVersionRanges, orLaterVersion, VersionRange)
 import Prelude hiding (init, log, unlines)
 
@@ -70,11 +65,7 @@ insertSplit :: Version -- ^ Where to split the version range
             -> DebBase -- ^ The name to use for versions older than the split
             -> VersionSplits
             -> VersionSplits
-#if MIN_VERSION_Cabal(2,0,0)
 insertSplit ver ltname sp@(VersionSplits {}) =
-#else
-insertSplit ver@(Version _ _) ltname sp@(VersionSplits {}) =
-#endif
     -- (\ x -> trace ("insertSplit " ++ show (ltname, ver, sp) ++ " -> " ++ show x) x) $
     case splits sp of
       -- This is the oldest split, change oldestPackage and insert a new head pair
@@ -115,11 +106,7 @@ cabalFromDebian :: Map PackageName VersionSplits -> DebBase -> DebianVersion -> 
 cabalFromDebian mp base@(DebBase name) ver =
     case Set.toList pset of
       [x] -> x
-#if MIN_VERSION_Cabal(2,0,0)
       [] -> mkPackageName name
-#else
-      [] -> PackageName name
-#endif
       l -> error $ "Error, multiple cabal package names associated with " ++ show base ++ ": " ++ show l
     where
       -- Look for splits that involve the right DebBase and return the

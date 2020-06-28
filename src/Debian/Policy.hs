@@ -404,14 +404,10 @@ fromCabalLicense x =
       Cabal.AllRightsReserved -> OtherLicense "AllRightsReserved"
       Cabal.OtherLicense -> OtherLicense (show x)
       Cabal.UnknownLicense _ -> OtherLicense (show x)
-#if MIN_VERSION_Cabal(1,20,0)
       Cabal.MPL _ -> MPL
-#if MIN_VERSION_Cabal(1,22,0)
       Cabal.BSD2 -> BSD_2_Clause
       Cabal.ISC -> OtherLicense (show x)
       Cabal.UnspecifiedLicense -> OtherLicense (show x)
-#endif
-#endif
 
 -- | Convert a Debian license to a Cabal license.  Additional cases
 -- and corrections welcome.
@@ -419,9 +415,7 @@ toCabalLicense :: License -> Cabal.License
 toCabalLicense x =
     -- This needs to be finished
     case x of
-#if MIN_VERSION_Cabal(1,22,0)
       BSD_2_Clause -> Cabal.BSD2
-#endif
       BSD_3_Clause -> Cabal.BSD3
       BSD_4_Clause -> Cabal.BSD4
       OtherLicense s -> Cabal.UnknownLicense s

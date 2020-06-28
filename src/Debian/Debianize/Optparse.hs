@@ -40,13 +40,8 @@ import Debian.Policy
 import Debian.Relation
 import Debian.Version (DebianVersion, parseDebianVersion')
 import Distribution.Compiler (CompilerFlavor(..))
-#if MIN_VERSION_Cabal(2,0,0)
 import Distribution.Package (PackageName, mkPackageName, unPackageName)
 import Distribution.PackageDescription (FlagName, mkFlagName)
-#else
-import Distribution.Package (PackageName(..))
-import Distribution.PackageDescription (FlagName(FlagName))
-#endif
 import GHC.Generics
 import System.Environment (getArgs)
 import System.FilePath(splitFileName, (</>))
@@ -201,28 +196,15 @@ extraRelationsR :: O.ReadM (BinPkgName, Relations)
 extraRelationsR = first BinPkgName <$> mappingR
 
 cabalDebMappingR :: O.ReadM CabalDebMapping
-#if MIN_VERSION_Cabal(2,0,0)
 cabalDebMappingR = CabalDebMapping . first mkPackageName <$> mappingR
-#else
-cabalDebMappingR = CabalDebMapping . first PackageName <$> mappingR
-#endif
 
 cabalEpochMappingR :: O.ReadM CabalEpochMapping
-#if MIN_VERSION_Cabal(2,0,0)
 cabalEpochMappingR = CabalEpochMapping . first mkPackageName <$> epochMappingR
-#else
-cabalEpochMappingR = CabalEpochMapping . first PackageName <$> epochMappingR
-#endif
 
 cabalFlagMappingR :: O.ReadM CabalFlagMapping
 cabalFlagMappingR = O.str >>= \case
-#if MIN_VERSION_Cabal(2,0,0)
   ('-' : str) -> return $ CabalFlagMapping (mkFlagName str, False)
   str -> return $ CabalFlagMapping (mkFlagName str, True)
-#else
-  ('-' : str) -> return $ CabalFlagMapping (FlagName str, False)
-  str -> return $ CabalFlagMapping (FlagName str, True)
-#endif
 
 -- Here are parser for BehaviorAdjustment and next are parsers for
 -- every field of this data.  Please, keep parsers declarations in
@@ -592,11 +574,7 @@ roundtripP = O.switch m where
 
 hcFlavorP :: O.Parser CompilerFlavor
 hcFlavorP = O.flag GHC
-#if MIN_VERSION_Cabal(1,22,0)
                     GHCJS
-#else
-                    GHC
-#endif
                           m where
   m = O.help helpMsg
       <> O.long "ghcjs"
@@ -655,13 +633,8 @@ handleBehaviorAdjustment (BehaviorAdjustment {..}) = do
   D.debVersion .= _debianVersion
   D.uploadersOption %= (++ _uploaders)
   D.extraDevDeps %= (++ concatMap unpack _devDep)
-#if MIN_VERSION_Cabal(2,0,0)
   forM_ _cabalDebMapping $ \(CabalDebMapping (pkg, rels)) -> do
     D.extraLibMap %= Map.insert (unPackageName pkg) rels
-#else
-  forM_ _cabalDebMapping $ \(CabalDebMapping (PackageName pkg, rels)) -> do
-    D.extraLibMap %= Map.insert pkg rels
-#endif
   addExtra _extraDepends B.depends
   addExtra _extraConflicts B.conflicts
   addExtra _extraProvides B.provides

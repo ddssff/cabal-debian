@@ -54,18 +54,11 @@ import qualified Debian.Relation as D (BinPkgName(BinPkgName), Relation(..))
 import Debian.Time (getCurrentLocalRFC822Time)
 import qualified Debian.Version as V (buildDebianVersion, DebianVersion, parseDebianVersion', epoch, version, revision)
 import Distribution.Compiler (CompilerFlavor(GHC))
-#if MIN_VERSION_Cabal(1,22,0)
 import Distribution.Compiler (CompilerFlavor(GHCJS))
-#endif
-#if MIN_VERSION_Cabal(2,0,0)
 import Distribution.Package (Dependency(..), PackageIdentifier(..), PackageName, unPackageName)
 import Distribution.PackageDescription as Cabal (allBuildInfo, author, BuildInfo(buildable, extraLibs), Executable(buildInfo, exeName), FlagName, mkFlagName, unFlagName, maintainer, PackageDescription(testSuites, description))
 import Distribution.Types.UnqualComponentName
 --import Distribution.Utils.ShortText
-#else
-import Distribution.Package (Dependency(..), PackageIdentifier(..), PackageName(PackageName))
-import Distribution.PackageDescription as Cabal (allBuildInfo, author, BuildInfo(buildable, extraLibs), Executable(buildInfo, exeName), FlagName(FlagName), maintainer, PackageDescription(testSuites))
-#endif
 import Distribution.PackageDescription as Cabal (PackageDescription(dataFiles, {-description,-} executables, library, package, synopsis))
 import Prelude hiding (init, log, map, unlines, unlines, writeFile)
 import System.Directory (doesFileExist)
@@ -167,13 +160,8 @@ finalizeDebianization' goodies date currentUser debhelperCompat setupExists =
        -- finalizeDescriptions
 
 watchAtom :: PackageName -> Text
-#if MIN_VERSION_Cabal(2,0,0)
 watchAtom pkgname =
     pack $ "version=3\nhttps://hackage.haskell.org/package/" ++ unPackageName pkgname ++ "/distro-monitor .*-([0-9\\.]+)\\.(?:zip|tgz|tbz|txz|(?:tar\\.(?:gz|bz2|xz)))\n"
-#else
-watchAtom (PackageName pkgname) =
-    pack $ "version=3\nhttps://hackage.haskell.org/package/" ++ pkgname ++ "/distro-monitor .*-([0-9\\.]+)\\.(?:zip|tgz|tbz|txz|(?:tar\\.(?:gz|bz2|xz)))\n"
-#endif
 
 -- | Compute the final values of the BinaryDebDescription record
 -- description fields from the cabal descriptions and the values that
@@ -257,9 +245,7 @@ finalizeSourceName typ =
                               -- "haskell-" added.  Here we add prefix "ghcjs-" to
                               -- haskell packages build with the ghcjs compiler.
                               (GHC, B.HaskellSource) -> "haskell-" ++ debName
-#if MIN_VERSION_Cabal(1,22,0)
                               (GHCJS, B.HaskellSource) -> "ghcjs-" ++ debName
-#endif
                               (_, B.Source) -> debName
                               _ -> error $ "finalizeSourceName: " ++ show typ))
 
@@ -460,11 +446,7 @@ checkOfficialSettings flavor =
 officialSettings :: (Monad m) => CabalT m ()
 officialSettings = do
     pkgDesc <- use A.packageDescription
-#if MIN_VERSION_Cabal(2,0,0)
     let cabal = pkgName (Cabal.package pkgDesc)
-#else
-    let PackageName cabal = pkgName (Cabal.package pkgDesc)
-#endif
     zoom A.debInfo $ do
         let officialError = error "officialSettings: no sourcePackageName"
 
@@ -474,11 +456,7 @@ officialSettings = do
         let packagesURI = "https://salsa.debian.org/haskell-team/DHG_packages/tree/master/p/" <> pack src
         zoom D.control $ do
            S.standardsVersion .?= Just (parseStandardsVersion "4.5.0")
-#if MIN_VERSION_Cabal(2,0,0)
            S.homepage .?= Just ("https://hackage.haskell.org/package/" <> pack (unPackageName cabal))
-#else
-           S.homepage .?= Just ("https://hackage.haskell.org/package/" <> pack cabal)
-#endif
            S.vcsFields %= Set.union (Set.fromList
               [ S.VCSBrowser packagesURI
               , S.VCSGit  "https://salsa.debian.org/haskell-team/DHG_packages.git"
@@ -590,23 +568,15 @@ makeUtilsPackage pkgDesc hc =
        -- The names of cabal executables that go into eponymous debs
        insExecPkg <- use (A.debInfo . D.executable) >>= return . Set.map ename . Set.fromList . elems
 
-#if MIN_VERSION_Cabal(2,0,0)
        let installedData :: Set (FilePath, FilePath)
            installedData = Set.map (\ a -> (a, a)) $ Set.unions (Map.elems installedDataMap)
            installedExec :: Set String
-#else
-       let installedData = Set.map (\ a -> (a, a)) $ Set.unions (Map.elems installedDataMap)
-#endif
            installedExec = Set.unions (Map.elems installedExecMap)
 
        prefixPath <- dataTop
        let dataFilePaths = Set.fromList (zip (List.map (prefixPath </>) (Cabal.dataFiles pkgDesc)) (Cabal.dataFiles pkgDesc)) :: Set (FilePath, FilePath)
-#if MIN_VERSION_Cabal(2,0,0)
            execFilePaths :: Set FilePath
            execFilePaths = Set.map (unUnqualComponentName . Cabal.exeName) (Set.filter (Cabal.buildable . Cabal.buildInfo) (Set.fromList (Cabal.executables pkgDesc))) :: Set FilePath
-#else
-           execFilePaths = Set.map Cabal.exeName (Set.filter (Cabal.buildable . Cabal.buildInfo) (Set.fromList (Cabal.executables pkgDesc))) :: Set FilePath
-#endif
        let availableData = Set.union installedData dataFilePaths
            availableExec = Set.union installedExec execFilePaths
 
@@ -648,15 +618,11 @@ expandAtoms goodies =
     do hc <- use (A.debInfo . D.flags . compilerFlavor)
        case hc of
          GHC -> (A.debInfo . D.flags . cabalFlagAssignments) %= (Set.union (Set.fromList (flagList "--ghc")))
-#if MIN_VERSION_Cabal(1,22,0)
          GHCJS -> (A.debInfo . D.flags . cabalFlagAssignments) %= (Set.union (Set.fromList (flagList "--ghcjs")))
-#endif
          x -> error $ "Sorry, compiler not supported: " ++ show x
        builddir <- use (A.debInfo . D.buildDir) >>= return . fromMaybe (case hc of
                                                                GHC -> "dist-ghc/build"
-#if MIN_VERSION_Cabal(1,22,0)
                                                                GHCJS -> "dist-ghcjs/build"
-#endif
                                                                _ -> error $ "Unexpected compiler: " ++ show hc)
        dDest <- dataDest
        expandApacheSites
@@ -692,7 +658,6 @@ expandAtoms goodies =
           where
             doAtom :: Monad m => CompilerFlavor -> D.Atom -> CabalT m ()
             doAtom GHC (D.InstallCabalExec b name dest) = (A.debInfo . D.atomSet) %= (Set.insert $ D.Install b (builddir </> name </> name) dest)
-#if MIN_VERSION_Cabal(1,22,0)
             -- A GHCJS executable is a directory with files, copy them
             -- all into place.
             doAtom GHCJS (D.InstallCabalExec b name dest) =
@@ -701,7 +666,6 @@ expandAtoms goodies =
                         [ pack ("binary-fixup" </> ppShow b) <> "::"
                         , pack ("\t(cd " <> builddir </> name <> " && find -L " <> name <.> "jsexe" <> " -type f) |\\\n" <>
                                        "\t  while read i; do install -Dp " <> builddir </> name </> "$$i debian" </> ppShow b </> makeRelative "/" dest </> "$$i; done\n") ])
-#endif
             doAtom _ _ = return ()
 
       -- Turn A.InstallCabalExecTo into a make rule
@@ -794,17 +758,8 @@ anyrel' x = [D.Rel x Nothing Nothing]
 -- Lifted from Distribution.Simple.Setup, since it's not exported.
 flagList :: String -> [(FlagName, Bool)]
 flagList = List.map tagWithValue . words
-#if MIN_VERSION_Cabal(2,0,0)
   where tagWithValue ('-':name) = (mkFlagName (List.map toLower name), False)
         tagWithValue name       = (mkFlagName (List.map toLower name), True)
-#else
-  where tagWithValue ('-':name) = (FlagName (List.map toLower name), False)
-        tagWithValue name       = (FlagName (List.map toLower name), True)
-#endif
 
 flagString :: [(FlagName, Bool)] -> String
-#if MIN_VERSION_Cabal(2,0,0)
 flagString = unwords . List.map (\ (s, sense) -> "-f" ++ (if sense then "" else "-") ++ unFlagName s)
-#else
-flagString = unwords . List.map (\ (FlagName s, sense) -> "-f" ++ (if sense then "" else "-") ++ s)
-#endif

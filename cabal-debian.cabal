@@ -188,7 +188,6 @@ Library
     Data.Maybe.Extended
     Debian.GHC
     Debian.Policy
-    Distribution.Version.Invert
     Debian.Debianize
     Debian.Debianize.BasicInfo
     Debian.Debianize.BinaryDebDescription

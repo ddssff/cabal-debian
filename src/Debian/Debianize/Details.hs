@@ -15,13 +15,8 @@ import Debian.Debianize.CabalInfo as A (epochMap, debInfo)
 import Debian.Debianize.DebInfo as D (execMap)
 import Debian.Debianize.VersionSplits (DebBase(DebBase))
 import Debian.Relation (BinPkgName(BinPkgName), Relation(Rel))
-#if MIN_VERSION_Cabal(2,0,0)
 import Distribution.Package (mkPackageName)
 import Distribution.Version (mkVersion)
-#else
-import Data.Version (Version(Version))
-import Distribution.Package (PackageName(PackageName))
-#endif
 
 -- | Update the CabalInfo value in the CabalT state with some details about
 -- the debian repository - special cases for how some cabal packages

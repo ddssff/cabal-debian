@@ -41,12 +41,9 @@ import Distribution.Package (Dependency(..), PackageIdentifier(pkgName, pkgVersi
 import Distribution.PackageDescription as Cabal (BuildInfo(..), BuildInfo(buildTools, extraLibs, pkgconfigDepends), Library(..), Executable(..), TestSuite(..), SetupBuildInfo(..), PackageDescription(setupBuildInfo))
 import qualified Distribution.PackageDescription as Cabal (PackageDescription(library, executables, testSuites))
 import Distribution.Pretty (prettyShow)
-#if MIN_VERSION_Cabal(2,0,0)
 import Distribution.Types.LegacyExeDependency (LegacyExeDependency(..))
 import Distribution.Types.PkgconfigDependency (PkgconfigDependency(..))
-#endif
-import Distribution.Version (anyVersion, asVersionIntervals, fromVersionIntervals, intersectVersionRanges, isNoVersion, toVersionIntervals, unionVersionRanges, VersionRange, withinVersion)
-import Distribution.Version.Invert (invertVersionRange)
+import Distribution.Version (anyVersion, asVersionIntervals, fromVersionIntervals, intersectVersionRanges, invertVersionRange, isNoVersion, toVersionIntervals, unionVersionRanges, VersionRange, withinVersion)
 import Prelude hiding (init, log, map, unlines, unlines, writeFile)
 import System.Directory (findExecutable)
 import System.Exit (ExitCode(ExitSuccess))

@@ -64,11 +64,7 @@ import System.Environment (getEnvironment)
 import System.FilePath ((</>))
 import System.Process (readProcess)
 import Text.Parsec (parse)
-#if MIN_VERSION_hsemail(2,0,0)
 import Text.Parsec.Rfc2822 (address, NameAddr(..))
-#else
-import Text.ParserCombinators.Parsec.Rfc2822 (address, NameAddr(..))
-#endif
 import Text.PrettyPrint.HughesPJClass (text)
 import Distribution.Pretty (Pretty(pretty))
 import Text.Read (readMaybe)

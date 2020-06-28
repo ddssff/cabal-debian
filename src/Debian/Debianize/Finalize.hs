@@ -71,11 +71,7 @@ import Prelude hiding (init, log, map, unlines, unlines, writeFile)
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>), makeRelative, splitFileName, takeDirectory, takeFileName)
 import System.IO (hPutStrLn, stderr)
-#if MIN_VERSION_hsemail(2,0,0)
 import Text.Parsec.Rfc2822 (NameAddr(..))
-#else
-import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr(..))
-#endif
 import Distribution.Pretty (Pretty(pretty))
 
 -- | @debianize customize@ initializes the CabalT state from the

@@ -108,11 +108,7 @@ import Debian.Policy (PackageArchitectures, PackagePriority, Section, SourceForm
 import Debian.Relation (BinPkgName, Relations, SrcPkgName)
 import Debian.Version (DebianVersion)
 import Prelude hiding (init, init, log, log)
-#if MIN_VERSION_hsemail(2,0,0)
 import Text.Parsec.Rfc2822 (NameAddr)
-#else
-import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr)
-#endif
 
 -- | Information required to represent a non-cabal debianization.
 data DebInfo

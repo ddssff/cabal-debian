@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, FlexibleInstances, OverloadedStrings, StandaloneDeriving, CPP #-}
+{-# LANGUAGE DeriveDataTypeable, FlexibleInstances, OverloadedStrings, StandaloneDeriving #-}
 {-# OPTIONS_GHC -Wall -fno-warn-orphans #-}
 module Debian.Orphans where
 
@@ -20,11 +20,7 @@ import Distribution.Version (cataVersionRange, normaliseVersionRange, VersionRan
 import Distribution.Version (Version)
 import Language.Haskell.Extension (Language(..))
 import Network.URI (URI)
-#if MIN_VERSION_hsemail(2,0,0)
 import Text.Parsec.Rfc2822 (NameAddr(..))
-#else
-import Text.ParserCombinators.Parsec.Rfc2822 (NameAddr(..))
-#endif
 import Text.PrettyPrint.HughesPJ (Doc)
 import Text.PrettyPrint.HughesPJClass (hcat, text)
 import Distribution.Pretty (Pretty(pretty))

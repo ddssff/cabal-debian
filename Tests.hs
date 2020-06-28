@@ -2,10 +2,6 @@
 {-# OPTIONS_GHC -Wall -fno-warn-orphans #-}
 module Main where
 
-#if !MIN_VERSION_base(4,8,0)
-import Control.Applicative ((<$>))
-import Data.Monoid (mconcat, mempty)
-#endif
 import Debian.Debianize.Optparse(_flags, parseProgramArguments)
 import Control.Lens
 import Data.Algorithm.DiffContext (getContextDiff, prettyContextDiff)

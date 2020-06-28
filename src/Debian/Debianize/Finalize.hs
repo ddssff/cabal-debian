@@ -9,10 +9,6 @@ module Debian.Debianize.Finalize
     ) where
 
 
-#if !MIN_VERSION_base(4,8,0)
-import Control.Applicative ((<$>))
-import Data.Monoid (mempty)
-#endif
 import Control.Lens hiding ((<.>))
 import Control.Monad (unless, when)
 import Control.Monad as List (mapM_)

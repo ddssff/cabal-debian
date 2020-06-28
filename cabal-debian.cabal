@@ -155,7 +155,7 @@ Library
   Hs-Source-Dirs: src
   GHC-Options: -Wall
   Build-Depends:
-    base < 5,
+    base >= 4.8 && < 5,
     bifunctors,
     Cabal >= 2.2,
     containers,
@@ -223,7 +223,7 @@ Executable cabal-debian
   Main-is: CabalDebian.hs
   ghc-options: -threaded -Wall
   Build-Depends:
-    base,
+    base >= 4.8 && <5,
     cabal-debian,
     Cabal >= 2.2,
     debian >= 3.95,
@@ -239,7 +239,7 @@ Test-Suite cabal-debian-tests
   Main-is: Tests.hs
   ghc-options: -threaded -Wall
   Build-Depends:
-    base < 5,
+    base >= 4.8 && < 5,
     cabal-debian,
     Cabal >= 2.2,
     containers,

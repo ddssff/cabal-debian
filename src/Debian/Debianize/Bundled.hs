@@ -20,9 +20,6 @@ module Debian.Debianize.Bundled
     , tests
     ) where
 
-#if !MIN_VERSION_base(4,8,0)
-import Control.Applicative ((<$>), (<*>))
-#endif
 import Control.Exception (SomeException, try)
 import Control.Monad ((<=<))
 import Data.Char (isAlphaNum, toLower)

@@ -16,9 +16,6 @@ module Debian.Debianize.Optparse (
   parseProgramArguments',
   handleBehaviorAdjustment) where
 
-#if !MIN_VERSION_base(4,8,0)
-import Control.Applicative ((<$>), (<*>), pure)
-#endif
 import Control.Applicative (many, (<|>))
 import Control.Lens
 import Control.Monad.State.Class (MonadState)

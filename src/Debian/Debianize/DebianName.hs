@@ -12,9 +12,6 @@ module Debian.Debianize.DebianName
     ) where
 
 
-#if !MIN_VERSION_base(4,8,0)
-import Control.Applicative ((<$>))
-#endif
 import Control.Lens
 import Data.Char (toLower)
 import Data.Map as Map (alter, lookup)

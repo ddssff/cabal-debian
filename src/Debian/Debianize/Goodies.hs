@@ -22,9 +22,6 @@ import Control.Monad.State (MonadState(get), modify)
 import Data.List as List ({-dropWhileEnd, intercalate,-} intersperse, map)
 import Data.Map as Map (insert, insertWith, toList)
 import Data.Monoid ((<>))
-#if !MIN_VERSION_base(4,8,0)
-import Data.Monoid (mappend)
-#endif
 import Data.Set as Set (insert, singleton, union)
 import Data.Text as Text (pack, {-Text,-} unlines)
 import qualified Debian.Debianize.DebInfo as D

@@ -6,9 +6,6 @@ module Debian.Debianize.BuildDependencies
     ) where
 
 
-#if !MIN_VERSION_base(4,8,0)
-import Control.Applicative ((<$>))
-#endif
 import Control.Lens
 import Control.Monad ((>=>))
 import Control.Monad.IO.Class (liftIO)

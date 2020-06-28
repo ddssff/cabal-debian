@@ -7,10 +7,6 @@ module Debian.Debianize.Files
     ) where
 
 
-#if !MIN_VERSION_base(4,8,0)
-import Control.Applicative ((<$>))
-import Data.Monoid (mempty)
-#endif
 import Control.Lens
 import Control.Monad.Fail (MonadFail)
 import Control.Monad.Trans (lift)

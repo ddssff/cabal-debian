@@ -398,7 +398,7 @@ fromCabalLicense x =
       Cabal.LGPL _ -> LGPL
       Cabal.BSD3 -> BSD_3_Clause
       Cabal.BSD4 -> BSD_4_Clause
-      Cabal.MIT -> OtherLicense (show x)
+      Cabal.MIT -> Expat
       Cabal.Apache _ -> Apache
       Cabal.PublicDomain -> Public_Domain
       Cabal.AllRightsReserved -> OtherLicense "AllRightsReserved"
@@ -418,6 +418,7 @@ toCabalLicense x =
       BSD_2_Clause -> Cabal.BSD2
       BSD_3_Clause -> Cabal.BSD3
       BSD_4_Clause -> Cabal.BSD4
+      Expat -> Cabal.MIT
       OtherLicense s -> Cabal.UnknownLicense s
       _ -> Cabal.UnknownLicense (show x)
 

@@ -29,7 +29,7 @@ debianDefaults =
        -- Associate some build tools and their corresponding
        -- (eponymous) debian package names
        mapM_ (\name -> (A.debInfo . D.execMap) %= Map.insert name [[Rel (BinPkgName name) Nothing Nothing]])
-            ["ghc", "happy", "alex", "hsx2hs"]
+            ["alex", "c2hs", "ghc", "happy", "hsx2hs"]
        -- The parsec debs are suffixed with either "2" or "3"
 #if !MIN_VERSION_base(4,11,1)
 -- The deb of ghc-8.4.3 changes the libghc-parsec3-dev name to libghc-parsec-deb
@@ -40,11 +40,9 @@ debianDefaults =
        -- Something was required for this package at one time - it
        -- looks like a no-op now
        mapCabal (mkPackageName "gtk2hs-buildtools") (DebBase "gtk2hs-buildtools")
-       -- Upgrade transformers to 0.4 - no don't!
-       -- remapCabal (PackageName "transformers") (DebBase "transformers4")
-       -- remapCabal (PackageName "haskeline") (DebBase "haskeline0713")
        mapCabal (mkPackageName "haskell-src-exts") (DebBase "src-exts")
        mapCabal (mkPackageName "haskell-src-exts-simple") (DebBase "src-exts-simple")
+       mapCabal (mkPackageName "haskell-src-exts-util") (DebBase "src-exts-util")
        mapCabal (mkPackageName "haskell-src-meta") (DebBase "src-meta")
        mapCabal (mkPackageName "Cabal") (DebBase "cabal")
 

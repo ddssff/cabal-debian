@@ -54,8 +54,10 @@ import Distribution.Compiler (CompilerFlavor(GHCJS))
 import Distribution.Package (Dependency(..), PackageIdentifier(..), PackageName, unPackageName)
 import Distribution.PackageDescription as Cabal (allBuildInfo, author, BuildInfo(buildable, extraLibs), Executable(buildInfo, exeName), FlagName, mkFlagName, unFlagName, maintainer, PackageDescription(testSuites, description))
 import Distribution.Types.UnqualComponentName
---import Distribution.Utils.ShortText
 import Distribution.PackageDescription as Cabal (PackageDescription(dataFiles, {-description,-} executables, library, package, synopsis))
+#if MIN_VERSION_Cabal(3,2,0)
+import qualified Distribution.Utils.ShortText as ST
+#endif
 import Prelude hiding (init, log, map, unlines, unlines, writeFile)
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>), makeRelative, splitFileName, takeDirectory, takeFileName)
@@ -262,8 +264,13 @@ finalizeMaintainer currentUser = do
   pkgDesc <- use A.packageDescription
   maintainerOption <- use (A.debInfo . D.maintainerOption)
   uploadersOption <- use (A.debInfo . D.uploadersOption)
-  let cabalAuthorString = takeWhile (\ c -> c /= ',' && c /= '\n') (Cabal.author pkgDesc)
-      cabalMaintainerString = takeWhile (\ c -> c /= ',' && c /= '\n') (Cabal.maintainer pkgDesc)
+#if MIN_VERSION_Cabal(3,2,0)
+  let toString = ST.fromShortText
+#else
+  let toString = id
+#endif
+      cabalAuthorString = takeWhile (\ c -> c /= ',' && c /= '\n') (toString (Cabal.author pkgDesc))
+      cabalMaintainerString = takeWhile (\ c -> c /= ',' && c /= '\n') (toString (Cabal.maintainer pkgDesc))
       cabalMaintainerString' = cabalAuthorString <> " <" <> cabalMaintainerString <> ">"
       cabalMaintainerString'' = cabalAuthorString <> " " <> cabalMaintainerString
   changelogSignature <-
@@ -369,10 +376,15 @@ debianDescriptionBase p =
       -- I don't know why (unwords . words) was applied here.  Maybe I'll find out when
       -- this version goes into production.  :-/  Ok, now I know, because sometimes the
       -- short cabal description has more than one line.
-      synop = List.intercalate " " $ fmap (dropWhileEnd isSpace) $ lines $ synopsis p
+      synop = List.intercalate " " $ fmap (dropWhileEnd isSpace) $ lines $ toString $ synopsis p
       desc' :: [String]
-      desc' = List.map addDot . stripWith List.null $ fmap (dropWhileEnd isSpace) $ lines $ Cabal.description p
+      desc' = List.map addDot . stripWith List.null $ fmap (dropWhileEnd isSpace) $ lines $ toString $ Cabal.description p
       addDot line = if List.null line then "." else line
+#if MIN_VERSION_Cabal(3,2,0)
+      toString = ST.fromShortText
+#else
+      toString = id
+#endif
 
 -- | Make sure there is a changelog entry with the version number and
 -- source package name implied by the debianization.  This means

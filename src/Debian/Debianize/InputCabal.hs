@@ -1,5 +1,8 @@
 -- | Input the Cabal package description.
-{-# LANGUAGE DeriveDataTypeable, ScopedTypeVariables, TemplateHaskell #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell #-}
 module Debian.Debianize.InputCabal
     ( inputCabalization
     ) where
@@ -22,7 +25,11 @@ import Distribution.Types.ComponentRequestedSpec (ComponentRequestedSpec(Compone
 import Distribution.Simple.Utils (defaultPackageDesc, die', setupMessage)
 import Distribution.System as Cabal (buildArch, Platform(..))
 import qualified Distribution.System as Cabal (buildOS)
+#if MIN_VERSION_Cabal(3,2,0)
+import Distribution.Types.Flag (mkFlagAssignment)
+#else
 import Distribution.Types.GenericPackageDescription (mkFlagAssignment)
+#endif
 import Distribution.Verbosity (Verbosity)
 import Prelude hiding (break, lines, log, null, readFile, sum)
 import System.Directory (doesFileExist, getCurrentDirectory)

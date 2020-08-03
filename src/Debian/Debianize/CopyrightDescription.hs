@@ -1,5 +1,13 @@
 -- | <https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/>
-{-# LANGUAGE DeriveDataTypeable, FlexibleInstances, OverloadedStrings, ScopedTypeVariables, TemplateHaskell, TupleSections, LambdaCase #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TupleSections #-}
+
 module Debian.Debianize.CopyrightDescription
     ( CopyrightDescription(..)
     , FilesOrLicenseDescription(..)
@@ -45,6 +53,9 @@ import Debug.Trace
 import qualified Distribution.License as Cabal (License(UnknownLicense))
 import qualified Distribution.Package as Cabal
 import qualified Distribution.PackageDescription as Cabal (PackageDescription(licenseFiles, copyright, licenseRaw, package, maintainer))
+#if MIN_VERSION_Cabal(3,2,0)
+import qualified Distribution.Utils.ShortText as ST
+#endif
 import Network.URI (URI, parseURI)
 import Prelude hiding (init, init, log, log, unlines, readFile)
 import Text.PrettyPrint.HughesPJClass (text)
@@ -255,15 +266,22 @@ defaultCopyrightDescription pkgDesc = do
         def { _summaryComment = Just t }
     Nothing ->
         -- All we have is the name of the license
-        let copyrt = fmap dots $ nothingIf (Text.null . strip) (pack (Cabal.copyright pkgDesc)) in
+        let copyrt = fmap dots $ nothingIf (Text.null . strip) (toText (Cabal.copyright pkgDesc)) in
         def { _filesAndLicenses =
                   [ sourceDefaultFilesDescription copyrt license,
                     debianDefaultFilesDescription license ] ++
                   defaultLicenseDescriptions license licenseCommentPairs
             , _upstreamName = Just . pack $ pkgname
             , _upstreamSource = Just . pack $ "https://hackage.haskell.org/package/" ++ pkgname
-            , _upstreamContact = nothingIf Text.null (pack maintainer)
+            , _upstreamContact = nothingIf Text.null (toText maintainer)
             }
+  where
+    toText =
+#if MIN_VERSION_Cabal(3,2,0)
+        pack . ST.fromShortText
+#else
+        pack
+#endif
 
 {-
   -- We don't really have a way to associate licenses with
